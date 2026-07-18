@@ -5,7 +5,7 @@ import {
   Modal, ModalContent, ModalHeader, ModalBody, ModalFooter, useDisclosure,
   Chip, Avatar, Tooltip, Divider, Selection,
   Dropdown, DropdownTrigger, DropdownMenu, DropdownItem,
-  Spinner, Tabs, Tab
+  Tabs, Tab
 } from '@heroui/react';
 import { Icon } from '@iconify/react';
 import { motion } from 'framer-motion';
@@ -26,6 +26,7 @@ import { useAuth } from '../contexts/auth-context';
 import { useModulePermission, usePermission } from '../contexts/permission-context';
 import { useToast, useConfirm } from '../hooks/useToast';
 import { usePageTitle } from '../hooks/usePageTitle';
+import { TableSkeleton, TableSkeletonColumn } from '../components/SkeletonLoader';
 import { logger } from '../utils/logger';
 import { permissionService } from '../services/usuario/permission-service';
 import {
@@ -553,6 +554,17 @@ const cellComponentFor = (moduleKey: ModuleKey): React.FC<CrudCellProps> =>
   AGGREGATE_MODULES.has(moduleKey) ? TriStateCell :
   NO_DELETE_MODULES.has(moduleKey) ? CrudCellNoDelete :
                                      CrudCell;
+
+// ── Skeleton: columnas espejo de la tabla de usuarios ──────────────────────
+const USUARIOS_TABLE_COLS: TableSkeletonColumn[] = [
+  { width: 'w-[25%]', shape: 'avatar-text' },
+  { width: 'w-[15%]', shape: 'text' },
+  { width: 'w-[20%]', shape: 'text' },
+  { width: 'w-[15%]', shape: 'chip' },
+  { width: 'w-[10%]', shape: 'chip' },
+  { width: 'w-[15%]', shape: 'text' },
+  { width: 'w-[100px]', shape: 'icons' },
+];
 
 // ═══════════════════════════════════════════════════════════════════════════
 // PÁGINA PRINCIPAL — Usuarios + Roles y Permisos, con pestañas
@@ -1158,12 +1170,7 @@ const GestionUsuariosPage: React.FC = () => {
 
       {activeTab === 'usuarios' && (
         isLoading ? (
-          <div className="flex items-center justify-center h-96">
-            <div className="text-center">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
-              <p className="text-default-500">Cargando usuarios...</p>
-            </div>
-          </div>
+          <TableSkeleton rows={8} columns={USUARIOS_TABLE_COLS} />
         ) : (
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -1506,11 +1513,8 @@ const GestionUsuariosPage: React.FC = () => {
                   <tbody className="divide-y divide-divider">
                     {permIsLoading ? (
                       <tr>
-                        <td colSpan={(localPermissions.length || 1) + 1} className="py-16 text-center">
-                          <div className="flex flex-col items-center gap-3">
-                            <Spinner size="lg" color="warning" />
-                            <span className="text-default-400 text-sm">Cargando permisos...</span>
-                          </div>
+                        <td colSpan={(localPermissions.length || 1) + 1} className="py-4">
+                          <TableSkeleton rows={8} columns={(localPermissions.length || 1) + 1} />
                         </td>
                       </tr>
                     ) : errorState ? (

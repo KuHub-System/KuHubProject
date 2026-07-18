@@ -61,6 +61,7 @@ import { logger } from '../utils/logger';
 import { useAuth } from '../contexts/auth-context';
 import { useModulePermission } from '../contexts/permission-context';
 import { obtenerCategorias, obtenerUnidades } from '../services/shared/storage-service';
+import { TableSkeleton, TableSkeletonColumn } from '../components/SkeletonLoader';
 import GestionCategoriasModal from '../components/modals/GestionCategoriasModal';
 import GestionUnidadesModal from '../components/modals/GestionUnidadesModal';
 import GestionAbastecimientoModal from '../components/modals/GestionAbastecimientoModal';
@@ -135,6 +136,26 @@ const intentarAutoMatchCategoria = (
   return categorias.find(c => normalizarParaMatch(c.nombre) === norm)?.id ?? null;
 };
 
+// ── Skeletons: columnas espejo de las tablas reales ────────────────────────
+const STOCK_TABLE_COLS: TableSkeletonColumn[] = [
+  { width: 'w-[30%]', shape: 'text' },
+  { width: 'w-[15%]', shape: 'text' },
+  { width: 'w-[10%]', shape: 'text' },
+  { width: 'w-[10%]', shape: 'text' },
+  { width: 'w-[10%]', shape: 'text' },
+  { width: 'w-[15%]', shape: 'chip' },
+  { width: 'w-[10%]', shape: 'icons' },
+];
+const MOVIMIENTOS_TABLE_COLS: TableSkeletonColumn[] = [
+  { width: 'w-[20%]', shape: 'text' },
+  { width: 'w-[10%]', shape: 'text' },
+  { width: 'w-[14%]', shape: 'chip' },
+  { width: 'w-[6%]', shape: 'text' },
+  { width: 'w-[9%]', shape: 'text' },
+  { width: 'w-[17%]', shape: 'text' },
+  { width: 'w-[24%]', shape: 'text' },
+];
+
 // ── Tab "Movimientos" (historial de movimientos de inventario y bodega) ───────
 const MOV_GREEN = '#16a34a';
 const MOV_RED = '#ef4444';
@@ -158,6 +179,22 @@ const MOV_TIPO_CONFIG: Record<string, { label: string; color: string }> = {
   AJUSTE_BODEGA: { label: 'Ajuste Bodega', color: MOV_PURPLE },
   AJUSTE: { label: 'Ajuste', color: MOV_PURPLE },
 };
+
+// Cache de módulo: sobrevive al desmontaje del componente para que volver a
+// esta página dentro de la misma sesión no vuelva a pedir filtros/categorías/
+// unidades/abastecimiento, que casi nunca cambian entre navegaciones.
+const FILTROS_CACHE_TTL_MS = 5 * 60 * 1000;
+let _inventarioFiltrosCache: {
+  categoriasFull: { id: number; nombre: string }[];
+  unidadesFull: { id: number; nombre: string }[];
+  categoriasActivas: { id: number; nombre: string }[];
+  unidadesActivas: IUnidadMedida[];
+  configAbastecimiento: ICategoriaAbastecimientoView[];
+  ts: number;
+} | null = null;
+
+// Solo para tests: evita que el cache de módulo filtre entre casos de prueba.
+export const __resetInventarioFiltrosCache = () => { _inventarioFiltrosCache = null; };
 
 const renderTipoMovimiento = (tipo: string) => {
   const normalizedTipo = tipo
@@ -392,16 +429,29 @@ const InventarioPage: React.FC = () => {
   /**
    * Carga los filtros (categorías y unidades) desde el backend.
    */
-  const cargarFiltros = React.useCallback(async () => {
+  const cargarFiltros = React.useCallback(async (forceFetch = false) => {
+    const cached = _inventarioFiltrosCache;
+    if (!forceFetch && cached && Date.now() - cached.ts < FILTROS_CACHE_TTL_MS) {
+      setCategoriasFull(cached.categoriasFull);
+      setUnidadesFull(cached.unidadesFull);
+      setCategoriasActivas(cached.categoriasActivas);
+      setUnidadesActivas(cached.unidadesActivas);
+      setConfigAbastecimiento(cached.configAbastecimiento);
+      return;
+    }
+
     try {
-      const [resFiltros, resCategoriasActivas, resUnidadesActivas] = await Promise.all([
+      const [resFiltros, resCategoriasActivas, resUnidadesActivas, resConfigAbastecimiento] = await Promise.all([
         obtenerFiltrosInventarioService(),
         obtenerCategoriasActivasService(),
-        obtenerUnidadesActivasService()
+        obtenerUnidadesActivasService(),
+        obtenerConfigAbastecimientoService()
       ]);
 
-      setCategoriasFull(resFiltros.categorias ?? []);
-      setUnidadesFull(resFiltros.unidades ?? []);
+      const categoriasFullData = resFiltros.categorias ?? [];
+      const unidadesFullData = resFiltros.unidades ?? [];
+      setCategoriasFull(categoriasFullData);
+      setUnidadesFull(unidadesFullData);
 
       // Mapear ICategoria[] a coincidir con el formato de categoriasFull
       const activasMapeadas = resCategoriasActivas.map(c => ({
@@ -410,7 +460,16 @@ const InventarioPage: React.FC = () => {
       }));
       setCategoriasActivas(activasMapeadas);
       setUnidadesActivas(resUnidadesActivas);
+      setConfigAbastecimiento(resConfigAbastecimiento);
 
+      _inventarioFiltrosCache = {
+        categoriasFull: categoriasFullData,
+        unidadesFull: unidadesFullData,
+        categoriasActivas: activasMapeadas,
+        unidadesActivas: resUnidadesActivas,
+        configAbastecimiento: resConfigAbastecimiento,
+        ts: Date.now()
+      };
     } catch (error) {
       // Error cargando filtros
     }
@@ -623,16 +682,9 @@ const InventarioPage: React.FC = () => {
   // Recargar filtros (categorías activas) cada vez que se abre el modal de producto
   React.useEffect(() => {
     if (isOpen) {
-      cargarFiltros();
+      cargarFiltros(true);
     }
   }, [isOpen, cargarFiltros]);
-
-  // Cargar configuración de abastecimiento para detección de categorías de bodega
-  React.useEffect(() => {
-    obtenerConfigAbastecimientoService()
-      .then(setConfigAbastecimiento)
-      .catch(() => {});
-  }, []);
 
   // Cargar productos iniciales
   React.useEffect(() => {
@@ -1357,8 +1409,8 @@ const InventarioPage: React.FC = () => {
           }}
           bottomContent={
             isLoading && productos.length > 0 ? (
-              <div className="flex w-full justify-center py-10">
-                <Spinner size="lg" label="Cargando existencias..." color="primary" labelColor="primary" />
+              <div className="py-4">
+                <TableSkeleton rows={3} columns={STOCK_TABLE_COLS} />
               </div>
             ) : null
           }
@@ -1406,7 +1458,7 @@ const InventarioPage: React.FC = () => {
           </TableHeader>
           <TableBody
             isLoading={isLoading && productos.length === 0}
-            loadingContent={<div className="py-20 text-center text-primary"><Spinner size="lg" /> <p className="mt-4 font-bold">Cargando inventario...</p></div>}
+            loadingContent={<div className="py-4 w-full"><TableSkeleton rows={8} columns={STOCK_TABLE_COLS} /></div>}
             emptyContent={
               <div className="py-20 text-center text-default-400">
                 <Icon icon="lucide:package-open" className="mx-auto mb-4 opacity-50" width={64} />
@@ -1609,7 +1661,7 @@ const InventarioPage: React.FC = () => {
                 </TableHeader>
                 <TableBody
                   isLoading={movIsLoading}
-                  loadingContent={<Spinner label="Cargando movimientos..." />}
+                  loadingContent={<div className="py-4 w-full"><TableSkeleton rows={8} columns={MOVIMIENTOS_TABLE_COLS} /></div>}
                   emptyContent={
                     <div className="py-12 text-center text-default-400">
                       <Icon icon="lucide:clipboard-list" className="mx-auto mb-3 opacity-50" width={48} />

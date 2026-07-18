@@ -20,6 +20,7 @@ import { IOrdenAbastecimiento, ICategoriaEntregaAbastecimiento } from '../../typ
 import ConfirmarDisponibleBodegaModal, { ConfirmarDisponibleBodegaItem } from '../../components/modals/ConfirmarDisponibleBodegaModal';
 import ConfirmarSalidaDisponibleModal, { ConfirmarSalidaDisponibleItem } from '../../components/modals/ConfirmarSalidaDisponibleModal';
 import { ItemBodegaMasivo, MOTIVOS_BODEGA, MOTIVO_LABEL } from './constants';
+import { CardSkeleton } from '../../components/SkeletonLoader';
 
 interface ControlMasivoBodegaModalProps {
   onClose: () => void;
@@ -1032,8 +1033,8 @@ const ControlMasivoBodegaModal: React.FC<ControlMasivoBodegaModalProps> = ({ onC
               </ModalHeader>
               <ModalBody className="py-5 px-5 overflow-y-auto max-h-[65vh] space-y-4">
                 {loadingAbastecimiento ? (
-                  <div className="flex justify-center py-20">
-                    <Spinner size="lg" color="warning" />
+                  <div className="space-y-3">
+                    {Array.from({ length: 3 }).map((_, i) => <CardSkeleton key={i} lines={2} />)}
                   </div>
                 ) : ordenesAbastecimiento.length === 0 ? (
                   <div className="flex flex-col items-center justify-center py-20 text-default-400">

@@ -13,6 +13,7 @@ import { Icon } from '@iconify/react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useToast } from '../hooks/useToast';
 import { usePageTitle } from '../hooks/usePageTitle';
+import { CardSkeleton } from '../components/SkeletonLoader';
 import { logger } from '../utils/logger';
 import { useNotifications } from '../utils/notifications';
 import { useModulePermission, usePermission } from '../contexts/permission-context';
@@ -303,11 +304,8 @@ const GestionAsignaturasPage: React.FC = () => {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center h-96">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
-          <p>Cargando datos...</p>
-        </div>
+      <div className="space-y-3 p-6">
+        {Array.from({ length: 4 }).map((_, i) => <CardSkeleton key={i} lines={2} hasBadge />)}
       </div>
     );
   }

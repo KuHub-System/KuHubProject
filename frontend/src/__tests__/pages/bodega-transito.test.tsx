@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { render, screen, fireEvent, waitFor, cleanup } from '@testing-library/react';
 import { BrowserRouter } from 'react-router-dom';
 import { HeroUIProvider } from '@heroui/react';
-import BodegaTransitoPage from '../../pages/bodega-transito';
+import BodegaTransitoPage, { __resetBodegaFiltrosCache } from '../../pages/bodega-transito';
 import * as permissionContext from '../../contexts/permission-context';
 
 // ============================================
@@ -222,6 +222,7 @@ const abrirPrepararEntrega = async (container: HTMLElement) => {
 describe('BodegaTransitoPage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    __resetBodegaFiltrosCache();
     mockObtenerBodegaPaginada.mockResolvedValue(respuestaBodega);
     mockBuscarBodega.mockResolvedValue(respuestaBodega);
     mockBuscarBodegaCodigo.mockResolvedValue(respuestaBodega);

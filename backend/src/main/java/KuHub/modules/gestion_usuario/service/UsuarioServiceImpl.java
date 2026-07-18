@@ -687,28 +687,6 @@ public class UsuarioServiceImpl implements UsuarioService {
         return convertirADTO(usuarioActualizado);
     }
 
-    // ⚠️ MÉTODO login() ELIMINADO
-    // Ya no es necesario porque el login lo maneja JwtAuthenticationFilter
-    // Si intentas usar este método, Spring Security NO lo usará
-    // El login ahora se hace automáticamente mediante POST /login con los filtros JWT
-
-    @Override
-    @Transactional
-    public LoginResponseDTO login(LoginRequestDTO loginRequestDTO) {
-        // ⚠️ ESTE MÉTODO YA NO SE USA CON JWT
-        // El login lo manejan los filtros:
-        // - JwtAuthenticationFilter: procesa el login
-        // - JpaUserDetailsService: valida las credenciales
-
-        // Sin embargo, lo dejamos aquí por si lo usas en alguna prueba
-        // pero en producción, este método NO se ejecutará
-
-        throw new UnsupportedOperationException(
-                "El login ahora se maneja mediante JWT. " +
-                        "Usa POST /login con { \"email\": \"...\", \"contrasena\": \"...\" }"
-        );
-    }
-
     @Override
     @Transactional
     public void actualizarUltimoAcceso(Integer idUsuario) {

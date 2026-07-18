@@ -10,13 +10,13 @@ import {
   ModalContent,
   ModalFooter,
   ModalHeader,
-  Spinner,
   Tooltip,
 } from '@heroui/react';
 import { Icon } from '@iconify/react';
 import { CalendarDate } from '@internationalized/date';
 import { ICotizacionProveedor, ICotizacionResponse } from '../../types/proveedor/proveedor.types';
 import { fmtN } from './constants';
+import { TableSkeleton } from '../../components/SkeletonLoader';
 
 interface CotizacionModalProps {
   isOpen: boolean;
@@ -111,11 +111,7 @@ const CotizacionModal: React.FC<CotizacionModalProps> = ({
               )}
 
               {/* Loading */}
-              {loading && (
-                <div className="flex justify-center py-10">
-                  <Spinner size="lg" color="primary" label="Consultando cotización..." />
-                </div>
-              )}
+              {loading && <TableSkeleton rows={6} columns={5} />}
 
               {/* Resultados */}
               {!loading && cotizacionData && (

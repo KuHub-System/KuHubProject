@@ -1,7 +1,7 @@
 import React from 'react';
 import {
   Card, CardBody, CardHeader,
-  Button, Input, Chip, Spinner, Divider, Tooltip,
+  Button, Input, Chip, Divider, Tooltip,
 } from '@heroui/react';
 import { DateRangePicker } from '@heroui/react';
 import { Icon } from '@iconify/react';
@@ -10,6 +10,7 @@ import { CalendarDate } from '@internationalized/date';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { useToast } from '../hooks/useToast';
 import { useModulePermission } from '../contexts/permission-context';
+import { TableSkeleton, StatSkeleton, CardSkeleton } from '../components/SkeletonLoader';
 import {
   IResumenHistorico,
   IProductoResumenHistorico,
@@ -260,9 +261,18 @@ const HistoricoPedidosPage: React.FC = () => {
 
       {/* ── Resultados ── */}
       {loading ? (
-        <div className="py-20 flex flex-col items-center gap-3 text-default-400">
-          <Spinner size="lg" color="warning" />
-          <p className="text-sm">Consultando histórico...</p>
+        <div className="space-y-5">
+          <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
+            <div className="sm:col-span-1"><StatSkeleton count={1} /></div>
+            <div className="sm:col-span-1"><StatSkeleton count={1} /></div>
+            <div className="sm:col-span-2"><CardSkeleton lines={1} /></div>
+          </div>
+          <TableSkeleton rows={8} columns={[
+            { width: 'w-[8%]', shape: 'text' },
+            { width: 'w-[58%]', shape: 'text' },
+            { width: 'w-[17%]', shape: 'text' },
+            { width: 'w-[17%]', shape: 'text' },
+          ]} />
         </div>
       ) : !resumen ? (
         <div className="py-20 flex flex-col items-center gap-3 text-default-400">

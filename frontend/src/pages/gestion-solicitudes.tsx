@@ -22,7 +22,7 @@ import {
 import { Icon } from '@iconify/react';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { useToast } from '../hooks/useToast';
-import BookPageLoader from '../components/BookPageLoader';
+import { CardSkeleton, TableSkeleton } from '../components/SkeletonLoader';
 import {
   obtenerSolicitudesPorSemanaService,
   ISolicitudPorSemanaResponse,
@@ -1469,9 +1469,8 @@ const GestionSolicitudesPage: React.FC = () => {
 
         <CardBody className="p-4 space-y-4">
           {isLoadingSol ? (
-            <div className="py-16 flex flex-col items-center gap-3 text-default-400">
-              <Spinner size="lg" />
-              <p className="text-sm">Cargando solicitudes de la semana...</p>
+            <div className="space-y-3">
+              {Array.from({ length: 4 }).map((_, i) => <CardSkeleton key={i} lines={1} hasBadge />)}
             </div>
           ) : !semanaId ? (
             <div className="py-16 flex flex-col items-center gap-3 text-default-400">
@@ -1916,9 +1915,11 @@ const GestionSolicitudesPage: React.FC = () => {
 
         <CardBody className="p-4">
           {isLoadingDatos ? (
-            <div className="py-16 flex items-center justify-center">
-              <BookPageLoader message="Cargando pedidos" subMessage="Consolidando datos..." />
-            </div>
+            <TableSkeleton rows={8} columns={[
+              { width: 'w-[24%]', shape: 'text' },
+              ...Array.from({ length: 7 }, () => ({ width: 'flex-1', shape: 'text' as const })),
+              { width: 'w-16', shape: 'text' },
+            ]} />
           ) : !semanaId ? (
             <div className="py-16 flex flex-col items-center gap-3 text-default-400">
               <Icon icon="lucide:calendar-search" width={48} className="opacity-40" />

@@ -1,9 +1,10 @@
 import React from 'react';
-import { Button, Card, CardBody, Chip, Input, Spinner, Tooltip } from '@heroui/react';
+import { Button, Card, CardBody, Chip, Input, Tooltip } from '@heroui/react';
 import { Icon } from '@iconify/react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { IBusquedaProductosGlobal, IProveedorProducto } from '../../types/proveedor/proveedor.types';
 import { formatPrecio } from './constants';
+import { CardSkeleton } from '../../components/SkeletonLoader';
 
 interface BusquedaResultadosProps {
   resultados: IBusquedaProductosGlobal[];
@@ -64,8 +65,8 @@ const BusquedaResultados: React.FC<BusquedaResultadosProps> = ({
 
   if (loading) {
     return (
-      <div className="flex justify-center py-16">
-        <Spinner size="lg" color="warning" label="Buscando productos..." />
+      <div className="space-y-3">
+        {Array.from({ length: 4 }).map((_, i) => <CardSkeleton key={i} lines={1} hasBadge />)}
       </div>
     );
   }

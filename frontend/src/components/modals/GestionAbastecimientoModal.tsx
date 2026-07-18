@@ -6,7 +6,6 @@ import {
     ModalBody,
     ModalFooter,
     Button,
-    Spinner,
     Checkbox,
 } from '@heroui/react';
 import { Icon } from '@iconify/react';
@@ -16,6 +15,7 @@ import {
     actualizarConfigAbastecimientoService,
 } from '../../services/inventario/inventario-service';
 import { useToast } from '../../hooks/useToast';
+import { TableSkeleton } from '../SkeletonLoader';
 
 interface GestionAbastecimientoModalProps {
     isOpen: boolean;
@@ -100,9 +100,11 @@ const GestionAbastecimientoModal: React.FC<GestionAbastecimientoModalProps> = ({
                             </p>
 
                             {isLoading ? (
-                                <div className="flex justify-center py-10">
-                                    <Spinner size="md" />
-                                </div>
+                                <TableSkeleton rows={6} columns={[
+                                    { width: 'flex-1', shape: 'text' },
+                                    { width: 'w-[130px]', shape: 'chip' },
+                                    { width: 'w-[130px]', shape: 'chip' },
+                                ]} />
                             ) : (
                                 <div className="flex flex-col gap-0">
                                     {/* Encabezado tabla */}

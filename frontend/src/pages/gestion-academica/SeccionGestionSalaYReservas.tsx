@@ -22,6 +22,7 @@ import {
   TableCell,
 } from '@heroui/react';
 import { Icon } from '@iconify/react';
+import { CardSkeleton } from '../../components/SkeletonLoader';
 import { useToast } from '../../hooks/useToast';
 import { useModulePermission, usePermission } from '../../contexts/permission-context';
 import { obtenerSalasActivasService, ISala, crearSalaService, actualizarSalaService, eliminarSalaService } from '../../services/academica/sala-service';
@@ -181,8 +182,8 @@ const SeccionReservas: React.FC = () => {
         <Divider />
         <CardBody className="p-0">
           {isLoading ? (
-            <div className="flex justify-center items-center py-16">
-              <Spinner size="lg" color="primary" />
+            <div className="p-4 space-y-3">
+              {Array.from({ length: 4 }).map((_, i) => <CardSkeleton key={i} lines={1} hasBadge />)}
             </div>
           ) : errorMsg ? (
             <div className="flex flex-col items-center py-16 gap-3 text-danger">
@@ -371,7 +372,9 @@ const SeccionGestionSalas: React.FC = () => {
       </div>
 
       {isLoading ? (
-        <div className="flex justify-center items-center py-20"><Spinner size="lg" color="warning" /></div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+          {Array.from({ length: 6 }).map((_, i) => <CardSkeleton key={i} lines={1} hasBadge />)}
+        </div>
       ) : salasFiltradas.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-16 text-default-400">
           <div className="p-4 rounded-2xl bg-default-100 dark:bg-default-50/10 mb-3">

@@ -15,6 +15,7 @@ import {
 } from '@heroui/react';
 import { Icon } from '@iconify/react';
 import { usePageTitle } from '../hooks/usePageTitle';
+import { CardSkeleton } from '../components/SkeletonLoader';
 import { useToast } from '../hooks/useToast';
 import {
   IOrderConsolidationResponse,
@@ -392,9 +393,8 @@ const GestionPedidosPage: React.FC = () => {
 
         <CardBody className="p-4">
           {isLoadingDatos ? (
-            <div className="py-16 flex flex-col items-center gap-3 text-default-400">
-              <Spinner size="lg" />
-              <p className="text-sm">Cargando solicitudes aceptadas...</p>
+            <div className="space-y-2">
+              {Array.from({ length: 5 }).map((_, i) => <CardSkeleton key={i} lines={0} hasBadge />)}
             </div>
           ) : !semanaId ? (
             <div className="py-16 flex flex-col items-center gap-3 text-default-400">

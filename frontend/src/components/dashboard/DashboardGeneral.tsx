@@ -5,9 +5,10 @@
  */
 
 import React from 'react';
-import { Card, CardBody, CardHeader, Spinner, Chip } from '@heroui/react';
+import { Card, CardBody, CardHeader, Chip } from '@heroui/react';
 import { Icon } from '@iconify/react';
 import { motion } from 'framer-motion';
+import { StatSkeleton, ChartSkeleton } from '../SkeletonLoader';
 import {
   BarChart, Bar, LineChart, Line, PieChart, Pie, Cell,
   XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
@@ -65,8 +66,14 @@ export const DashboardGeneral: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="flex justify-center py-20">
-        <Spinner size="lg" color="warning" />
+      <div className="space-y-6">
+        <StatSkeleton count={4} />
+        <StatSkeleton count={2} />
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <ChartSkeleton />
+          <ChartSkeleton />
+        </div>
+        <ChartSkeleton bars={12} />
       </div>
     );
   }

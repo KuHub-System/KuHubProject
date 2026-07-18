@@ -132,11 +132,6 @@ public interface UsuarioService {
     UsuarioResponseDTO actualizarFotoPerfil(MultipartFile foto);
 
     /**
-     * Verifica credenciales y realiza login
-     */
-    LoginResponseDTO login(LoginRequestDTO loginRequestDTO);
-
-    /**
      * Actualiza el último acceso del usuario
      */
     void actualizarUltimoAcceso(Integer idUsuario);

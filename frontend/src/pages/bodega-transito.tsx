@@ -5,7 +5,7 @@ import {
   Modal, ModalContent, ModalHeader, ModalBody, ModalFooter, useDisclosure,
   Input, ScrollShadow, Accordion, AccordionItem,
   Table, TableHeader, TableColumn, TableBody, TableRow, TableCell,
-  Spinner, Tooltip, Dropdown, DropdownTrigger, DropdownMenu, DropdownItem, Checkbox,
+  Tooltip, Dropdown, DropdownTrigger, DropdownMenu, DropdownItem, Checkbox,
   Select, SelectItem
 } from '@heroui/react';
 import { Icon } from '@iconify/react';
@@ -30,12 +30,37 @@ import StockDisponiblesModal from '../components/modals/StockDisponiblesModal';
 import ConfirmarDisponibleBodegaModal, { ConfirmarDisponibleBodegaItem } from '../components/modals/ConfirmarDisponibleBodegaModal';
 import ConfirmarSalidaDisponibleModal, { ConfirmarSalidaDisponibleItem } from '../components/modals/ConfirmarSalidaDisponibleModal';
 import RielNavegacion from '../components/RielNavegacion';
+import { TableSkeleton, CardSkeleton, TableSkeletonColumn } from '../components/SkeletonLoader';
 import { obtenerAbastecimientoConfirmadoService, marcarEntregadosMasivoService } from '../services/proveedor/proveedor-service';
 import { IOrdenAbastecimiento, ICategoriaEntregaAbastecimiento } from '../types/proveedor/proveedor.types';
 import { getWeekKey, getWeekRange, fmtCantidadEntrega, ExpandChangeCallback, ItemBodegaMasivo } from './bodega-transito/constants';
 import RequestCard from './bodega-transito/RequestCard';
 import EntregaSalaCard from './bodega-transito/EntregaSalaCard';
 import ControlMasivoBodegaModal from './bodega-transito/ControlMasivoBodegaModal';
+
+// ── Skeleton: columnas espejo de la tabla de stock de bodega ──────────────
+const STOCK_TABLE_COLS: TableSkeletonColumn[] = [
+  { width: 'w-[30%]', shape: 'text' },
+  { width: 'w-[15%]', shape: 'text' },
+  { width: 'w-[10%]', shape: 'text' },
+  { width: 'w-[10%]', shape: 'text' },
+  { width: 'w-[10%]', shape: 'text' },
+  { width: 'w-[15%]', shape: 'chip' },
+  { width: 'w-[10%]', shape: 'icons' },
+];
+
+// Cache de módulo: sobrevive al desmontaje del componente para que volver a
+// esta página dentro de la misma sesión no vuelva a pedir categorías/unidades,
+// que casi nunca cambian entre navegaciones.
+const FILTROS_CACHE_TTL_MS = 5 * 60 * 1000;
+let _bodegaFiltrosCache: {
+  categoriasFull: { id: number; nombre: string }[];
+  unidadesFull: IUnidadMedida[];
+  ts: number;
+} | null = null;
+
+// Solo para tests: evita que el cache de módulo filtre entre casos de prueba.
+export const __resetBodegaFiltrosCache = () => { _bodegaFiltrosCache = null; };
 
 const BodegaTransitoPage: React.FC = () => {
   const { canRead: bod_Leer, canUpdate: bod_Editar, isLoading: permLoading } = useModulePermission('BODEGA_TRANSITO');
@@ -349,14 +374,24 @@ const BodegaTransitoPage: React.FC = () => {
     }
   }, [debouncedSearchTerm, debouncedSearchCode, toast]);
 
-  const cargarFiltros = React.useCallback(async () => {
+  const cargarFiltros = React.useCallback(async (forceFetch = false) => {
+    const cached = _bodegaFiltrosCache;
+    if (!forceFetch && cached && Date.now() - cached.ts < FILTROS_CACHE_TTL_MS) {
+      setCategoriasFull(cached.categoriasFull);
+      setUnidadesFull(cached.unidadesFull);
+      return;
+    }
+
     try {
       const [res, resUnidadesActivas] = await Promise.all([
         obtenerFiltrosInventarioService(),
         obtenerUnidadesActivasService()
       ]);
-      setCategoriasFull(res.categorias || []);
-      setUnidadesFull(resUnidadesActivas || []);
+      const categoriasFullData = res.categorias || [];
+      const unidadesFullData = resUnidadesActivas || [];
+      setCategoriasFull(categoriasFullData);
+      setUnidadesFull(unidadesFullData);
+      _bodegaFiltrosCache = { categoriasFull: categoriasFullData, unidadesFull: unidadesFullData, ts: Date.now() };
     } catch (error) { }
   }, []);
 
@@ -1050,8 +1085,8 @@ const BodegaTransitoPage: React.FC = () => {
                 }}
                 bottomContent={
                   isLoading && productos.length > 0 ? (
-                    <div className="flex w-full justify-center py-10">
-                      <Spinner size="lg" label="Cargando más productos..." color="primary" />
+                    <div className="py-4">
+                      <TableSkeleton rows={3} columns={STOCK_TABLE_COLS} />
                     </div>
                   ) : null
                 }
@@ -1099,7 +1134,7 @@ const BodegaTransitoPage: React.FC = () => {
                 <TableBody
                   items={paginatedProductos}
                   isLoading={isLoading && productos.length === 0}
-                  loadingContent={<Spinner size="lg" />}
+                  loadingContent={<div className="py-4 w-full"><TableSkeleton rows={8} columns={STOCK_TABLE_COLS} /></div>}
                 >
                   {(item) => (
                     <TableRow
@@ -1302,9 +1337,8 @@ const BodegaTransitoPage: React.FC = () => {
                     </div>
 
                     {isLoadingEntregas ? (
-                      <div className="flex flex-col items-center gap-3 py-16 text-default-400">
-                        <Spinner size="lg" />
-                        <p className="text-sm">Cargando pedidos del día...</p>
+                      <div className="space-y-3">
+                        {Array.from({ length: 3 }).map((_, i) => <CardSkeleton key={i} lines={1} />)}
                       </div>
                     ) : (
                       <div className="space-y-3">

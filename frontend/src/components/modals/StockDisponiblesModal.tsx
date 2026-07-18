@@ -6,13 +6,13 @@ import {
     ModalBody,
     ModalFooter,
     Button,
-    Spinner,
     Pagination,
     Tooltip,
     Chip,
     Input,
 } from '@heroui/react';
 import { Icon } from '@iconify/react';
+import { TableSkeleton } from '../SkeletonLoader';
 import {
     obtenerStockDisponiblesService,
     IStockDisponibleItem,
@@ -251,9 +251,7 @@ const StockDisponiblesModal: React.FC<StockDisponiblesModalProps> = ({
 
                             {/* Tabla */}
                             {isLoading ? (
-                                <div className="flex justify-center py-16">
-                                    <Spinner size="lg" color="warning" />
-                                </div>
+                                <TableSkeleton rows={6} columns={8} />
                             ) : esReal ? (
                                 itemsReal.length === 0 ? (
                                     <div className="flex flex-col items-center justify-center py-16 text-default-400 gap-3">

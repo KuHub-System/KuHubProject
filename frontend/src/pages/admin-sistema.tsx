@@ -21,7 +21,6 @@ import {
   Divider,
   Tabs,
   Tab,
-  Spinner,
   DatePicker,
   Select,
   SelectItem,
@@ -33,6 +32,7 @@ import { useLocation } from 'react-router-dom';
 import { Icon } from '@iconify/react';
 import { motion } from 'framer-motion';
 import { usePageTitle } from '../hooks/usePageTitle';
+import { TableSkeleton, CardSkeleton } from '../components/SkeletonLoader';
 import { useToast } from '../hooks/useToast';
 import { useModulePermission } from '../contexts/permission-context';
 import { useSistemaConfig } from '../contexts/sistema-config-context';
@@ -614,7 +614,12 @@ const SeccionBloques: React.FC<SeccionBloquesProps> = ({ bloques, isLoading, onB
             </TableHeader>
             <TableBody
               isLoading={isLoading}
-              loadingContent={<Spinner label="Cargando bloques..." />}
+              loadingContent={<div className="py-4 w-full"><TableSkeleton rows={6} columns={[
+                { width: 'w-[20%]', shape: 'text' },
+                { width: 'w-[30%]', shape: 'text' },
+                { width: 'w-[30%]', shape: 'text' },
+                { width: 'w-[20%]', shape: 'chip' },
+              ]} /></div>}
               emptyContent={!isLoading && bloques.length === 0 ? 'No hay bloques horarios configurados' : ' '}
             >
               {bloques.map((bloque) => {
@@ -1191,8 +1196,8 @@ const SeccionSemanas: React.FC<SeccionSemanasProps> = ({ toast }) => {
 
       {/* Semanas — grid por semestre */}
       {isLoadingSemanas ? (
-        <div className="flex justify-center py-12">
-          <Spinner label="Cargando semanas..." />
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+          {Array.from({ length: 6 }).map((_, i) => <CardSkeleton key={i} lines={1} />)}
         </div>
       ) : semanas.length === 0 ? (
         <div className="py-14 text-center text-default-400">
@@ -1365,14 +1370,7 @@ const SeccionGestionDelSistema: React.FC = () => {
         <Divider />
         <CardBody className="p-6 space-y-6">
           {isLoadingConfig ? (
-            /* ── Skeleton de carga ── */
-            <div className="flex flex-col gap-4">
-              <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-lg bg-default-100 dark:bg-default-50/20 animate-pulse" />
-                <div className="h-4 w-48 rounded bg-default-100 dark:bg-default-50/20 animate-pulse" />
-              </div>
-              <div className="h-16 rounded-lg bg-default-100 dark:bg-default-50/20 animate-pulse" />
-            </div>
+            <CardSkeleton lines={1} />
           ) : (
             <>
               {/* Sección 1: Configuración de Solicitudes */}

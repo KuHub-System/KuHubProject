@@ -1,0 +1,207 @@
+<svg viewBox="0 0 1280 800" xmlns="http://www.w3.org/2000/svg" role="img">
+<title>Estructura de carpetas — frontend/src (KuHub)</title>
+<desc>Árbol de directorios de frontend/src: 13 carpetas de primer y segundo nivel con conteo de archivos, más 4 archivos raíz.</desc>
+<defs>
+<style>
+  .bg { fill: #12161c; }
+  .card { fill: #181e27; stroke: #2a3240; stroke-width: 1; }
+  .card2 { fill: #1d242f; stroke: #2f3849; stroke-width: 1; }
+  .line { stroke: #3a4456; stroke-width: 1.5; fill: none; }
+  .root-label { font-family: 'SF Mono','Consolas',ui-monospace,monospace; font-size: 20px; font-weight: 700; fill: #f2c98a; }
+  .folder { font-family: 'SF Mono','Consolas',ui-monospace,monospace; font-size: 15px; font-weight: 600; fill: #ecebe6; }
+  .subfolder { font-family: 'SF Mono','Consolas',ui-monospace,monospace; font-size: 13px; font-weight: 500; fill: #c7cdd8; }
+  .count { font-family: 'Segoe UI',system-ui,sans-serif; font-size: 11px; fill: #7c8697; }
+  .badge-bg { fill: #e8965a; }
+  .badge-txt { font-family: 'Segoe UI',system-ui,sans-serif; font-size: 11px; font-weight: 700; fill: #12161c; }
+  .file-tag { font-family: 'Segoe UI',system-ui,sans-serif; font-size: 10.5px; fill: #6b7484; }
+  .heading { font-family: 'Segoe UI',system-ui,sans-serif; font-size: 12px; font-weight: 600; letter-spacing: 1.5px; fill: #7c8697; text-transform: uppercase; }
+</style>
+</defs>
+
+<rect class="bg" width="1280" height="800"/>
+
+<!-- Title -->
+<text x="48" y="46" class="heading">KuHub — Frontend</text>
+<text x="48" y="76" class="root-label">frontend/src/</text>
+<text x="48" y="98" class="file-tag">árbol de carpetas · 149 archivos totales</text>
+
+<!-- Trunk line -->
+<line x1="70" y1="112" x2="70" y2="740" class="line"/>
+
+<!-- Root files card -->
+<g transform="translate(96,112)">
+  <line x1="-26" y1="18" x2="0" y2="18" class="line"/>
+  <rect class="card2" x="0" y="0" width="330" height="60" rx="8"/>
+  <text x="16" y="24" class="folder">(raíz)</text>
+  <text x="16" y="44" class="file-tag">App.tsx · main.tsx · index.css · vite-env.d.ts</text>
+  <circle class="badge-bg" cx="304" cy="20" r="13"/>
+  <text x="304" y="24" text-anchor="middle" class="badge-txt">4</text>
+</g>
+
+<!-- pages -->
+<g transform="translate(96,188)">
+  <line x1="-26" y1="18" x2="0" y2="18" class="line"/>
+  <rect class="card" x="0" y="0" width="330" height="60" rx="8"/>
+  <text x="16" y="24" class="folder">pages/</text>
+  <text x="16" y="44" class="file-tag">solicitud · inventario · gestión · dashboards</text>
+  <circle class="badge-bg" cx="304" cy="20" r="13"/>
+  <text x="304" y="24" text-anchor="middle" class="badge-txt">19</text>
+</g>
+
+<!-- services -->
+<g transform="translate(96,264)">
+  <line x1="-26" y1="18" x2="0" y2="18" class="line"/>
+  <rect class="card" x="0" y="0" width="330" height="60" rx="8"/>
+  <text x="16" y="24" class="folder">services/</text>
+  <text x="16" y="44" class="file-tag">clientes REST por dominio</text>
+  <circle class="badge-bg" cx="304" cy="20" r="13"/>
+  <text x="304" y="24" text-anchor="middle" class="badge-txt">29</text>
+</g>
+
+<!-- types -->
+<g transform="translate(96,340)">
+  <line x1="-26" y1="18" x2="0" y2="18" class="line"/>
+  <rect class="card" x="0" y="0" width="330" height="60" rx="8"/>
+  <text x="16" y="24" class="folder">types/</text>
+  <text x="16" y="44" class="file-tag">contratos TypeScript por entidad</text>
+  <circle class="badge-bg" cx="304" cy="20" r="13"/>
+  <text x="304" y="24" text-anchor="middle" class="badge-txt">13</text>
+</g>
+
+<!-- contexts -->
+<g transform="translate(96,416)">
+  <line x1="-26" y1="18" x2="0" y2="18" class="line"/>
+  <rect class="card" x="0" y="0" width="330" height="60" rx="8"/>
+  <text x="16" y="24" class="folder">contexts/</text>
+  <text x="16" y="44" class="file-tag">auth · permisos · tema · sistema</text>
+  <circle class="badge-bg" cx="304" cy="20" r="13"/>
+  <text x="304" y="24" text-anchor="middle" class="badge-txt">7</text>
+</g>
+
+<!-- hooks -->
+<g transform="translate(96,492)">
+  <line x1="-26" y1="18" x2="0" y2="18" class="line"/>
+  <rect class="card" x="0" y="0" width="330" height="44" rx="8"/>
+  <text x="16" y="27" class="folder">hooks/</text>
+  <circle class="badge-bg" cx="304" cy="22" r="13"/>
+  <text x="304" y="26" text-anchor="middle" class="badge-txt">3</text>
+</g>
+
+<!-- utils -->
+<g transform="translate(96,552)">
+  <line x1="-26" y1="18" x2="0" y2="18" class="line"/>
+  <rect class="card" x="0" y="0" width="330" height="44" rx="8"/>
+  <text x="16" y="27" class="folder">utils/</text>
+  <circle class="badge-bg" cx="304" cy="22" r="13"/>
+  <text x="304" y="26" text-anchor="middle" class="badge-txt">4</text>
+</g>
+
+<!-- layouts -->
+<g transform="translate(96,612)">
+  <line x1="-26" y1="18" x2="0" y2="18" class="line"/>
+  <rect class="card" x="0" y="0" width="330" height="44" rx="8"/>
+  <text x="16" y="27" class="folder">layouts/</text>
+  <circle class="badge-bg" cx="304" cy="22" r="13"/>
+  <text x="304" y="26" text-anchor="middle" class="badge-txt">2</text>
+</g>
+
+<!-- config -->
+<g transform="translate(96,672)">
+  <line x1="-26" y1="18" x2="0" y2="18" class="line"/>
+  <rect class="card" x="0" y="0" width="330" height="44" rx="8"/>
+  <text x="16" y="27" class="folder">config/</text>
+  <circle class="badge-bg" cx="304" cy="22" r="13"/>
+  <text x="304" y="26" text-anchor="middle" class="badge-txt">2</text>
+</g>
+
+<!-- test -->
+<g transform="translate(96,732)">
+  <line x1="-26" y1="18" x2="0" y2="18" class="line"/>
+  <rect class="card" x="0" y="0" width="330" height="44" rx="8"/>
+  <text x="16" y="27" class="folder">test/</text>
+  <circle class="badge-bg" cx="304" cy="22" r="13"/>
+  <text x="304" y="26" text-anchor="middle" class="badge-txt">1</text>
+</g>
+
+<!-- Second column: components + subfolders -->
+<line x1="620" y1="112" x2="620" y2="500" class="line"/>
+
+<g transform="translate(646,112)">
+  <line x1="-26" y1="18" x2="0" y2="18" class="line"/>
+  <rect class="card" x="0" y="0" width="290" height="44" rx="8"/>
+  <text x="16" y="27" class="folder">components/</text>
+  <circle class="badge-bg" cx="264" cy="22" r="13"/>
+  <text x="264" y="26" text-anchor="middle" class="badge-txt">9</text>
+</g>
+
+<!-- children of components -->
+<line x1="700" y1="156" x2="700" y2="392" class="line"/>
+
+<g transform="translate(726,180)">
+  <line x1="-26" y1="16" x2="0" y2="16" class="line"/>
+  <rect class="card2" x="0" y="0" width="290" height="40" rx="7"/>
+  <text x="16" y="25" class="subfolder">modals/</text>
+  <text x="264" y="25" text-anchor="end" class="count">13</text>
+</g>
+
+<g transform="translate(726,248)">
+  <line x1="-26" y1="16" x2="0" y2="16" class="line"/>
+  <rect class="card2" x="0" y="0" width="290" height="40" rx="7"/>
+  <text x="16" y="25" class="subfolder">dashboard/</text>
+  <text x="264" y="25" text-anchor="end" class="count">7</text>
+</g>
+<line x1="770" y1="288" x2="770" y2="330" class="line"/>
+<g transform="translate(796,316)">
+  <line x1="-26" y1="14" x2="0" y2="14" class="line"/>
+  <rect class="card2" x="0" y="0" width="220" height="34" rx="6"/>
+  <text x="14" y="22" class="subfolder" font-size="12">dashboard/shared/</text>
+  <text x="196" y="22" text-anchor="end" class="count">3</text>
+</g>
+
+<g transform="translate(726,368)">
+  <line x1="-26" y1="16" x2="0" y2="16" class="line"/>
+  <rect class="card2" x="0" y="0" width="290" height="40" rx="7"/>
+  <text x="16" y="25" class="subfolder">assets/</text>
+  <text x="264" y="25" text-anchor="end" class="count">3</text>
+</g>
+
+<!-- __tests__ block -->
+<g transform="translate(646,460)">
+  <line x1="-26" y1="18" x2="0" y2="18" class="line"/>
+  <rect class="card" x="0" y="0" width="290" height="44" rx="8"/>
+  <text x="16" y="27" class="folder">__tests__/</text>
+  <circle class="badge-bg" cx="264" cy="22" r="13"/>
+  <text x="264" y="26" text-anchor="middle" class="badge-txt">17</text>
+</g>
+
+<line x1="700" y1="504" x2="700" y2="668" class="line"/>
+
+<g transform="translate(726,528)">
+  <line x1="-26" y1="16" x2="0" y2="16" class="line"/>
+  <rect class="card2" x="0" y="0" width="290" height="40" rx="7"/>
+  <text x="16" y="25" class="subfolder">pages/</text>
+  <text x="264" y="25" text-anchor="end" class="count">11</text>
+</g>
+
+<g transform="translate(726,596)">
+  <line x1="-26" y1="16" x2="0" y2="16" class="line"/>
+  <rect class="card2" x="0" y="0" width="290" height="40" rx="7"/>
+  <text x="16" y="25" class="subfolder">components/</text>
+  <text x="264" y="25" text-anchor="end" class="count">3</text>
+</g>
+
+<g transform="translate(726,664)">
+  <line x1="-26" y1="16" x2="0" y2="16" class="line"/>
+  <rect class="card2" x="0" y="0" width="290" height="40" rx="7"/>
+  <text x="16" y="25" class="subfolder">services/</text>
+  <text x="264" y="25" text-anchor="end" class="count">2</text>
+</g>
+
+<!-- legend -->
+<g transform="translate(646,732)">
+  <circle class="badge-bg" cx="10" cy="10" r="9"/>
+  <text x="10" y="14" text-anchor="middle" class="badge-txt" font-size="9">n</text>
+  <text x="30" y="14" class="file-tag">cantidad de archivos en la carpeta</text>
+</g>
+
+</svg>

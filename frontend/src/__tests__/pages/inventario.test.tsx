@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { render, screen, fireEvent, waitFor, act, cleanup } from '@testing-library/react';
 import { BrowserRouter } from 'react-router-dom';
 import { HeroUIProvider } from '@heroui/react';
-import InventarioPage, { FormularioProducto } from '../../pages/inventario';
+import InventarioPage, { FormularioProducto, __resetInventarioFiltrosCache } from '../../pages/inventario';
 import * as authContext from '../../contexts/auth-context';
 import * as permissionContext from '../../contexts/permission-context';
 
@@ -177,6 +177,7 @@ const productoSinStock = {
 describe('InventarioPage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    __resetInventarioFiltrosCache();
 
     vi.spyOn(authContext, 'useAuth').mockReturnValue({
       user: { id: 1, email: 'admin@duoc.cl', nombre: 'Admin Test', rol: 'Administrador' },

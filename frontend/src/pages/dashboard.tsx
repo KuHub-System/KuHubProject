@@ -4,11 +4,12 @@
  */
 
 import React from 'react';
-import { Spinner, Tabs, Tab } from '@heroui/react';
+import { Tabs, Tab } from '@heroui/react';
 import { Icon } from '@iconify/react';
 import { useAuth } from '../contexts/auth-context';
 import { usePermission } from '../contexts/permission-context';
 import { usePageTitle } from '../hooks/usePageTitle';
+import { StatSkeleton, ChartSkeleton } from '../components/SkeletonLoader';
 
 // Dashboards de analytics
 import { DashboardInventarioView } from '../components/dashboard/DashboardInventarioView';
@@ -93,10 +94,11 @@ const DashboardPage: React.FC = () => {
 
   if (authLoading || permLoading || !user) {
     return (
-      <div className="flex items-center justify-center h-screen">
-        <div className="text-center">
-          <Spinner size="lg" color="primary" className="mb-4" />
-          <p className="text-default-500">Cargando dashboard...</p>
+      <div className="px-4 py-6 space-y-6">
+        <StatSkeleton count={4} />
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <ChartSkeleton />
+          <ChartSkeleton />
         </div>
       </div>
     );

@@ -21,6 +21,7 @@ import {
 import { obtenerAbastecimientoConfirmadoService, marcarEntregadosMasivoService } from '../../services/proveedor/proveedor-service';
 import { IOrdenAbastecimiento, ICategoriaEntregaAbastecimiento } from '../../types/proveedor/proveedor.types';
 import { ItemPedidoMasivo } from './constants';
+import { CardSkeleton } from '../../components/SkeletonLoader';
 
 /**
  * Interfaz para las propiedades del modal de pedido masivo
@@ -1132,8 +1133,8 @@ const PedidoMasivoModal: React.FC<PedidoMasivoModalProps> = ({ onClose, onNuevoP
               </ModalHeader>
               <ModalBody className="py-5 px-5 overflow-y-scroll custom-scrollbar max-h-[calc(75vh-150px)] space-y-4">
                 {loadingAbastecimiento ? (
-                  <div className="flex justify-center py-20">
-                    <Spinner size="lg" color="warning" />
+                  <div className="space-y-3">
+                    {Array.from({ length: 3 }).map((_, i) => <CardSkeleton key={i} lines={2} />)}
                   </div>
                 ) : ordenesAbastecimiento.length === 0 ? (
                   <div className="flex flex-col items-center justify-center py-20 text-default-400">

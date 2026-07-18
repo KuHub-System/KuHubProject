@@ -16,6 +16,7 @@ import {
 import { Icon } from '@iconify/react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { usePageTitle } from '../hooks/usePageTitle';
+import { CardSkeleton } from '../components/SkeletonLoader';
 import { useToast } from '../hooks/useToast';
 import { useModulePermission, usePermission } from '../contexts/permission-context';
 import { usePeriodoSemana } from '../contexts/periodo-semana-context';
@@ -1190,8 +1191,8 @@ const SolicitudPage: React.FC = () => {
         {/* ── Asignaturas ── */}
         <div className="lg:col-span-2 space-y-4">
           {isLoadingAsig ? (
-            <div className="flex items-center justify-center gap-3 py-12 text-default-400">
-              <Spinner size="md" /> Cargando asignaturas...
+            <div className="space-y-3">
+              {Array.from({ length: 4 }).map((_, i) => <CardSkeleton key={i} lines={0} />)}
             </div>
           ) : asignaturas.length === 0 ? (
             <div className="text-center py-12 text-default-400">

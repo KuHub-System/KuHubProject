@@ -6,12 +6,13 @@
 
 import React from 'react';
 import {
-  Card, CardBody, CardHeader, Spinner, Chip,
+  Card, CardBody, CardHeader, Chip,
   Modal, ModalContent, ModalHeader, ModalBody, ModalFooter,
   Button, useDisclosure,
 } from '@heroui/react';
 import { Icon } from '@iconify/react';
 import { motion } from 'framer-motion';
+import { StatSkeleton, CardSkeleton, ChartSkeleton } from '../SkeletonLoader';
 import { useHistory } from 'react-router-dom';
 import {
   BarChart, Bar, PieChart, Pie, Cell,
@@ -233,8 +234,13 @@ export const DashboardGestor: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="flex justify-center py-20">
-        <Spinner size="lg" color="warning" />
+      <div className="space-y-6">
+        <StatSkeleton count={6} />
+        <CardSkeleton hasAvatar lines={1} />
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <ChartSkeleton />
+          <ChartSkeleton />
+        </div>
       </div>
     );
   }
