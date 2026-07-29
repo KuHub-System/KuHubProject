@@ -269,8 +269,7 @@ class PedidoSemanaBodegaServiceImpTest {
         PedidoSemanaBodegaWithDetailsCreateDTO dto = new PedidoSemanaBodegaWithDetailsCreateDTO(
                 "Pedido Con Semana", null, List.of(item), "ACTIVO", 99, null
         );
-        when(pedidoSemanaBodegaRepository.existsByNombrePedidoAndActivoTrue("Pedido Con Semana")).thenReturn(false);
-        when(semanaRepository.existsById(99)).thenReturn(false);
+        when(semanaRepository.findById(99)).thenReturn(Optional.empty());
 
         // Act & Assert
         PedidoSemanaBodegaException ex = assertThrows(PedidoSemanaBodegaException.class,
