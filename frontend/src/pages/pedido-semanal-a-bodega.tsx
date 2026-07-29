@@ -443,7 +443,7 @@ const PedidoSemanalABodegaPage: React.FC = () => {
           >
             <CardBody className="flex flex-row items-center justify-between py-2.5 px-3 gap-3">
               <div>
-                <p className="text-[11px] font-semibold text-default-500 uppercase tracking-wide">Total Formulaciones</p>
+                <p className="text-[11px] font-semibold text-default-500 uppercase tracking-wide">Total</p>
                 <p className="text-2xl font-bold text-secondary leading-tight">{pedidoSemanaBodegaCounts.totalPedidos}</p>
               </div>
               <div className="w-9 h-9 rounded-lg flex items-center justify-center bg-primary-100 dark:bg-primary-900/30 text-primary shrink-0">
