@@ -116,7 +116,7 @@ public class DynamicPermissionInterceptor implements HandlerInterceptor {
         mod("/api/v*/bodega-transito/**", List.of("BODEGA_TRANSITO"), P, PU, PA, D),
         mod("/api/v*/stock-disponible/**", List.of("BODEGA_TRANSITO"), P, PU, PA, D),
 
-        // ── Pedido semanal a bodega (antiguas recetas) ──
+        // ── Pedido semanal a bodega (antiguas pedidoSemanaBodegas) ──
         // Acciones GRANULARES: el padre PEDIDO_SEMANAL_BODEGA es solo acceso de página (lectura);
         // toda escritura la gobiernan los módulos de acción para que la revocación por ícono sea
         // autoritativa. write satisface Nuevo/Editar/Inactivar; DELETE exige Eliminar (nivel delete).

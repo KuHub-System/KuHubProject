@@ -94,7 +94,7 @@ public interface PedidoRepository extends JpaRepository<Pedido, Integer> {
                                                 'unidadAbreviada', uni.abreviatura,
                                                 'observacion', ds.observacion,
                                                 'alumnos', sec.cant_inscritos,
-                                                'nombreReceta', COALESCE(rec.nombre_pedido_semana_bodega, 'Sin receta'),
+                                                'nombrePedidoSemanaBodega', COALESCE(rec.nombre_pedido_semana_bodega, 'Sin pedidoSemanaBodega'),
                                                 'nombreSala', (
                                                     SELECT sala.nombre_sala || '-' || sala.cod_sala
                                                     FROM reserva_sala res_sal
@@ -155,7 +155,7 @@ public interface PedidoRepository extends JpaRepository<Pedido, Integer> {
                                     'idSolicitud', sol.id_solicitud,
                                     'fechaSolicitada', sol.fecha_solicitada,
                                     'estadoSolicitud', sol.estado_solicitud,
-                                    'nombreReceta', COALESCE(rec.nombre_pedido_semana_bodega, 'Sin receta'),
+                                    'nombrePedidoSemanaBodega', COALESCE(rec.nombre_pedido_semana_bodega, 'Sin pedidoSemanaBodega'),
                                     'observaciones', sol.observaciones,
                                     'seccion', json_build_object(
                                         'idSeccion', sec.id_seccion,
@@ -565,7 +565,7 @@ public interface PedidoRepository extends JpaRepository<Pedido, Integer> {
                                                         NULLIF(TRIM(usr_e.app_paterno), '')
                                                     ),
                                                     'cantInscritos',  sec_e.cant_inscritos,
-                                                    'nombreReceta',   COALESCE(rec_e.nombre_pedido_semana_bodega, 'Sin receta'),
+                                                    'nombrePedidoSemanaBodega',   COALESCE(rec_e.nombre_pedido_semana_bodega, 'Sin pedidoSemanaBodega'),
                                                     'observaciones',  sol_e.observaciones,
                                                     'productos', (
                                                         SELECT COALESCE(

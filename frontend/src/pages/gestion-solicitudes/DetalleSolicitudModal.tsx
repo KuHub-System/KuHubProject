@@ -67,7 +67,7 @@ const DetalleSolicitudModal: React.FC<DetalleSolicitudModalProps> = ({
               {/* Grid de info */}
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
                 {[
-                  { icon: 'lucide:book-open', label: 'Receta',    val: selSol.nombreReceta,  color: 'text-warning-500',  bg: 'bg-warning-50 dark:bg-warning-900/20'  },
+                  { icon: 'lucide:book-open', label: 'PedidoSemanaBodega',    val: selSol.nombrePedidoSemanaBodega,  color: 'text-warning-500',  bg: 'bg-warning-50 dark:bg-warning-900/20'  },
                   { icon: 'lucide:user',       label: 'Docente',   val: selSol.nombreDocente, color: 'text-primary-500',  bg: 'bg-primary-50 dark:bg-primary-900/20'  },
                   { icon: 'lucide:clock',      label: 'Horario',   val: `${selSol.horaInicio} – ${selSol.horaFin}`, color: 'text-secondary-500', bg: 'bg-secondary-50 dark:bg-secondary-900/20' },
                   { icon: 'lucide:door-open',  label: 'Sala',      val: selSol.nombreSala,    color: 'text-success-600',  bg: 'bg-success-50 dark:bg-success-900/20'  },

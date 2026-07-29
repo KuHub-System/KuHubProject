@@ -1,7 +1,7 @@
 /**
- * SERVICIO DE RECETAS CON PERSISTENCIA REAL
+ * SERVICIO DE PEDIDO_SEMANAL_BODEGAS CON PERSISTENCIA REAL
  * 
- * Ubicación: src/services/receta-service.ts
+ * Ubicación: src/services/pedidoSemanaBodega-service.ts
  */
 
 import {
@@ -14,27 +14,27 @@ import {
   IPedidoSemanaBodegaCountResponse,
   IImportarExcelResultado,
   IAsignatura
-} from '../../types/pedido/receta.types';
+} from '../../types/pedido/pedidoSemanaBodega.types';
 
 import api from '../../config/Axios';
 
 import {
-  obtenerRecetas,
-  obtenerRecetaPorId,
-  crearReceta,
-  actualizarReceta,
-  eliminarReceta,
-  obtenerRecetasActivas,
+  obtenerPedidoSemanaBodegas,
+  obtenerPedidoSemanaBodegaPorId,
+  crearPedidoSemanaBodega,
+  actualizarPedidoSemanaBodega,
+  eliminarPedidoSemanaBodega,
+  obtenerPedidoSemanaBodegasActivas,
 } from '../shared/storage-service';
 
 /**
- * Obtiene las recetas con paginación desde el backend.
+ * Obtiene las pedidoSemanaBodegas con paginación desde el backend.
  * @param {number} page - El número de página (por defecto 1).
  * @param {number} idSemana - ID de la semana para filtrar (opcional).
  * @param {number} idAsignatura - ID de la asignatura para filtrar (opcional).
  * @returns {Promise<IPaginatedPedidoSemanaBodegaResponse>} Promesa que resuelve la repuesta paginada.
  */
-export const obtenerRecetasPaginadasService = async (page: number = 1, idSemana?: number, idAsignatura?: number, estadoPedido?: string): Promise<IPaginatedPedidoSemanaBodegaResponse> => {
+export const obtenerPedidoSemanaBodegasPaginadasService = async (page: number = 1, idSemana?: number, idAsignatura?: number, estadoPedido?: string): Promise<IPaginatedPedidoSemanaBodegaResponse> => {
   try {
     const params = new URLSearchParams();
     if (idSemana) params.append('idSemana', idSemana.toString());
@@ -44,98 +44,98 @@ export const obtenerRecetasPaginadasService = async (page: number = 1, idSemana?
     const response = await api.post<IPaginatedPedidoSemanaBodegaResponse>(`/pedido-semana-bodega/find-all-recipes-pagined/${page}${queryStr}`);
     return response.data;
   } catch (error: any) {
-    console.error('Error al obtener recetas paginadas', error);
+    console.error('Error al obtener pedidoSemanaBodegas paginadas', error);
     throw new Error(
       error.response?.data?.message ||
-      'Error al obtener receta paginada'
+      'Error al obtener pedidoSemanaBodega paginada'
     );
   }
 };
 
 /**
- * Busca recetas por término (nombre o descripción) con paginación.
+ * Busca pedidoSemanaBodegas por término (nombre o descripción) con paginación.
  * @param {string} term - Término de búsqueda.
  * @param {number} page - Número de página.
  * @param {number} idSemana - ID de la semana para filtrar (opcional).
  * @param {number} idAsignatura - ID de la asignatura para filtrar (opcional).
  * @returns {Promise<IPaginatedPedidoSemanaBodegaResponse>}
  */
-export const buscarRecetasPaginadasService = async (term: string, page: number = 1, idSemana?: number, idAsignatura?: number, estadoPedido?: string): Promise<IPaginatedPedidoSemanaBodegaResponse> => {
+export const buscarPedidoSemanaBodegasPaginadasService = async (term: string, page: number = 1, idSemana?: number, idAsignatura?: number, estadoPedido?: string): Promise<IPaginatedPedidoSemanaBodegaResponse> => {
   try {
     const response = await api.post<IPaginatedPedidoSemanaBodegaResponse>('/pedido-semana-bodega/search-recipes', { term, page, idSemana, idAsignatura, estadoPedido });
     return response.data;
   } catch (error: any) {
-    console.error('Error al buscar recetas paginadas', error);
+    console.error('Error al buscar pedidoSemanaBodegas paginadas', error);
     throw new Error(
       error.response?.data?.message ||
-      'Error al buscar recetas'
+      'Error al buscar pedidoSemanaBodegas'
     );
   }
 };
 
 /**
- * Obtiene todas las recetas.
- * @returns {Promise<IPedidoSemanaBodega[]>} Promesa que resuelve a la lista de recetas.
+ * Obtiene todas las pedidoSemanaBodegas.
+ * @returns {Promise<IPedidoSemanaBodega[]>} Promesa que resuelve a la lista de pedidoSemanaBodegas.
  */
-export const obtenerRecetasService = async (): Promise<IPedidoSemanaBodega[]> => {
+export const obtenerPedidoSemanaBodegasService = async (): Promise<IPedidoSemanaBodega[]> => {
 
   // Simulamos un tiempo de respuesta
   await new Promise(resolve => setTimeout(resolve, 400));
 
-  const recetas = obtenerRecetas();
+  const pedidoSemanaBodegas = obtenerPedidoSemanaBodegas();
 
-  return recetas;
+  return pedidoSemanaBodegas;
 };
 
 /**
- * Obtiene una receta por su ID.
- * @param {string} id - ID de la receta.
- * @returns {Promise<IPedidoSemanaBodega>} Promesa que resuelve a la receta.
+ * Obtiene una pedidoSemanaBodega por su ID.
+ * @param {string} id - ID de la pedidoSemanaBodega.
+ * @returns {Promise<IPedidoSemanaBodega>} Promesa que resuelve a la pedidoSemanaBodega.
  */
-export const obtenerRecetaPorIdService = async (id: string): Promise<IPedidoSemanaBodega> => {
+export const obtenerPedidoSemanaBodegaPorIdService = async (id: string): Promise<IPedidoSemanaBodega> => {
 
   await new Promise(resolve => setTimeout(resolve, 300));
 
-  const receta = obtenerRecetaPorId(id);
+  const pedidoSemanaBodega = obtenerPedidoSemanaBodegaPorId(id);
 
-  if (!receta) {
-    throw new Error(`Receta con ID ${id} no encontrada`);
+  if (!pedidoSemanaBodega) {
+    throw new Error(`PedidoSemanaBodega con ID ${id} no encontrada`);
   }
 
-  return receta;
+  return pedidoSemanaBodega;
 };
 
 /**
- * Obtiene solo las recetas activas.
- * @returns {Promise<IPedidoSemanaBodega[]>} Promesa que resuelve a las recetas activas.
+ * Obtiene solo las pedidoSemanaBodegas activas.
+ * @returns {Promise<IPedidoSemanaBodega[]>} Promesa que resuelve a las pedidoSemanaBodegas activas.
  */
-export const obtenerRecetasActivasService = async (): Promise<IPedidoSemanaBodega[]> => {
+export const obtenerPedidoSemanaBodegasActivasService = async (): Promise<IPedidoSemanaBodega[]> => {
 
   await new Promise(resolve => setTimeout(resolve, 400));
 
-  const recetasActivas = obtenerRecetasActivas();
+  const pedidoSemanaBodegasActivas = obtenerPedidoSemanaBodegasActivas();
 
-  return recetasActivas;
+  return pedidoSemanaBodegasActivas;
 };
 
 /**
- * Crea una nueva receta.
- * @param {ICrearPedidoSemanaBodega} recetaData - Datos de la receta a crear.
- * @returns {Promise<IPedidoSemanaBodega>} Promesa que resuelve a la receta creada.
+ * Crea una nueva pedidoSemanaBodega.
+ * @param {ICrearPedidoSemanaBodega} pedidoSemanaBodegaData - Datos de la pedidoSemanaBodega a crear.
+ * @returns {Promise<IPedidoSemanaBodega>} Promesa que resuelve a la pedidoSemanaBodega creada.
  */
-export const crearRecetaService = async (recetaData: ICrearPedidoSemanaBodega): Promise<IPedidoSemanaBodega> => {
+export const crearPedidoSemanaBodegaService = async (pedidoSemanaBodegaData: ICrearPedidoSemanaBodega): Promise<IPedidoSemanaBodega> => {
 
   // Validaciones
-  if (!recetaData.nombre || recetaData.nombre.trim() === '') {
-    throw new Error('El nombre de la receta es requerido');
+  if (!pedidoSemanaBodegaData.nombre || pedidoSemanaBodegaData.nombre.trim() === '') {
+    throw new Error('El nombre de la pedidoSemanaBodega es requerido');
   }
 
-  if (recetaData.ingredientes.length === 0) {
+  if (pedidoSemanaBodegaData.ingredientes.length === 0) {
     throw new Error('Debe agregar al menos un ingrediente');
   }
 
   // Validar que todos los ingredientes tengan datos válidos
-  for (const ing of recetaData.ingredientes) {
+  for (const ing of pedidoSemanaBodegaData.ingredientes) {
     if (!ing.productoId || !ing.productoNombre) {
       throw new Error('Todos los ingredientes deben tener un producto seleccionado');
     }
@@ -147,57 +147,57 @@ export const crearRecetaService = async (recetaData: ICrearPedidoSemanaBodega): 
   await new Promise(resolve => setTimeout(resolve, 600));
 
   // Agregar IDs temporales a los ingredientes para que storage-service los genere correctamente
-  const recetaConIngredientes = {
-    ...recetaData,
-    ingredientes: recetaData.ingredientes.map(ing => ({
+  const pedidoSemanaBodegaConIngredientes = {
+    ...pedidoSemanaBodegaData,
+    ingredientes: pedidoSemanaBodegaData.ingredientes.map(ing => ({
       ...ing,
       id: '' // Storage service generará el ID real
     }))
   };
 
-  const nuevaReceta = crearReceta(recetaConIngredientes);
+  const nuevaPedidoSemanaBodega = crearPedidoSemanaBodega(pedidoSemanaBodegaConIngredientes);
 
-  return nuevaReceta;
+  return nuevaPedidoSemanaBodega;
 };
 
 /**
- * Actualiza una receta existente.
- * @param {IActualizarPedidoSemanaBodega} recetaData - Datos de la receta a actualizar.
- * @returns {Promise<IPedidoSemanaBodega>} Promesa que resuelve a la receta actualizada.
+ * Actualiza una pedidoSemanaBodega existente.
+ * @param {IActualizarPedidoSemanaBodega} pedidoSemanaBodegaData - Datos de la pedidoSemanaBodega a actualizar.
+ * @returns {Promise<IPedidoSemanaBodega>} Promesa que resuelve a la pedidoSemanaBodega actualizada.
  */
-export const actualizarRecetaService = async (recetaData: IActualizarPedidoSemanaBodega): Promise<IPedidoSemanaBodega> => {
+export const actualizarPedidoSemanaBodegaService = async (pedidoSemanaBodegaData: IActualizarPedidoSemanaBodega): Promise<IPedidoSemanaBodega> => {
 
   // Validaciones
-  if (recetaData.ingredientes && recetaData.ingredientes.length === 0) {
+  if (pedidoSemanaBodegaData.ingredientes && pedidoSemanaBodegaData.ingredientes.length === 0) {
     throw new Error('Debe tener al menos un ingrediente');
   }
 
   await new Promise(resolve => setTimeout(resolve, 500));
 
-  const { id, ...cambios } = recetaData;
+  const { id, ...cambios } = pedidoSemanaBodegaData;
 
-  const recetaActualizada = actualizarReceta(id, cambios);
+  const pedidoSemanaBodegaActualizada = actualizarPedidoSemanaBodega(id, cambios);
 
-  if (!recetaActualizada) {
-    throw new Error(`Receta con ID ${id} no encontrada`);
+  if (!pedidoSemanaBodegaActualizada) {
+    throw new Error(`PedidoSemanaBodega con ID ${id} no encontrada`);
   }
 
-  return recetaActualizada;
+  return pedidoSemanaBodegaActualizada;
 };
 
 /**
- * Crea una receta llamando al backend con el formato detallado.
- * @param {IPedidoSemanaBodegaWithDetailsCreateDTO} data - DTO con los detalles de la receta.
+ * Crea una pedidoSemanaBodega llamando al backend con el formato detallado.
+ * @param {IPedidoSemanaBodegaWithDetailsCreateDTO} data - DTO con los detalles de la pedidoSemanaBodega.
  * @returns {Promise<boolean>} Promesa que resuelve a true si se creó correctamente.
  */
-export const crearRecetaConDetallesService = async (data: IPedidoSemanaBodegaWithDetailsCreateDTO): Promise<boolean> => {
+export const crearPedidoSemanaBodegaConDetallesService = async (data: IPedidoSemanaBodegaWithDetailsCreateDTO): Promise<boolean> => {
   try {
     const response = await api.post<boolean>('/pedido-semana-bodega/create-recipe-with-details', data);
     return response.data;
   } catch (error: any) {
     const err = new Error(
       error.response?.data?.message ||
-      'Error al crear la receta en el servidor'
+      'Error al crear la pedidoSemanaBodega en el servidor'
     ) as Error & { status?: number };
     err.status = error.response?.status;
     throw err;
@@ -205,73 +205,73 @@ export const crearRecetaConDetallesService = async (data: IPedidoSemanaBodegaWit
 };
 
 /**
- * Actualiza una receta con detalles mediante deltas (newItems, updateItems, deleteItems).
- * @param {IPedidoSemanaBodegaWithDetailsUpdateDTO} data - DTO con los cambios de la receta.
+ * Actualiza una pedidoSemanaBodega con detalles mediante deltas (newItems, updateItems, deleteItems).
+ * @param {IPedidoSemanaBodegaWithDetailsUpdateDTO} data - DTO con los cambios de la pedidoSemanaBodega.
  * @returns {Promise<boolean>} Promesa que resuelve a true si se actualizó correctamente.
  */
-export const actualizarRecetaConDetallesService = async (data: IPedidoSemanaBodegaWithDetailsUpdateDTO): Promise<boolean> => {
+export const actualizarPedidoSemanaBodegaConDetallesService = async (data: IPedidoSemanaBodegaWithDetailsUpdateDTO): Promise<boolean> => {
   try {
     const response = await api.patch<boolean>('/pedido-semana-bodega/update-recipe-with-details', data);
     return response.data;
   } catch (error: any) {
     throw new Error(
       error.response?.data?.message ||
-      'Error al actualizar la receta en el servidor'
+      'Error al actualizar la pedidoSemanaBodega en el servidor'
     );
   }
 };
 
 /**
- * Elimina una receta.
- * @param {string} id - ID de la receta a eliminar.
+ * Elimina una pedidoSemanaBodega.
+ * @param {string} id - ID de la pedidoSemanaBodega a eliminar.
  * @returns {Promise<boolean>} Promesa que resuelve a true si la eliminación fue exitosa.
  */
-export const eliminarRecetaService = async (id: string): Promise<boolean> => {
+export const eliminarPedidoSemanaBodegaService = async (id: string): Promise<boolean> => {
 
   await new Promise(resolve => setTimeout(resolve, 400));
 
-  const eliminado = eliminarReceta(id);
+  const eliminado = eliminarPedidoSemanaBodega(id);
 
   if (!eliminado) {
-    throw new Error(`Receta con ID ${id} no encontrada`);
+    throw new Error(`PedidoSemanaBodega con ID ${id} no encontrada`);
   }
 
   return true;
 };
 
 /**
- * Cambia el estado de una receta (Activo/Inactivo) mediante el backend.
- * @param {string} id - ID de la receta.
+ * Cambia el estado de una pedidoSemanaBodega (Activo/Inactivo) mediante el backend.
+ * @param {string} id - ID de la pedidoSemanaBodega.
  * @returns {Promise<boolean>} Promesa que resuelve a true si el cambio fue exitoso.
  */
-export const cambiarEstadoRecetaService = async (id: string): Promise<boolean> => {
+export const cambiarEstadoPedidoSemanaBodegaService = async (id: string): Promise<boolean> => {
   try {
     const idNumero = parseInt(id, 10);
     const response = await api.patch<boolean>(`/pedido-semana-bodega/change-status/${idNumero}`);
     return response.data;
   } catch (error: any) {
-    console.error('Error al cambiar el estado de la receta', error);
+    console.error('Error al cambiar el estado de la pedidoSemanaBodega', error);
     throw new Error(
       error.response?.data?.message ||
-      'Error al cambiar el estado de la receta'
+      'Error al cambiar el estado de la pedidoSemanaBodega'
     );
   }
 };
 
 /**
- * Elimina (soft delete) una receta por su ID.
- * @param {number} idReceta - ID numérico de la receta.
+ * Elimina (soft delete) una pedidoSemanaBodega por su ID.
+ * @param {number} idPedidoSemanaBodega - ID numérico de la pedidoSemanaBodega.
  * @returns {Promise<boolean>} Promesa que resuelve a true si la eliminación fue exitosa (204).
  */
-export const softDeleteRecetaService = async (idReceta: number): Promise<boolean> => {
+export const softDeletePedidoSemanaBodegaService = async (idPedidoSemanaBodega: number): Promise<boolean> => {
   try {
-    await api.delete(`/pedido-semana-bodega/soft-delete-receta/${idReceta}`);
+    await api.delete(`/pedido-semana-bodega/soft-delete-pedido-semana-bodega/${idPedidoSemanaBodega}`);
     return true;
   } catch (error: any) {
-    console.error('Error al eliminar la receta', error);
+    console.error('Error al eliminar la pedidoSemanaBodega', error);
     throw new Error(
       error.response?.data?.message ||
-      'Error al eliminar la receta'
+      'Error al eliminar la pedidoSemanaBodega'
     );
   }
 };
@@ -303,18 +303,18 @@ export const importarExcelPedidoService = async (archivo: File, nombreHoja?: str
 };
 
 /**
- * Obtiene el conteo total de recetas (activas, inactivas y total).
+ * Obtiene el conteo total de pedidoSemanaBodegas (activas, inactivas y total).
  * @returns {Promise<IPedidoSemanaBodegaCountResponse>}
  */
-export const obtenerRecetasCountService = async (): Promise<IPedidoSemanaBodegaCountResponse> => {
+export const obtenerPedidoSemanaBodegasCountService = async (): Promise<IPedidoSemanaBodegaCountResponse> => {
   try {
     const response = await api.get<IPedidoSemanaBodegaCountResponse>('/pedido-semana-bodega/count-recipes');
     return response.data;
   } catch (error: any) {
-    console.error('Error al obtener el conteo de recetas', error);
+    console.error('Error al obtener el conteo de pedidoSemanaBodegas', error);
     throw new Error(
       error.response?.data?.message ||
-      'Error al obtener el conteo de recetas'
+      'Error al obtener el conteo de pedidoSemanaBodegas'
     );
   }
 };

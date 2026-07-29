@@ -106,7 +106,7 @@ const AsignaturaCard: React.FC<AsignaturaCardProps> = ({
   const totalAlumnos = asignatura.secciones
     .filter(s => s.estado === 'ACTIVA')
     .reduce((sum, s) => sum + s.cantInscritos, 0);
-  const multiplicadorReceta = totalAlumnos > 0 ? (totalAlumnos / 20).toFixed(2) : '0';
+  const multiplicadorPedidoSemanaBodega = totalAlumnos > 0 ? (totalAlumnos / 20).toFixed(2) : '0';
 
   return (
     <Card className="shadow-sm bg-white dark:bg-content1">
@@ -133,7 +133,7 @@ const AsignaturaCard: React.FC<AsignaturaCardProps> = ({
               </p>
               <p className="text-xs text-default-400 mt-1">
                 Total alumnos activos: <span className="font-semibold text-primary">{totalAlumnos}</span> •
-                Multiplicador receta (base 20): <span className="font-semibold text-primary">{multiplicadorReceta}x</span>
+                Multiplicador pedidoSemanaBodega (base 20): <span className="font-semibold text-primary">{multiplicadorPedidoSemanaBodega}x</span>
               </p>
             </div>
           </div>

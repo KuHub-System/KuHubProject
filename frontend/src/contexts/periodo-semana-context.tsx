@@ -20,7 +20,7 @@ interface PeriodoSemanaState {
 interface PeriodoSemanaContextType extends PeriodoSemanaState {
   seleccionarPeriodo: (anio: number, semestre: number) => Promise<void>;
   seleccionarSemana: (semanaId: string) => void;
-  recargarSemanas: () => Promise<void>;
+  recargarSemanas: (anio?: number, semestre?: number) => Promise<void>;
   recargarPeriodos: () => Promise<void>;
 }
 
@@ -138,15 +138,36 @@ export const PeriodoSemanaProvider: React.FC<{ children: React.ReactNode }> = ({
     }
   }, [obtenerPeriodosAcademicosService]);
 
-  const recargarSemanas = React.useCallback(async () => {
-    if (!periodo) return;
-    try {
-      const data = await obtenerSemanasPorPeriodoService(periodo.anio, periodo.semestre);
-      setSemanas(data);
-    } catch (err) {
-      console.error('Error recargando semanas:', err);
-    }
-  }, [periodo, obtenerSemanasPorPeriodoService]);
+  // Acepta anio/semestre explícitos para refrescar un período recién generado o
+  // reasignado aunque no sea el que el usuario tiene actualmente activo. Recalcula
+  // defaultSemanaId y reconcilia semanaId, igual que seleccionarPeriodo, para que
+  // los selectores de semana en el resto del sistema queden al día sin recargar la página.
+  const recargarSemanas = React.useCallback(
+    async (anioParam?: number, semestreParam?: number) => {
+      const targetAnio = anioParam ?? periodo?.anio;
+      const targetSemestre = semestreParam ?? periodo?.semestre;
+      if (targetAnio === undefined || targetSemestre === undefined) return;
+      try {
+        const data = await obtenerSemanasPorPeriodoService(targetAnio, targetSemestre);
+        setSemanas(data);
+        setPeriodo({ anio: targetAnio, semestre: targetSemestre });
+
+        const actual = encontrarSemanaActual(data);
+        const defaultId = actual ? String(actual.idSemana) : '';
+        setDefaultSemanaId(defaultId);
+
+        setSemanaId((prev) => {
+          if (prev && data.some((s) => String(s.idSemana) === prev)) return prev;
+          const nuevoId = defaultId || (data.length > 0 ? String(data[0].idSemana) : '');
+          if (nuevoId) sessionStorage.setItem('kuhub_semana_id', nuevoId);
+          return nuevoId;
+        });
+      } catch (err) {
+        console.error('Error recargando semanas:', err);
+      }
+    },
+    [periodo, obtenerSemanasPorPeriodoService, encontrarSemanaActual]
+  );
 
   React.useEffect(() => {
     if (authIsLoading) {

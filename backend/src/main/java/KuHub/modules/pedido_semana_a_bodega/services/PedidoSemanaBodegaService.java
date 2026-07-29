@@ -19,8 +19,8 @@ public interface PedidoSemanaBodegaService {
     PedidoSemanaBodegasPage findAllWithDetailsAndSearchPaging(SearchPedidoSemanaBodegaDTO searchDto);
     boolean saveRecipeWithDetails(PedidoSemanaBodegaWithDetailsCreateDTO dto);
     boolean updateRecipeWithDetails (PedidoSemanaBodegaWithDetailsUpdateDTO request);
-    boolean changeStatus(Integer idReceta);
-    boolean softDeleteRecipeWithDetails(Integer idReceta);
+    boolean changeStatus(Integer idPedidoSemanaBodega);
+    boolean softDeleteRecipeWithDetails(Integer idPedidoSemanaBodega);
     ImportarExcelResultado importarExcelProductos(MultipartFile archivo, String nombreHoja);
     List<AsignaturaActivaView> obtenerAsignaturasActivas();
 }

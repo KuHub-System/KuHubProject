@@ -28,7 +28,7 @@ export interface SolicitudRechazada {
   idSolicitud: number;
   motivo: string;
   fechaSolicitada: string;
-  nombreReceta: string;
+  nombrePedidoSemanaBodega: string;
   nombreAsignatura: string;
   nombreSeccion: string;
   nombreDocente: string;
@@ -73,14 +73,14 @@ export interface DashboardGestorData {
 }
 
 export interface DashboardPedidoSemanalBodegaData {
-  recetasActivas: number;
-  recetasInactivas: number;
-  recetasTotal: number;
+  pedidoSemanaBodegasActivas: number;
+  pedidoSemanaBodegasInactivas: number;
+  pedidoSemanaBodegasTotal: number;
   topIngredientes: ChartPoint[];
-  recetasPorEstado: PieSlice[];
+  pedidoSemanaBodegasPorEstado: PieSlice[];
 }
 
 export const getDashboardAdmin      = (): Promise<DashboardAdminData>      => api.get('/dashboard/admin').then(r => r.data);
 export const getDashboardInventario = (): Promise<DashboardInventarioData> => api.get('/dashboard/inventario').then(r => r.data);
 export const getDashboardGestor     = (): Promise<DashboardGestorData>     => api.get('/dashboard/gestor').then(r => r.data);
-export const getDashboardPedidoSemanalBodega = (): Promise<DashboardPedidoSemanalBodegaData> => api.get('/dashboard/recetas').then(r => r.data);
+export const getDashboardPedidoSemanalBodega = (): Promise<DashboardPedidoSemanalBodegaData> => api.get('/dashboard/pedidoSemanaBodegas').then(r => r.data);

@@ -17,33 +17,33 @@ import java.util.List;
 public class DetallePedidoSemanaBodegaServiceImp implements DetallePedidoSemanaBodegaService{
 
     @Autowired
-    private DetallePedidoSemanaBodegaRepository detalleRecetaRepository;
+    private DetallePedidoSemanaBodegaRepository detallePedidoSemanaBodegaRepository;
 
     @Transactional(readOnly = true)
     @Override
     public DetallePedidoSemanaBodega findById(Integer id){
-        return detalleRecetaRepository.findById(id).orElseThrow(
-                ()-> new PedidoSemanaBodegaException("No existe el detalle receta con el id: " + id
+        return detallePedidoSemanaBodegaRepository.findById(id).orElseThrow(
+                ()-> new PedidoSemanaBodegaException("No existe el detalle pedidoSemanaBodega con el id: " + id
                         , HttpStatus.NOT_FOUND));
     }
 
     @Transactional(readOnly = true)
     @Override
     public List<DetallePedidoSemanaBodega> findAll(){
-        return detalleRecetaRepository.findAll();
+        return detallePedidoSemanaBodegaRepository.findAll();
     }
 
     @Transactional(readOnly = true)
     @Override
-    public List<DetallePedidoSemanaBodega> findAllByReceta(PedidoSemanaBodega receta){
+    public List<DetallePedidoSemanaBodega> findAllByPedidoSemanaBodega(PedidoSemanaBodega pedidoSemanaBodega){
 
-        if (receta == null) {
-            throw new PedidoSemanaBodegaException("La receta no puede ser nula"
+        if (pedidoSemanaBodega == null) {
+            throw new PedidoSemanaBodegaException("La pedidoSemanaBodega no puede ser nula"
                     , HttpStatus.NOT_FOUND);
         }
-        List<DetallePedidoSemanaBodega> detalles = detalleRecetaRepository.findAllByPedidoSemanaBodega(receta);
+        List<DetallePedidoSemanaBodega> detalles = detallePedidoSemanaBodegaRepository.findAllByPedidoSemanaBodega(pedidoSemanaBodega);
         if (detalles.isEmpty()) {
-            throw new PedidoSemanaBodegaException("La receta no tiene detalles"
+            throw new PedidoSemanaBodegaException("La pedidoSemanaBodega no tiene detalles"
                     , HttpStatus.NOT_FOUND);
         }
         return detalles;
@@ -51,38 +51,38 @@ public class DetallePedidoSemanaBodegaServiceImp implements DetallePedidoSemanaB
 
     @Transactional(readOnly = true)
     @Override
-    public List<Integer> findProductoIdsByRecetaId(@Param("idReceta") Integer idReceta){
-        return detalleRecetaRepository.findProductoIdsByRecetaId(idReceta);
+    public List<Integer> findProductoIdsByPedidoSemanaBodegaId(@Param("idPedidoSemanaBodega") Integer idPedidoSemanaBodega){
+        return detallePedidoSemanaBodegaRepository.findProductoIdsByPedidoSemanaBodegaId(idPedidoSemanaBodega);
     }
 
     @Transactional(readOnly = true)
     @Override
-    public List<DetallePedidoSemanaBodegaItemProjection> findItemsByRecetaId(@Param("idReceta") Integer idReceta){
-        return detalleRecetaRepository.findItemsByRecetaId(idReceta);
+    public List<DetallePedidoSemanaBodegaItemProjection> findItemsByPedidoSemanaBodegaId(@Param("idPedidoSemanaBodega") Integer idPedidoSemanaBodega){
+        return detallePedidoSemanaBodegaRepository.findItemsByPedidoSemanaBodegaId(idPedidoSemanaBodega);
     }
 
     @Transactional(readOnly = true)
     @Override
-    public List<DetallePedidoSemanaBodega> findAllByIdReceta(Integer id){
-        return detalleRecetaRepository.findDetalleRecetaByPedidoSemanaBodega_IdPedidoSemanaBodega(id);
+    public List<DetallePedidoSemanaBodega> findAllByIdPedidoSemanaBodega(Integer id){
+        return detallePedidoSemanaBodegaRepository.findDetallePedidoSemanaBodegaByPedidoSemanaBodega_IdPedidoSemanaBodega(id);
     }
 
     @Transactional(readOnly = true)
     @Override
-    public List<DetallePedidoSemanaBodegaIdProductoProjection> findAllIdProductoAndCantidadByReceta(
-            Integer idReceta){
-        return detalleRecetaRepository.findAllIdProductoAndCantidadByReceta(idReceta);
+    public List<DetallePedidoSemanaBodegaIdProductoProjection> findAllIdProductoAndCantidadByPedidoSemanaBodega(
+            Integer idPedidoSemanaBodega){
+        return detallePedidoSemanaBodegaRepository.findAllIdProductoAndCantidadByPedidoSemanaBodega(idPedidoSemanaBodega);
     }
 
     @Override
     public List<DetallePedidoSemanaBodega> saveAll(List<DetallePedidoSemanaBodega> detalles) {
-        return detalleRecetaRepository.saveAll(detalles);
+        return detallePedidoSemanaBodegaRepository.saveAll(detalles);
     }
 
     @Transactional
     @Override
     public DetallePedidoSemanaBodega save (DetallePedidoSemanaBodega dr){
-        return detalleRecetaRepository.save(dr);
+        return detallePedidoSemanaBodegaRepository.save(dr);
     }
 
 
@@ -90,11 +90,11 @@ public class DetallePedidoSemanaBodegaServiceImp implements DetallePedidoSemanaB
     @Transactional
     @Override
     public void deleteById(Integer id){
-        if( !detalleRecetaRepository.existsById(id) ){
-            throw new PedidoSemanaBodegaException("No existe detalle receta con id " + id
+        if( !detallePedidoSemanaBodegaRepository.existsById(id) ){
+            throw new PedidoSemanaBodegaException("No existe detalle pedidoSemanaBodega con id " + id
                     , HttpStatus.NOT_FOUND);
         }
-        detalleRecetaRepository.deleteById(id);
+        detallePedidoSemanaBodegaRepository.deleteById(id);
     }
 
 }

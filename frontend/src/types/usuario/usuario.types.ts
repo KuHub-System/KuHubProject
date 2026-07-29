@@ -99,7 +99,7 @@ export interface IPermisosRol {
   dashboard: boolean;
   gestionUsuarios: boolean;
   gestionSolicitudes: boolean;
-  gestionRecetas: boolean;
+  gestionPedidoSemanaBodegas: boolean;
   inventario: boolean;
   bodegaPrincipal: boolean;
   bodegaTransito: boolean;
@@ -116,7 +116,7 @@ export const PERMISOS_POR_ROL: Record<RolUsuario, IPermisosRol> = {
     dashboard: true,
     gestionUsuarios: true,
     gestionSolicitudes: true,
-    gestionRecetas: true,
+    gestionPedidoSemanaBodegas: true,
     inventario: true,
     bodegaPrincipal: true,
     bodegaTransito: true,
@@ -128,7 +128,7 @@ export const PERMISOS_POR_ROL: Record<RolUsuario, IPermisosRol> = {
     dashboard: true,
     gestionUsuarios: false,
     gestionSolicitudes: true,
-    gestionRecetas: true,
+    gestionPedidoSemanaBodegas: true,
     inventario: true,
     bodegaPrincipal: true,
     bodegaTransito: true,
@@ -140,7 +140,7 @@ export const PERMISOS_POR_ROL: Record<RolUsuario, IPermisosRol> = {
     dashboard: true,
     gestionUsuarios: false,
     gestionSolicitudes: true,
-    gestionRecetas: false,
+    gestionPedidoSemanaBodegas: false,
     inventario: true,
     bodegaPrincipal: true,
     bodegaTransito: false,
@@ -152,7 +152,7 @@ export const PERMISOS_POR_ROL: Record<RolUsuario, IPermisosRol> = {
     dashboard: false,
     gestionUsuarios: false,
     gestionSolicitudes: false,
-    gestionRecetas: true,
+    gestionPedidoSemanaBodegas: true,
     inventario: false,
     bodegaPrincipal: false,
     bodegaTransito: false,
@@ -164,7 +164,7 @@ export const PERMISOS_POR_ROL: Record<RolUsuario, IPermisosRol> = {
     dashboard: false,
     gestionUsuarios: false,
     gestionSolicitudes: false,
-    gestionRecetas: true,
+    gestionPedidoSemanaBodegas: true,
     inventario: false,
     bodegaPrincipal: false,
     bodegaTransito: false,
@@ -176,7 +176,7 @@ export const PERMISOS_POR_ROL: Record<RolUsuario, IPermisosRol> = {
     dashboard: false,
     gestionUsuarios: false,
     gestionSolicitudes: true, // Solo ve las suyas
-    gestionRecetas: true,
+    gestionPedidoSemanaBodegas: true,
     inventario: false,
     bodegaPrincipal: false,
     bodegaTransito: false,
@@ -188,7 +188,7 @@ export const PERMISOS_POR_ROL: Record<RolUsuario, IPermisosRol> = {
     dashboard: false,
     gestionUsuarios: false,
     gestionSolicitudes: false,
-    gestionRecetas: false,
+    gestionPedidoSemanaBodegas: false,
     inventario: true,
     bodegaPrincipal: true,
     bodegaTransito: false,
@@ -200,7 +200,7 @@ export const PERMISOS_POR_ROL: Record<RolUsuario, IPermisosRol> = {
     dashboard: false,
     gestionUsuarios: false,
     gestionSolicitudes: false,
-    gestionRecetas: false,
+    gestionPedidoSemanaBodegas: false,
     inventario: true,
     bodegaPrincipal: false,
     bodegaTransito: true,

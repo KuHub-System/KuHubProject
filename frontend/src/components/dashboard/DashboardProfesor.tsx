@@ -259,8 +259,8 @@ export const DashboardProfesor: React.FC = () => {
                       <TableCell>
                         <div>
                           <p className="font-bold text-secondary text-sm">{solicitud.asignaturaNombre}</p>
-                          {solicitud.recetaNombre && (
-                            <p className="text-xs text-default-500 mt-0.5">{solicitud.recetaNombre}</p>
+                          {solicitud.pedidoSemanaBodegaNombre && (
+                            <p className="text-xs text-default-500 mt-0.5">{solicitud.pedidoSemanaBodegaNombre}</p>
                           )}
                         </div>
                       </TableCell>

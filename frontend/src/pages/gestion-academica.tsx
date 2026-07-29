@@ -11,11 +11,10 @@ import {
 } from '@heroui/react';
 import { Icon } from '@iconify/react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useToast } from '../hooks/useToast';
+import { useToast, useConfirmDelete } from '../hooks/useToast';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { CardSkeleton } from '../components/SkeletonLoader';
 import { logger } from '../utils/logger';
-import { useNotifications } from '../utils/notifications';
 import { useModulePermission, usePermission } from '../contexts/permission-context';
 import RielNavegacion from '../components/RielNavegacion';
 
@@ -43,12 +42,12 @@ const GestionAsignaturasPage: React.FC = () => {
   usePageTitle(
     currentView === 'academica' ? 'Gestión Académica' : 'Gestión Sala y Reservas',
     currentView === 'academica'
-      ? 'Administre asignaturas, secciones y asignaciones de gestores. Las recetas se multiplicarán por el total de alumnos activos.'
+      ? 'Administre asignaturas, secciones y asignaciones de gestores. Las pedidoSemanaBodegas se multiplicarán por el total de alumnos activos.'
       : 'Consulte las reservas activas y administre las salas del sistema.',
     currentView === 'academica' ? 'lucide:graduation-cap' : 'lucide:calendar-clock'
   );
   const toast = useToast();
-  const { showConfirm } = useNotifications();
+  const confirmDelete = useConfirmDelete();
   const { isLoading: permLoading } = usePermission();
   const { canRead: verAcademicaDirecta }   = useModulePermission('GESTION_ACADEMICA');
   const { canRead: verAcademicaVista }     = useModulePermission('GA_VER_ASIGNATURA');
@@ -250,57 +249,41 @@ const GestionAsignaturasPage: React.FC = () => {
    * Elimina una asignatura
    */
   const eliminarAsignatura = React.useCallback(async (asignaturaId: string, nombreAsignatura: string) => {
-    showConfirm({
+    const confirmado = await confirmDelete({
       title: 'Eliminar Asignatura',
-      subtitle: 'Esta acción no se puede deshacer',
-      headerVariant: 'danger',
-      alertTitle: 'Acción irreversible',
-      alertMessage: `Se eliminarán permanentemente la asignatura "${nombreAsignatura}" y todas las secciones vinculadas a ella. Los alumnos inscritos perderán su inscripción.`,
-      message: '',
-      confirmText: 'Eliminar',
-      confirmColor: 'danger',
-      requireText: 'ELIMINAR',
-      requireTextHelper: 'Esta acción es irreversible. Escribe ELIMINAR para confirmar.',
-      onConfirm: async () => {
-        try {
-          await eliminarAsignaturaService(asignaturaId);
-          await cargarDatos();
-          toast.success('Asignatura eliminada correctamente');
-        } catch (error: any) {
-          logger.error('Error al eliminar asignatura:', error);
-          toast.error(error.message || 'Error al eliminar la asignatura');
-        }
-      }
+      itemDescription: `la asignatura "${nombreAsignatura}" y todas las secciones vinculadas a ella (los alumnos inscritos perderán su inscripción)`,
     });
-  }, [showConfirm, cargarDatos, toast]);
+    if (!confirmado) return;
+
+    try {
+      await eliminarAsignaturaService(asignaturaId);
+      await cargarDatos();
+      toast.success('Asignatura eliminada correctamente');
+    } catch (error: any) {
+      logger.error('Error al eliminar asignatura:', error);
+      toast.error(error.message || 'Error al eliminar la asignatura');
+    }
+  }, [confirmDelete, cargarDatos, toast]);
 
   /**
    * Elimina una sección
    */
-  const eliminarSeccion = React.useCallback((asignaturaId: string, seccionId: string, nombreSeccion: string) => {
-    showConfirm({
+  const eliminarSeccion = React.useCallback(async (asignaturaId: string, seccionId: string, nombreSeccion: string) => {
+    const confirmado = await confirmDelete({
       title: 'Eliminar Sección',
-      subtitle: 'Esta acción no se puede deshacer',
-      headerVariant: 'danger',
-      alertTitle: 'Acción irreversible',
-      alertMessage: `Se eliminará permanentemente la sección "${nombreSeccion}". Los alumnos inscritos en esta sección perderán su inscripción.`,
-      message: '',
-      confirmText: 'Eliminar',
-      confirmColor: 'danger',
-      requireText: 'ELIMINAR',
-      requireTextHelper: 'Esta acción es irreversible. Escribe ELIMINAR para confirmar.',
-      onConfirm: async () => {
-        try {
-          await eliminarSeccionService(asignaturaId, seccionId);
-          await cargarDatos();
-          toast.success('Sección eliminada correctamente');
-        } catch (error: any) {
-          logger.error('Error al eliminar sección:', error);
-          toast.error(error.message || 'Error al eliminar la sección');
-        }
-      }
+      itemDescription: `la sección "${nombreSeccion}" (los alumnos inscritos en esta sección perderán su inscripción)`,
     });
-  }, [showConfirm, cargarDatos, toast]);
+    if (!confirmado) return;
+
+    try {
+      await eliminarSeccionService(asignaturaId, seccionId);
+      await cargarDatos();
+      toast.success('Sección eliminada correctamente');
+    } catch (error: any) {
+      logger.error('Error al eliminar sección:', error);
+      toast.error(error.message || 'Error al eliminar la sección');
+    }
+  }, [confirmDelete, cargarDatos, toast]);
 
   if (isLoading) {
     return (

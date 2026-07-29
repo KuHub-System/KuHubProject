@@ -39,11 +39,11 @@ public class DashboardController {
         return ResponseEntity.ok(dashboardService.getDashboardGestor());
     }
 
-    @GetMapping("/recetas")
-    public ResponseEntity<DashboardRecetasDTO> getRecetas(Authentication auth) {
+    @GetMapping("/pedidoSemanaBodegas")
+    public ResponseEntity<DashboardPedidoSemanaBodegasDTO> getPedidoSemanaBodegas(Authentication auth) {
         if (!hasAnyRole(auth, "ADMINISTRADOR", "CO_ADMINISTRADOR", "PROFESOR_A_CARGO", "DOCENTE"))
             return ResponseEntity.status(403).build();
-        return ResponseEntity.ok(dashboardService.getDashboardRecetas());
+        return ResponseEntity.ok(dashboardService.getDashboardPedidoSemanaBodegas());
     }
 
     private boolean hasAnyRole(Authentication auth, String... roles) {

@@ -20,9 +20,9 @@ import java.util.List;
  */
 public record SolicitationManagement(
         LocalDate fechaSolicitada,
-        String nombreReceta,
+        String nombrePedidoSemanaBodega,
         Integer idSolicitud,
-        Integer idReceta,
+        Integer idPedidoSemanaBodega,
         Integer idReservaSala,
         String estadoSolicitud,
         String observaciones,

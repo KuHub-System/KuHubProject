@@ -17,18 +17,18 @@ import java.util.List;
 @AllArgsConstructor
 @NoArgsConstructor
 public class PedidoSemanaBodegaWithDetailsUpdateDTO {
-    @NotNull(message = "El ID de la receta es obligatorio")
-    @Positive(message = "El ID de la receta debe ser un número positivo")
+    @NotNull(message = "El ID de la pedidoSemanaBodega es obligatorio")
+    @Positive(message = "El ID de la pedidoSemanaBodega debe ser un número positivo")
     private Integer idPedidoSemanaBodega;
 
-    @NotBlank(message = "El nombre de la receta es obligatorio")
-    @Size(max = 100, message = "El nombre de la receta no puede superar los 100 caracteres")
+    @NotBlank(message = "El nombre de la pedidoSemanaBodega es obligatorio")
+    @Size(max = 100, message = "El nombre de la pedidoSemanaBodega no puede superar los 100 caracteres")
     private String nombrePedido;
 
     // Campos opcionales (no llevan @NotBlank ni @NotNull)
     private String descripcionPedido;
 
-    @NotBlank(message = "El estado de la receta es obligatorio")
+    @NotBlank(message = "El estado de la pedidoSemanaBodega es obligatorio")
     private String estadoPedido;
 
     private Integer idSemana;

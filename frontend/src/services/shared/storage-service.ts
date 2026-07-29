@@ -13,7 +13,7 @@ import {
   ISolicitud,
   IItemSolicitud,
   IActualizarSolicitud
-} from '../../types/pedido/receta.types';
+} from '../../types/pedido/pedidoSemanaBodega.types';
 import { ICategoria, IUnidadMedida } from '../../types/inventario/inventario.types.ts';
 import { ROLES_STORAGE_KEY, ROLES_SISTEMA, guardarRoles as guardarRolesConfig } from '../../config/roles-config';
 
@@ -29,7 +29,7 @@ const STORAGE_KEYS = {
   CURRENT_USER: 'user',
   CATEGORIAS: 'kuhub-categorias',
   UNIDADES: 'kuhub-unidades',
-  RECETAS: 'kuhub-recetas',
+  PEDIDO_SEMANAL_BODEGAS: 'kuhub-pedidoSemanaBodegas',
   SOLICITUDES: 'kuhub-solicitudes',
 } as const;
 
@@ -40,7 +40,7 @@ interface StoredUser extends IUser {
   password: string;
 }
 
-export interface IIngredienteReceta {
+export interface IIngredientePedidoSemanaBodega {
   id: string;
   productoId: string;
   productoNombre: string;
@@ -194,8 +194,8 @@ export const inicializarSistema = (): void => {
     localStorage.setItem(STORAGE_KEYS.MOVIMIENTOS, JSON.stringify([]));
   }
 
-  if (!localStorage.getItem(STORAGE_KEYS.RECETAS)) {
-    localStorage.setItem(STORAGE_KEYS.RECETAS, JSON.stringify([]));
+  if (!localStorage.getItem(STORAGE_KEYS.PEDIDO_SEMANAL_BODEGAS)) {
+    localStorage.setItem(STORAGE_KEYS.PEDIDO_SEMANAL_BODEGAS, JSON.stringify([]));
   }
 
   if (!localStorage.getItem(STORAGE_KEYS.SOLICITUDES)) {
@@ -418,44 +418,44 @@ export const actualizarRoles = (roles: IRole[]): void => {
 };
 
 // ==========================================
-// GESTIÓN DE RECETAS
+// GESTIÓN DE PEDIDO_SEMANAL_BODEGAS
 // ==========================================
 
-export const obtenerRecetas = (): IPedidoSemanaBodega[] => {
-  const recetas = localStorage.getItem(STORAGE_KEYS.RECETAS);
-  return recetas ? JSON.parse(recetas) : [];
+export const obtenerPedidoSemanaBodegas = (): IPedidoSemanaBodega[] => {
+  const pedidoSemanaBodegas = localStorage.getItem(STORAGE_KEYS.PEDIDO_SEMANAL_BODEGAS);
+  return pedidoSemanaBodegas ? JSON.parse(pedidoSemanaBodegas) : [];
 };
 
-export const obtenerRecetaPorId = (id: string): IPedidoSemanaBodega | null => {
-  const recetas = obtenerRecetas();
-  return recetas.find(r => r.id === id) || null;
+export const obtenerPedidoSemanaBodegaPorId = (id: string): IPedidoSemanaBodega | null => {
+  const pedidoSemanaBodegas = obtenerPedidoSemanaBodegas();
+  return pedidoSemanaBodegas.find(r => r.id === id) || null;
 };
 
-export const crearReceta = (recetaData: Omit<IPedidoSemanaBodega, 'id' | 'fechaCreacion' | 'fechaActualizacion'>): IPedidoSemanaBodega => {
-  const recetas = obtenerRecetas();
+export const crearPedidoSemanaBodega = (pedidoSemanaBodegaData: Omit<IPedidoSemanaBodega, 'id' | 'fechaCreacion' | 'fechaActualizacion'>): IPedidoSemanaBodega => {
+  const pedidoSemanaBodegas = obtenerPedidoSemanaBodegas();
 
-  const ingredientesConId: IIngrediente[] = recetaData.ingredientes.map(ing => ({
+  const ingredientesConId: IIngrediente[] = pedidoSemanaBodegaData.ingredientes.map(ing => ({
     ...ing,
     id: 'id' in ing && ing.id ? ing.id : generarId()
   }));
 
-  const nuevaReceta: IPedidoSemanaBodega = {
+  const nuevaPedidoSemanaBodega: IPedidoSemanaBodega = {
     id: generarId(),
-    ...recetaData,
+    ...pedidoSemanaBodegaData,
     ingredientes: ingredientesConId,
     fechaCreacion: new Date().toISOString(),
     fechaActualizacion: new Date().toISOString(),
   };
 
-  recetas.push(nuevaReceta);
-  localStorage.setItem(STORAGE_KEYS.RECETAS, JSON.stringify(recetas));
+  pedidoSemanaBodegas.push(nuevaPedidoSemanaBodega);
+  localStorage.setItem(STORAGE_KEYS.PEDIDO_SEMANAL_BODEGAS, JSON.stringify(pedidoSemanaBodegas));
 
-  return nuevaReceta;
+  return nuevaPedidoSemanaBodega;
 };
 
-export const actualizarReceta = (id: string, cambios: Partial<Omit<IPedidoSemanaBodega, 'id' | 'fechaCreacion' | 'fechaActualizacion'>>): IPedidoSemanaBodega | null => {
-  const recetas = obtenerRecetas();
-  const index = recetas.findIndex(r => r.id === id);
+export const actualizarPedidoSemanaBodega = (id: string, cambios: Partial<Omit<IPedidoSemanaBodega, 'id' | 'fechaCreacion' | 'fechaActualizacion'>>): IPedidoSemanaBodega | null => {
+  const pedidoSemanaBodegas = obtenerPedidoSemanaBodegas();
+  const index = pedidoSemanaBodegas.findIndex(r => r.id === id);
 
   if (index === -1) return null;
 
@@ -468,30 +468,30 @@ export const actualizarReceta = (id: string, cambios: Partial<Omit<IPedidoSemana
     cambiosConIngredientes.ingredientes = ingredientesConId;
   }
 
-  recetas[index] = {
-    ...recetas[index],
+  pedidoSemanaBodegas[index] = {
+    ...pedidoSemanaBodegas[index],
     ...cambiosConIngredientes,
     id,
     fechaActualizacion: new Date().toISOString(),
   };
 
-  localStorage.setItem(STORAGE_KEYS.RECETAS, JSON.stringify(recetas));
-  return recetas[index];
+  localStorage.setItem(STORAGE_KEYS.PEDIDO_SEMANAL_BODEGAS, JSON.stringify(pedidoSemanaBodegas));
+  return pedidoSemanaBodegas[index];
 };
 
-export const obtenerRecetasActivas = (): IPedidoSemanaBodega[] => {
-  return obtenerRecetas().filter(r => r.estado === 'Activo' || (r.estado as any) === 'Activa');
+export const obtenerPedidoSemanaBodegasActivas = (): IPedidoSemanaBodega[] => {
+  return obtenerPedidoSemanaBodegas().filter(r => r.estado === 'Activo' || (r.estado as any) === 'Activa');
 };
 
-export const eliminarReceta = (id: string): boolean => {
-  const recetas = obtenerRecetas();
-  const recetasFiltradas = recetas.filter(r => r.id !== id);
+export const eliminarPedidoSemanaBodega = (id: string): boolean => {
+  const pedidoSemanaBodegas = obtenerPedidoSemanaBodegas();
+  const pedidoSemanaBodegasFiltradas = pedidoSemanaBodegas.filter(r => r.id !== id);
 
-  if (recetas.length === recetasFiltradas.length) {
+  if (pedidoSemanaBodegas.length === pedidoSemanaBodegasFiltradas.length) {
     return false;
   }
 
-  localStorage.setItem(STORAGE_KEYS.RECETAS, JSON.stringify(recetasFiltradas));
+  localStorage.setItem(STORAGE_KEYS.PEDIDO_SEMANAL_BODEGAS, JSON.stringify(pedidoSemanaBodegasFiltradas));
   return true;
 };
 
@@ -597,7 +597,7 @@ export const exportarDatos = () => {
     movimientos: obtenerMovimientos(),
     usuarios: obtenerUsuarios(),
     roles: obtenerRoles(),
-    recetas: obtenerRecetas(),
+    pedidoSemanaBodegas: obtenerPedidoSemanaBodegas(),
     solicitudes: obtenerSolicitudes(),
     categorias: obtenerCategorias(),
     unidades: obtenerUnidades(),
@@ -673,7 +673,7 @@ export const estadisticasSistema = () => {
     totalMovimientos: obtenerMovimientos().length,
     totalUsuarios: obtenerUsuarios().length,
     totalRoles: obtenerRoles().length,
-    totalRecetas: obtenerRecetas().length,
+    totalPedidoSemanaBodegas: obtenerPedidoSemanaBodegas().length,
     totalSolicitudes: obtenerSolicitudes().length,
     productosBajoStock: obtenerProductos().filter(p => p.stock <= p.stockMinimo).length,
   };

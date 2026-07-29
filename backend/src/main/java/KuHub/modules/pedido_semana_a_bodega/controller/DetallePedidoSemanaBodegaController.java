@@ -58,10 +58,10 @@ public class DetallePedidoSemanaBodegaController {
     }
 
     @PostMapping("/create-details-recipe/")
-    public ResponseEntity<DetallePedidoSemanaBodega> save(@RequestBody DetallePedidoSemanaBodega detalleReceta){
+    public ResponseEntity<DetallePedidoSemanaBodega> save(@RequestBody DetallePedidoSemanaBodega detallePedidoSemanaBodega){
         return ResponseEntity
                 .status(201)
-                .body(detallePedidoSemanaBodegaService.save(detalleReceta));
+                .body(detallePedidoSemanaBodegaService.save(detallePedidoSemanaBodega));
     }
 
 
@@ -77,7 +77,7 @@ public class DetallePedidoSemanaBodegaController {
         } catch (IllegalArgumentException ex) {
             return ResponseEntity.badRequest().build();
         } catch (Exception ex) {
-            // opcional: log.error("Error eliminando detalleReceta id=" + id, ex);
+            // opcional: log.error("Error eliminando detallePedidoSemanaBodega id=" + id, ex);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
     }

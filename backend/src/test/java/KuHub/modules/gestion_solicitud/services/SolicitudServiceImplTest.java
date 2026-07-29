@@ -100,7 +100,7 @@ class SolicitudServiceImplTest {
 
     @Test
     void test4FindActiveRecipesWithDetailsRaw() throws Exception {
-        // row: [0]=idReceta, [1]=nombreReceta, [2]=detallesJson, [3]=idSemana, [4]=idAsignatura
+        // row: [0]=idPedidoSemanaBodega, [1]=nombrePedidoSemanaBodega, [2]=detallesJson, [3]=idSemana, [4]=idAsignatura
         Object[] row = new Object[5];
         row[0] = 1;
         row[1] = "Pasta Carbonara";
@@ -121,7 +121,7 @@ class SolicitudServiceImplTest {
 
     @Test
     void test5FindSolicitationsPerWeekRaw() throws Exception {
-        // row: [0]=fechaSolicitada, [1]=nombreReceta, [2]=idSolicitud, [3]=idReceta,
+        // row: [0]=fechaSolicitada, [1]=nombrePedidoSemanaBodega, [2]=idSolicitud, [3]=idPedidoSemanaBodega,
         //      [4]=idReservaSala, [5]=estadoSolicitud, [6]=observaciones,
         //      [7]=productos_solicitados (json), [8]=asignatura_detalle (json), [9]=motivoRechazo
         Object[] row = new Object[10];
@@ -201,7 +201,7 @@ class SolicitudServiceImplTest {
 
     @Test
     void test8ObtenerDashboard() throws Exception {
-        // row Consulta A: [0]=idSolicitud, [1]=fechaSolicitada, [2]=nombreReceta,
+        // row Consulta A: [0]=idSolicitud, [1]=fechaSolicitada, [2]=nombrePedidoSemanaBodega,
         //                 [3]=observaciones, [4]=jsonAsignaturaDetalle
         Object[] row = new Object[5];
         row[0] = 1;

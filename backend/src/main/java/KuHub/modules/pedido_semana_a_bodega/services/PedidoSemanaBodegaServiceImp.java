@@ -44,7 +44,7 @@ public class PedidoSemanaBodegaServiceImp implements PedidoSemanaBodegaService{
 
     /**Repositories*/
     @Autowired
-    private PedidoSemanaBodegaRepository recetaRepository;
+    private PedidoSemanaBodegaRepository pedidoSemanaBodegaRepository;
 
     @Autowired
     private DetallePedidoSemanaBodegaRepository detallePedidoSemanaBodegaRepository;
@@ -66,22 +66,22 @@ public class PedidoSemanaBodegaServiceImp implements PedidoSemanaBodegaService{
     @Autowired
     private ObjectMapper objectMapper;
 
-    /** Busca una receta por ID y lanza excepción si no existe. */
+    /** Busca una pedidoSemanaBodega por ID y lanza excepción si no existe. */
     @Transactional(readOnly = true)
     @Override
     public PedidoSemanaBodega findById(Integer id) {
-        return recetaRepository.findById(id).orElseThrow(
-                ()-> new PedidoSemanaBodegaException("No existe la receta con el id " + id, HttpStatus.NOT_FOUND));
+        return pedidoSemanaBodegaRepository.findById(id).orElseThrow(
+                ()-> new PedidoSemanaBodegaException("No existe la pedidoSemanaBodega con el id " + id, HttpStatus.NOT_FOUND));
     }
 
-    /** Retorna el conteo total de recetas agrupado por estado. */
+    /** Retorna el conteo total de pedidoSemanaBodegas agrupado por estado. */
     @Transactional(readOnly = true)
     @Override
     public CountPedidoSemanaBodegaAndStatusView countRecipesAndStatus() {
-        return recetaRepository.countRecipesAndStatus();
+        return pedidoSemanaBodegaRepository.countRecipesAndStatus();
     }
 
-    /** Lista todas las recetas activas paginadas con sus detalles e ingredientes, con soporte de filtro por semana, asignatura y/o estado. */
+    /** Lista todas las pedidoSemanaBodegas activas paginadas con sus detalles e ingredientes, con soporte de filtro por semana, asignatura y/o estado. */
     @Transactional(readOnly = true)
     @Override
     public PedidoSemanaBodegasPage findAllRecipesPaginated(Integer pageRequested, Integer idSemana, Integer idAsignatura, String estadoPedido) {
@@ -90,29 +90,29 @@ public class PedidoSemanaBodegaServiceImp implements PedidoSemanaBodegaService{
         List<PedidoSemanaBodegaWithDetailsView> rows;
 
         if (idAsignatura != null && idSemana != null) {
-            totalRecords = recetaRepository.countByActivoTrueAndIdSemanaAndIdAsignatura(idSemana, idAsignatura, estado);
+            totalRecords = pedidoSemanaBodegaRepository.countByActivoTrueAndIdSemanaAndIdAsignatura(idSemana, idAsignatura, estado);
             PaginationUtils.PagingResult paging = PaginationUtils.buildPaging(pageRequested, totalRecords);
-            rows = recetaRepository.findAllWithDetailsPagingByIdSemanaAndIdAsignatura(idSemana, idAsignatura, estado, paging.limit(), paging.offset());
+            rows = pedidoSemanaBodegaRepository.findAllWithDetailsPagingByIdSemanaAndIdAsignatura(idSemana, idAsignatura, estado, paging.limit(), paging.offset());
             return PedidoSemanaBodegasPage.of(rows, paging, objectMapper);
         } else if (idAsignatura != null) {
-            totalRecords = recetaRepository.countByActivoTrueAndIdAsignatura(idAsignatura, estado);
+            totalRecords = pedidoSemanaBodegaRepository.countByActivoTrueAndIdAsignatura(idAsignatura, estado);
             PaginationUtils.PagingResult paging = PaginationUtils.buildPaging(pageRequested, totalRecords);
-            rows = recetaRepository.findAllWithDetailsPagingByIdAsignatura(idAsignatura, estado, paging.limit(), paging.offset());
+            rows = pedidoSemanaBodegaRepository.findAllWithDetailsPagingByIdAsignatura(idAsignatura, estado, paging.limit(), paging.offset());
             return PedidoSemanaBodegasPage.of(rows, paging, objectMapper);
         } else if (idSemana != null) {
-            totalRecords = recetaRepository.countByActivoTrueAndIdSemana(idSemana, estado);
+            totalRecords = pedidoSemanaBodegaRepository.countByActivoTrueAndIdSemana(idSemana, estado);
             PaginationUtils.PagingResult paging = PaginationUtils.buildPaging(pageRequested, totalRecords);
-            rows = recetaRepository.findAllWithDetailsPagingByIdSemana(idSemana, estado, paging.limit(), paging.offset());
+            rows = pedidoSemanaBodegaRepository.findAllWithDetailsPagingByIdSemana(idSemana, estado, paging.limit(), paging.offset());
             return PedidoSemanaBodegasPage.of(rows, paging, objectMapper);
         } else {
-            totalRecords = recetaRepository.countByActivoTrue(estado);
+            totalRecords = pedidoSemanaBodegaRepository.countByActivoTrue(estado);
             PaginationUtils.PagingResult paging = PaginationUtils.buildPaging(pageRequested, totalRecords);
-            rows = recetaRepository.findAllWithDetailsPaging(estado, paging.limit(), paging.offset());
+            rows = pedidoSemanaBodegaRepository.findAllWithDetailsPaging(estado, paging.limit(), paging.offset());
             return PedidoSemanaBodegasPage.of(rows, paging, objectMapper);
         }
     }
 
-    /** Lista recetas paginadas filtradas por nombre o descripción, con soporte de filtro por semana, asignatura y/o estado. */
+    /** Lista pedidoSemanaBodegas paginadas filtradas por nombre o descripción, con soporte de filtro por semana, asignatura y/o estado. */
     @Transactional(readOnly = true)
     @Override
     public PedidoSemanaBodegasPage findAllWithDetailsAndSearchPaging(SearchPedidoSemanaBodegaDTO searchDto) {
@@ -126,24 +126,24 @@ public class PedidoSemanaBodegaServiceImp implements PedidoSemanaBodegaService{
         List<PedidoSemanaBodegaWithDetailsView> rows;
 
         if (idAsignatura != null && idSemana != null) {
-            totalRecords = recetaRepository.countWithSearchAndIdSemanaAndIdAsignatura(term, idSemana, idAsignatura, estado);
+            totalRecords = pedidoSemanaBodegaRepository.countWithSearchAndIdSemanaAndIdAsignatura(term, idSemana, idAsignatura, estado);
             PaginationUtils.PagingResult paging = PaginationUtils.buildPaging(page, totalRecords);
-            rows = recetaRepository.findAllWithDetailsAndSearchByIdSemanaAndIdAsignatura(term, idSemana, idAsignatura, estado, paging.limit(), paging.offset());
+            rows = pedidoSemanaBodegaRepository.findAllWithDetailsAndSearchByIdSemanaAndIdAsignatura(term, idSemana, idAsignatura, estado, paging.limit(), paging.offset());
             return PedidoSemanaBodegasPage.of(rows, paging, objectMapper);
         } else if (idAsignatura != null) {
-            totalRecords = recetaRepository.countWithSearchAndIdAsignatura(term, idAsignatura, estado);
+            totalRecords = pedidoSemanaBodegaRepository.countWithSearchAndIdAsignatura(term, idAsignatura, estado);
             PaginationUtils.PagingResult paging = PaginationUtils.buildPaging(page, totalRecords);
-            rows = recetaRepository.findAllWithDetailsAndSearchByIdAsignatura(term, idAsignatura, estado, paging.limit(), paging.offset());
+            rows = pedidoSemanaBodegaRepository.findAllWithDetailsAndSearchByIdAsignatura(term, idAsignatura, estado, paging.limit(), paging.offset());
             return PedidoSemanaBodegasPage.of(rows, paging, objectMapper);
         } else if (idSemana != null) {
-            totalRecords = recetaRepository.countWithSearchAndIdSemana(term, idSemana, estado);
+            totalRecords = pedidoSemanaBodegaRepository.countWithSearchAndIdSemana(term, idSemana, estado);
             PaginationUtils.PagingResult paging = PaginationUtils.buildPaging(page, totalRecords);
-            rows = recetaRepository.findAllWithDetailsAndSearchByIdSemana(term, idSemana, estado, paging.limit(), paging.offset());
+            rows = pedidoSemanaBodegaRepository.findAllWithDetailsAndSearchByIdSemana(term, idSemana, estado, paging.limit(), paging.offset());
             return PedidoSemanaBodegasPage.of(rows, paging, objectMapper);
         } else {
-            totalRecords = recetaRepository.countWithSearch(term, estado);
+            totalRecords = pedidoSemanaBodegaRepository.countWithSearch(term, estado);
             PaginationUtils.PagingResult paging = PaginationUtils.buildPaging(page, totalRecords);
-            rows = recetaRepository.findAllWithDetailsAndSearch(term, estado, paging.limit(), paging.offset());
+            rows = pedidoSemanaBodegaRepository.findAllWithDetailsAndSearch(term, estado, paging.limit(), paging.offset());
             return PedidoSemanaBodegasPage.of(rows, paging, objectMapper);
         }
     }
@@ -161,24 +161,24 @@ public class PedidoSemanaBodegaServiceImp implements PedidoSemanaBodegaService{
     }
 
 
-    /** Crea una receta con sus detalles de ingredientes, consolidando duplicados sumando cantidades. */
+    /** Crea una pedidoSemanaBodega con sus detalles de ingredientes, consolidando duplicados sumando cantidades. */
     @Transactional
     @Override
     public boolean saveRecipeWithDetails(PedidoSemanaBodegaWithDetailsCreateDTO request) {
-        String nombreReceta = StringUtils.capitalizarPalabras(request.getNombrePedido());
+        String nombrePedidoSemanaBodega = StringUtils.capitalizarPalabras(request.getNombrePedido());
 
-        if (recetaRepository.existsByNombrePedidoAndActivoTrue(nombreReceta)) {
-            throw new PedidoSemanaBodegaException("Ya existe una receta activa con el nombre: " + nombreReceta,
+        if (pedidoSemanaBodegaRepository.existsByNombrePedidoAndActivoTrue(nombrePedidoSemanaBodega)) {
+            throw new PedidoSemanaBodegaException("Ya existe una pedidoSemanaBodega activa con el nombre: " + nombrePedidoSemanaBodega,
                     HttpStatus.CONFLICT);
         }
 
-        PedidoSemanaBodega newReceta = new PedidoSemanaBodega();
-        newReceta.setNombrePedido(nombreReceta);
+        PedidoSemanaBodega newPedidoSemanaBodega = new PedidoSemanaBodega();
+        newPedidoSemanaBodega.setNombrePedido(nombrePedidoSemanaBodega);
         String key = StringUtils.normalizeToEnumKey(request.getEstadoPedido());
         PedidoSemanaBodega.EstadoPedidoSemana estadoEnum = PedidoSemanaBodega.EstadoPedidoSemana.valueOf(key);
-        newReceta.setEstadoPedido(estadoEnum);
+        newPedidoSemanaBodega.setEstadoPedido(estadoEnum);
 
-        newReceta.setDescripcionPedido((request.getDescripcionPedido() == null || request.getDescripcionPedido().isBlank())
+        newPedidoSemanaBodega.setDescripcionPedido((request.getDescripcionPedido() == null || request.getDescripcionPedido().isBlank())
                 ? null : StringUtils.normalizeSpaces(request.getDescripcionPedido()));
 
         // Validar que si viene idSemana, existe en la BD
@@ -192,7 +192,7 @@ public class PedidoSemanaBodegaServiceImp implements PedidoSemanaBodegaService{
             }
         }
 
-        newReceta.setIdSemana(request.getIdSemana());
+        newPedidoSemanaBodega.setIdSemana(request.getIdSemana());
 
         if (request.getIdAsignatura() != null) {
             boolean asignaturaExists = asignaturaRepository.existsByIdAsignaturaAndActivoTrue(request.getIdAsignatura());
@@ -203,9 +203,9 @@ public class PedidoSemanaBodegaServiceImp implements PedidoSemanaBodegaService{
                 );
             }
         }
-        newReceta.setIdAsignatura(request.getIdAsignatura());
+        newPedidoSemanaBodega.setIdAsignatura(request.getIdAsignatura());
 
-        PedidoSemanaBodega recetaGuardada = recetaRepository.save(newReceta);
+        PedidoSemanaBodega pedidoSemanaBodegaGuardada = pedidoSemanaBodegaRepository.save(newPedidoSemanaBodega);
 
         // Usar clase interna para mantener cantidad y observación
         class ItemConsolidado {
@@ -240,7 +240,7 @@ public class PedidoSemanaBodegaServiceImp implements PedidoSemanaBodegaService{
             DetallePedidoSemanaBodega detalle = new DetallePedidoSemanaBodega();
 
             // Asociamos usando el objeto guardado (para el ID)
-            detalle.setPedidoSemanaBodega(recetaGuardada);
+            detalle.setPedidoSemanaBodega(pedidoSemanaBodegaGuardada);
 
             // Usamos setProductoById para evitar un SELECT innecesario del objeto Producto
             detalle.setProductoById(idProducto);
@@ -258,34 +258,34 @@ public class PedidoSemanaBodegaServiceImp implements PedidoSemanaBodegaService{
         return true;
     }
 
-    /** Cambia el estado de la receta entre ACTIVO e INACTIVO directamente en BD sin cargar el objeto. */
+    /** Cambia el estado de la pedidoSemanaBodega entre ACTIVO e INACTIVO directamente en BD sin cargar el objeto. */
     @Transactional
     @Override
-    public boolean changeStatus(Integer idReceta) {
-        int rowsAffected = recetaRepository.toggleRecipeStatus(idReceta);
+    public boolean changeStatus(Integer idPedidoSemanaBodega) {
+        int rowsAffected = pedidoSemanaBodegaRepository.toggleRecipeStatus(idPedidoSemanaBodega);
         if (rowsAffected == 0) {
             throw new PedidoSemanaBodegaException(
-                    "No se pudo cambiar el estado: La receta con ID " + idReceta + " no existe.",
+                    "No se pudo cambiar el estado: La pedidoSemanaBodega con ID " + idPedidoSemanaBodega + " no existe.",
                     HttpStatus.NOT_FOUND
             );
         }
         return rowsAffected > 0;
     }
 
-    /** Actualiza la receta y sincroniza sus detalles procesando eliminaciones, modificaciones y nuevos ingredientes. */
+    /** Actualiza la pedidoSemanaBodega y sincroniza sus detalles procesando eliminaciones, modificaciones y nuevos ingredientes. */
     @Transactional()
     @Override
     public boolean updateRecipeWithDetails (PedidoSemanaBodegaWithDetailsUpdateDTO request) {
-        /**Validar existencia de la receta obtenendo el objeto*/
+        /**Validar existencia de la pedidoSemanaBodega obtenendo el objeto*/
         PedidoSemanaBodega oldRecipe = findById(request.getIdPedidoSemanaBodega());
         /**Parsear String y validar cambios*/
-        String nombreReceta = StringUtils.capitalizarPalabras(request.getNombrePedido());
-        if (!nombreReceta.equals(request.getNombrePedido())
-                && recetaRepository.existsByNombrePedidoAndActivoTrue(nombreReceta)) {
-            throw new PedidoSemanaBodegaException("Ya existe una receta con el nombre : " + nombreReceta
+        String nombrePedidoSemanaBodega = StringUtils.capitalizarPalabras(request.getNombrePedido());
+        if (!nombrePedidoSemanaBodega.equals(request.getNombrePedido())
+                && pedidoSemanaBodegaRepository.existsByNombrePedidoAndActivoTrue(nombrePedidoSemanaBodega)) {
+            throw new PedidoSemanaBodegaException("Ya existe una pedidoSemanaBodega con el nombre : " + nombrePedidoSemanaBodega
                     , HttpStatus.CONFLICT);
         } else {
-            oldRecipe.setNombrePedido(nombreReceta);
+            oldRecipe.setNombrePedido(nombrePedidoSemanaBodega);
         }
         /**Parsear String y validar cambios*/
         String descripcion = (request.getDescripcionPedido() != null)
@@ -332,12 +332,12 @@ public class PedidoSemanaBodegaServiceImp implements PedidoSemanaBodegaService{
         }
 
         /**Update Recipe Head*/
-        recetaRepository.save(oldRecipe);
+        pedidoSemanaBodegaRepository.save(oldRecipe);
 
-        /**Obtener detalles de la receta*/
+        /**Obtener detalles de la pedidoSemanaBodega*/
         List<DetailsByUpdateView> rows = detallePedidoSemanaBodegaRepository.findDetailsForUpdate(request.getIdPedidoSemanaBodega());
         if (rows.isEmpty()){
-            throw new PedidoSemanaBodegaException("La receta no tiene detalles anteriores, error al crear una receta!"
+            throw new PedidoSemanaBodegaException("La pedidoSemanaBodega no tiene detalles anteriores, error al crear una pedidoSemanaBodega!"
             ,HttpStatus.NOT_FOUND);
         }
 
@@ -369,13 +369,13 @@ public class PedidoSemanaBodegaServiceImp implements PedidoSemanaBodegaService{
         return true;
     }
 
-    /** Realiza el borrado lógico de la receta desactivándola directamente en BD. */
+    /** Realiza el borrado lógico de la pedidoSemanaBodega desactivándola directamente en BD. */
     @Transactional
     @Override
-    public boolean softDeleteRecipeWithDetails(Integer idReceta) {
-        int rowsAffected = recetaRepository.softDeleteRecipeById(idReceta);
+    public boolean softDeleteRecipeWithDetails(Integer idPedidoSemanaBodega) {
+        int rowsAffected = pedidoSemanaBodegaRepository.softDeleteRecipeById(idPedidoSemanaBodega);
         if (rowsAffected > 0) {
-            log.info("🚫 PedidoSemanaBodega ID {} desactivada exitosamente.", idReceta);
+            log.info("🚫 PedidoSemanaBodega ID {} desactivada exitosamente.", idPedidoSemanaBodega);
             return true;
         }
         return false;
@@ -385,7 +385,7 @@ public class PedidoSemanaBodegaServiceImp implements PedidoSemanaBodegaService{
     @Transactional(readOnly = true)
     @Override
     public List<AsignaturaActivaView> obtenerAsignaturasActivas() {
-        return recetaRepository.findAllAsignaturasActivas();
+        return pedidoSemanaBodegaRepository.findAllAsignaturasActivas();
     }
 
     /** Parsea un archivo Excel (.xlsx/.xlsm) leyendo filas 12-80, cruza nombres de productos con BD
@@ -540,46 +540,46 @@ public class PedidoSemanaBodegaServiceImp implements PedidoSemanaBodegaService{
         return new ImportarExcelResultado(resultados, (int) totalOk, (int) totalNoEncontrados, numeroSemanaExcel, preparaciones);
     }
 
-    /** Procesa y elimina los ingredientes desmarcados en el frontend, validando que pertenezcan a la receta. */
-    private int processDeletions(Integer idReceta, List<Integer> idsToDelete, Map<Integer, DetailsByUpdateRec> currentMap) {
+    /** Procesa y elimina los ingredientes desmarcados en el frontend, validando que pertenezcan a la pedidoSemanaBodega. */
+    private int processDeletions(Integer idPedidoSemanaBodega, List<Integer> idsToDelete, Map<Integer, DetailsByUpdateRec> currentMap) {
         if (idsToDelete == null || idsToDelete.isEmpty()) {
             return 0;
         }
 
         for (Integer idProd : idsToDelete) {
             if (!currentMap.containsKey(idProd)) {
-                throw new PedidoSemanaBodegaException("El producto con ID " + idProd + " no pertenece a esta receta.",
+                throw new PedidoSemanaBodegaException("El producto con ID " + idProd + " no pertenece a esta pedidoSemanaBodega.",
                         HttpStatus.BAD_REQUEST);
             }
         }
 
-        int rowsDeleted = detallePedidoSemanaBodegaRepository.deleteByRecetaAndProductoIds(idReceta, idsToDelete);
+        int rowsDeleted = detallePedidoSemanaBodegaRepository.deleteByPedidoSemanaBodegaAndProductoIds(idPedidoSemanaBodega, idsToDelete);
 
         /***/
         if (rowsDeleted > 0) {
             idsToDelete.forEach(currentMap::remove);
-            log.info("🗑️ Se eliminaron {} ingredientes de la receta ID {}", rowsDeleted, idReceta);
+            log.info("🗑️ Se eliminaron {} ingredientes de la pedidoSemanaBodega ID {}", rowsDeleted, idPedidoSemanaBodega);
         }
 
         return rowsDeleted;
     }
 
     /** Actualiza las cantidades y observaciones de ingredientes modificados, solo si el valor cambió realmente. */
-    private int processUpdates(Integer idReceta, List<PedidoSemanaBodegaItemDTO> itemsToUpdate, Map<Integer, DetailsByUpdateRec> currentMap) {
+    private int processUpdates(Integer idPedidoSemanaBodega, List<PedidoSemanaBodegaItemDTO> itemsToUpdate, Map<Integer, DetailsByUpdateRec> currentMap) {
         if (itemsToUpdate == null || itemsToUpdate.isEmpty()) {
             return 0;
         }
 
         int totalUpdated = 0;
         for (PedidoSemanaBodegaItemDTO item : itemsToUpdate) {
-            // Validación: Solo actualizamos si el producto existe actualmente en la receta
+            // Validación: Solo actualizamos si el producto existe actualmente en la pedidoSemanaBodega
             if (currentMap.containsKey(item.getIdProducto())) {
                 DetailsByUpdateRec current = currentMap.get(item.getIdProducto());
 
                 // Solo ejecutamos el SQL si la cantidad es realmente diferente a la actual en la DB
                 if (current.cantidad().compareTo(item.getCantUnidadMedida()) != 0) {
                     totalUpdated += detallePedidoSemanaBodegaRepository.updateQuantityByRecipeAndProduct(
-                            idReceta,
+                            idPedidoSemanaBodega,
                             item.getIdProducto(),
                             item.getCantUnidadMedida()
                     );
@@ -589,14 +589,14 @@ public class PedidoSemanaBodegaServiceImp implements PedidoSemanaBodegaService{
                 if (item.getObservacion() != null && !item.getObservacion().isBlank()) {
                     String observacionNormalizada = StringUtils.normalizeSpaces(item.getObservacion());
                     totalUpdated += detallePedidoSemanaBodegaRepository.updateObservacionByRecipeAndProduct(
-                            idReceta,
+                            idPedidoSemanaBodega,
                             item.getIdProducto(),
                             observacionNormalizada
                     );
                 }
             } else {
                 // Seguridad: Si el front intenta actualizar algo que no existe, lanzamos error
-                throw new PedidoSemanaBodegaException("El producto ID " + item.getIdProducto() + " no existe en esta receta para ser actualizado.",
+                throw new PedidoSemanaBodegaException("El producto ID " + item.getIdProducto() + " no existe en esta pedidoSemanaBodega para ser actualizado.",
                         HttpStatus.BAD_REQUEST);
             }
         }
@@ -608,8 +608,8 @@ public class PedidoSemanaBodegaServiceImp implements PedidoSemanaBodegaService{
         return totalUpdated;
     }
 
-    /** Agrega nuevos ingredientes a la receta, validando que no existan previamente. */
-    private int processNewItems(Integer idReceta, List<PedidoSemanaBodegaItemDTO> newItems, Map<Integer, DetailsByUpdateRec> currentMap) {
+    /** Agrega nuevos ingredientes a la pedidoSemanaBodega, validando que no existan previamente. */
+    private int processNewItems(Integer idPedidoSemanaBodega, List<PedidoSemanaBodegaItemDTO> newItems, Map<Integer, DetailsByUpdateRec> currentMap) {
         if (newItems == null || newItems.isEmpty()) {
             return 0;
         }
@@ -618,12 +618,12 @@ public class PedidoSemanaBodegaServiceImp implements PedidoSemanaBodegaService{
 
         for (PedidoSemanaBodegaItemDTO item : newItems) {
             if (currentMap.containsKey(item.getIdProducto())) {
-                throw new PedidoSemanaBodegaException("El producto ID " + item.getIdProducto() + " ya existe en la receta. Use la lista de actualización.",
+                throw new PedidoSemanaBodegaException("El producto ID " + item.getIdProducto() + " ya existe en la pedidoSemanaBodega. Use la lista de actualización.",
                         HttpStatus.BAD_REQUEST);
             }
 
             DetallePedidoSemanaBodega nuevoDetalle = new DetallePedidoSemanaBodega();
-            nuevoDetalle.setPedidoSemanaBodegaById(idReceta);
+            nuevoDetalle.setPedidoSemanaBodegaById(idPedidoSemanaBodega);
             nuevoDetalle.setProductoById(item.getIdProducto());
             nuevoDetalle.setCantProducto(item.getCantUnidadMedida());
 
@@ -638,7 +638,7 @@ public class PedidoSemanaBodegaServiceImp implements PedidoSemanaBodegaService{
 
         if (!entitiesToSave.isEmpty()) {
             List<DetallePedidoSemanaBodega> saved = detallePedidoSemanaBodegaRepository.saveAll(entitiesToSave);
-            log.info("➕ Se agregaron {} nuevos ingredientes a la receta ID {}", saved.size(), idReceta);
+            log.info("➕ Se agregaron {} nuevos ingredientes a la pedidoSemanaBodega ID {}", saved.size(), idPedidoSemanaBodega);
             return saved.size();
         }
 

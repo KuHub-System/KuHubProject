@@ -59,14 +59,14 @@ export interface IDetallePedidoSemanaBodega {
   observacion?: string;
 }
 export interface IPedidoSemanaBodegaSolicitud {
-  idReceta: number;
-  nombreReceta: string;
+  idPedidoSemanaBodega: number;
+  nombrePedidoSemanaBodega: string;
   idSemana?: number;
   idAsignatura?: number;
   detalles: IDetallePedidoSemanaBodega[];
 }
 
-export const obtenerRecetasSolicitudService = async (): Promise<IPedidoSemanaBodegaSolicitud[]> => {
+export const obtenerPedidoSemanaBodegasSolicitudService = async (): Promise<IPedidoSemanaBodegaSolicitud[]> => {
   const response = await api.get<IPedidoSemanaBodegaSolicitud[]>('/solicitud/recipes-with-details-by-solicitation');
   return response.data;
 };
@@ -108,7 +108,7 @@ export interface ISectionCreateSolicitationDTO {
   horarios: IScheduleSolicitationDTO[];
 }
 export interface IModifiedDetailSolicitationDTO {
-  idDetalleReceta: number;
+  idDetallePedidoSemana: number;
   cantProducto: number;
   observacion?: string;
 }
@@ -125,7 +125,7 @@ export interface IDeltasSolicitationDTO {
 export interface IMassiveSolicitationDTO {
   idAsignatura: number;
   idSemana: number;
-  idReceta?: number;
+  idPedidoSemanaBodega?: number;
   observacion?: string;
   secciones: ISectionCreateSolicitationDTO[];
   deltas?: IDeltasSolicitationDTO;
@@ -166,8 +166,8 @@ export interface IProductoSolicitudResponse {
 export interface ISolicitudPorSemanaResponse {
   idSolicitud: number;
   idReservaSala: number;
-  idReceta: number;
-  nombreReceta: string;
+  idPedidoSemanaBodega: number;
+  nombrePedidoSemanaBodega: string;
   fechaSolicitada: string;    // "YYYY-MM-DD"
   estadoSolicitud: string;    // "PENDIENTE" | "ACEPTADA" | "RECHAZADA" | "PROCESADO" | "EN_PEDIDO"
   motivoRechazo?: string;
@@ -268,7 +268,7 @@ export interface IAsignaturaConsolidacionDetalle {
 export interface ISolicitudConsolidacionItem {
   idSolicitud: number;
   fechaSolicitada: string;
-  nombreReceta: string;
+  nombrePedidoSemanaBodega: string;
   observaciones?: string;
   asignaturaDetalle: IAsignaturaConsolidacionDetalle;
 }
@@ -348,7 +348,7 @@ export interface IDetallePorSolicitudCompleto {
   unidadAbreviada: string;
   observacion?: string | null;
   alumnos: number;
-  nombreReceta: string;
+  nombrePedidoSemanaBodega: string;
   nombreSala: string;
   rangoHoras: string;           // "08:01-09:20"
 }
@@ -389,7 +389,7 @@ export interface ISolicitudVinculada {
   idSolicitud: number;
   fechaSolicitada: string;
   estadoSolicitud: string;
-  nombreReceta: string;
+  nombrePedidoSemanaBodega: string;
   observaciones?: string | null;
   seccion: ISeccionVinculada;
   cantProductos: number;
@@ -543,7 +543,7 @@ export interface ISolicitudEntrega {
   nombreAsignatura: string;
   nombreDocente: string;
   cantInscritos: number;
-  nombreReceta: string;
+  nombrePedidoSemanaBodega: string;
   observaciones: string | null;
   productos: IProductoEntrega[];
 }
@@ -649,8 +649,8 @@ export const crearSolicitudService = (data: ISolicitudCreacion): Promise<ISolici
           fecha: data.fecha,
           bloqueInicio: data.bloqueInicio,
           bloqueFin: data.bloqueFin,
-          recetaId: data.recetaId,
-          recetaNombre: data.recetaNombre,
+          pedidoSemanaBodegaId: data.pedidoSemanaBodegaId,
+          pedidoSemanaBodegaNombre: data.pedidoSemanaBodegaNombre,
           items: data.items.map(item => ({
             ...item,
             id: `${Date.now()}-${Math.random().toString(36).substring(2, 11)}`

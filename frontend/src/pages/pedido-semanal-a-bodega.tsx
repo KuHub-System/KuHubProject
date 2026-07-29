@@ -31,32 +31,32 @@ import { Icon } from '@iconify/react';
 import { motion } from 'framer-motion';
 import { useHistory } from 'react-router-dom';
 import { usePageTitle } from '../hooks/usePageTitle';
-import { useToast, useConfirm } from '../hooks/useToast';
+import { useToast, useConfirmDelete } from '../hooks/useToast';
 import { useAuth } from '../contexts/auth-context';
 import { usePermission } from '../contexts/permission-context';
 import { usePeriodoSemana } from '../contexts/periodo-semana-context';
 import { TableSkeleton } from '../components/SkeletonLoader';
 
 // IMPORTAR TIPOS Y SERVICIOS
-import { IPedidoSemanaBodega, IIngrediente, IPedidoSemanaBodegaWithDetailsUpdateDTO, IResultadoItemExcel, IImportarExcelResultado, IAsignatura } from '../types/pedido/receta.types';
+import { IPedidoSemanaBodega, IIngrediente, IPedidoSemanaBodegaWithDetailsUpdateDTO, IResultadoItemExcel, IImportarExcelResultado, IAsignatura } from '../types/pedido/pedidoSemanaBodega.types';
 import { parallelWithLimit } from '../utils/request-throttle';
 import {
-  obtenerRecetasPaginadasService,
-  crearRecetaService,
-  actualizarRecetaService,
-  cambiarEstadoRecetaService,
-  eliminarRecetaService,
-  crearRecetaConDetallesService,
-  actualizarRecetaConDetallesService,
-  obtenerRecetasCountService,
-  buscarRecetasPaginadasService,
-  softDeleteRecetaService,
+  obtenerPedidoSemanaBodegasPaginadasService,
+  crearPedidoSemanaBodegaService,
+  actualizarPedidoSemanaBodegaService,
+  cambiarEstadoPedidoSemanaBodegaService,
+  eliminarPedidoSemanaBodegaService,
+  crearPedidoSemanaBodegaConDetallesService,
+  actualizarPedidoSemanaBodegaConDetallesService,
+  obtenerPedidoSemanaBodegasCountService,
+  buscarPedidoSemanaBodegasPaginadasService,
+  softDeletePedidoSemanaBodegaService,
   importarExcelPedidoService,
   obtenerAsignaturasActivasService
 } from '../services/pedido/pedido-semanal-bodega-service';
-import { obtenerProductosParaRecetaService } from '../services/inventario/producto-service';
-import { IProductoRecetaSelection } from '../types/inventario/producto.types';
-import { IPedidoSemanaBodegaPaginedDTO, IDetallePedidoSemanaBodegaDTO, IPaginationMeta, IPedidoSemanaBodegaCountResponse } from '../types/pedido/receta.types';
+import { obtenerProductosParaPedidoSemanaBodegaService } from '../services/inventario/producto-service';
+import { IProductoPedidoSemanaBodegaSelection } from '../types/inventario/producto.types';
+import { IPedidoSemanaBodegaPaginedDTO, IDetallePedidoSemanaBodegaDTO, IPaginationMeta, IPedidoSemanaBodegaCountResponse } from '../types/pedido/pedidoSemanaBodega.types';
 
 /**
  * Página de pedido semanal a bodega.
@@ -64,7 +64,7 @@ import { IPedidoSemanaBodegaPaginedDTO, IDetallePedidoSemanaBodegaDTO, IPaginati
 const PedidoSemanalABodegaPage: React.FC = () => {
   usePageTitle('Pedido Semanal a Bodega', 'Gestiona los pedidos semanales para la bodega', 'lucide:package-open');
   const toast = useToast();
-  const confirm = useConfirm();
+  const confirmDelete = useConfirmDelete();
   const history = useHistory();
   const { user } = useAuth();
   // Permisos GRANULARES por acción (cada ícono/botón es su propio módulo en la matriz).
@@ -83,9 +83,9 @@ const PedidoSemanalABodegaPage: React.FC = () => {
   const esSoloLectura = !(rec_Crear || rec_Editar || rec_Inactivar || rec_Eliminar);
   const isAdmin = user?.rol === 'Administrador';
 
-  const [recetas, setRecetas] = React.useState<IPedidoSemanaBodegaPaginedDTO[]>([]);
-  const [productos, setProductos] = React.useState<IProductoRecetaSelection[]>([]);
-  const [recetaSeleccionada, setRecetaSeleccionada] = React.useState<IPedidoSemanaBodegaPaginedDTO | null>(null);
+  const [pedidoSemanaBodegas, setPedidoSemanaBodegas] = React.useState<IPedidoSemanaBodegaPaginedDTO[]>([]);
+  const [productos, setProductos] = React.useState<IProductoPedidoSemanaBodegaSelection[]>([]);
+  const [pedidoSemanaBodegaSeleccionada, setPedidoSemanaBodegaSeleccionada] = React.useState<IPedidoSemanaBodegaPaginedDTO | null>(null);
   const [modalMode, setModalMode] = React.useState<'crear' | 'editar' | 'ver'>('crear');
   const [searchTerm, setSearchTerm] = React.useState<string>('');
 
@@ -107,7 +107,7 @@ const PedidoSemanalABodegaPage: React.FC = () => {
   const isLoadingMoreRef = React.useRef<boolean>(false);
   const [isLoadingMore, setIsLoadingMore] = React.useState<boolean>(false);
   const tableScrollRef = React.useRef<HTMLDivElement>(null);
-  const [recetaCounts, setRecetaCounts] = React.useState<IPedidoSemanaBodegaCountResponse>({
+  const [pedidoSemanaBodegaCounts, setPedidoSemanaBodegaCounts] = React.useState<IPedidoSemanaBodegaCountResponse>({
     totalPedidos: 0,
     total_activos: 0,
     total_inactivos: 0
@@ -139,7 +139,7 @@ const PedidoSemanalABodegaPage: React.FC = () => {
     }
   }, [contextPeriodo, contextSemanas, defaultSemanaId]);
 
-  // Cargar recetas iniciales y productos (esperar a que contexto termine de cargar)
+  // Cargar pedidoSemanaBodegas iniciales y productos (esperar a que contexto termine de cargar)
   React.useEffect(() => {
     if (!isLoadingSemanas) {
       cargarDatosIniciales();
@@ -165,10 +165,10 @@ const PedidoSemanalABodegaPage: React.FC = () => {
       const idAsignaturaFilter = filterIdAsignatura !== 'todas' ? Number(filterIdAsignatura) : undefined;
       const estadoFilter = filterEstado === 'activos' ? 'ACTIVO' : filterEstado === 'inactivos' ? 'INACTIVO' : undefined;
 
-      // Cargar recetas primero (datos críticos)
-      const resRecetas = await obtenerRecetasPaginadasService(1, idSemanaFilter, idAsignaturaFilter, estadoFilter);
-      setRecetas(resRecetas.content);
-      setTotalPages(resRecetas.paging.totalPages);
+      // Cargar pedidoSemanaBodegas primero (datos críticos)
+      const resPedidoSemanaBodegas = await obtenerPedidoSemanaBodegasPaginadasService(1, idSemanaFilter, idAsignaturaFilter, estadoFilter);
+      setPedidoSemanaBodegas(resPedidoSemanaBodegas.content);
+      setTotalPages(resPedidoSemanaBodegas.paging.totalPages);
       nextPageRef.current = 2;
 
       // Cargar datos secundarios con límite de concurrencia (máx 2 simultáneas)
@@ -176,15 +176,15 @@ const PedidoSemanalABodegaPage: React.FC = () => {
       const secondaryRequests = [
         async () => {
           if (productos.length === 0) {
-            const prods = await obtenerProductosParaRecetaService();
+            const prods = await obtenerProductosParaPedidoSemanaBodegaService();
             setProductos(prods);
             return prods;
           }
           return productos;
         },
         async () => {
-          const counts = await obtenerRecetasCountService();
-          setRecetaCounts(counts);
+          const counts = await obtenerPedidoSemanaBodegasCountService();
+          setPedidoSemanaBodegaCounts(counts);
           return counts;
         }
       ];
@@ -199,7 +199,7 @@ const PedidoSemanalABodegaPage: React.FC = () => {
     }
   };
 
-  const cargarMasRecetas = React.useCallback(async () => {
+  const cargarMasPedidoSemanaBodegas = React.useCallback(async () => {
     if (isLoadingMoreRef.current || nextPageRef.current > totalPages) return;
 
     try {
@@ -211,10 +211,10 @@ const PedidoSemanalABodegaPage: React.FC = () => {
       const estadoFilter = filterEstado === 'activos' ? 'ACTIVO' : filterEstado === 'inactivos' ? 'INACTIVO' : undefined;
 
       const data = searchTerm
-        ? await buscarRecetasPaginadasService(searchTerm, nextPageRef.current, idSemanaFilter, idAsignaturaFilter, estadoFilter)
-        : await obtenerRecetasPaginadasService(nextPageRef.current, idSemanaFilter, idAsignaturaFilter, estadoFilter);
+        ? await buscarPedidoSemanaBodegasPaginadasService(searchTerm, nextPageRef.current, idSemanaFilter, idAsignaturaFilter, estadoFilter)
+        : await obtenerPedidoSemanaBodegasPaginadasService(nextPageRef.current, idSemanaFilter, idAsignaturaFilter, estadoFilter);
 
-      setRecetas(prev => [...prev, ...data.content]);
+      setPedidoSemanaBodegas(prev => [...prev, ...data.content]);
       nextPageRef.current += 1;
     } catch (error) {
       toast.error('Error al cargar más pedidos semanales');
@@ -238,14 +238,14 @@ const PedidoSemanalABodegaPage: React.FC = () => {
 
       if (scrollTop + clientHeight > scrollHeight - 500) {
         if (nextPageRef.current <= totalPages) {
-          cargarMasRecetas();
+          cargarMasPedidoSemanaBodegas();
         }
       }
     };
 
     el.addEventListener('scroll', onScroll, { passive: true });
     return () => el.removeEventListener('scroll', onScroll);
-  }, [totalPages, searchTerm, cargarMasRecetas]);
+  }, [totalPages, searchTerm, cargarMasPedidoSemanaBodegas]);
 
   // Lógica de búsqueda con debounce desde el backend
   React.useEffect(() => {
@@ -260,8 +260,8 @@ const PedidoSemanalABodegaPage: React.FC = () => {
         const idSemanaFilter = filterIdSemana !== 'todas' ? Number(filterIdSemana) : undefined;
         const idAsignaturaFilter = filterIdAsignatura !== 'todas' ? Number(filterIdAsignatura) : undefined;
         const estadoFilter = filterEstado === 'activos' ? 'ACTIVO' : filterEstado === 'inactivos' ? 'INACTIVO' : undefined;
-        const res = await buscarRecetasPaginadasService(searchTerm, 1, idSemanaFilter, idAsignaturaFilter, estadoFilter);
-        setRecetas(res.content);
+        const res = await buscarPedidoSemanaBodegasPaginadasService(searchTerm, 1, idSemanaFilter, idAsignaturaFilter, estadoFilter);
+        setPedidoSemanaBodegas(res.content);
         setTotalPages(res.paging.totalPages);
         nextPageRef.current = 2;
       } catch (error) {
@@ -277,46 +277,46 @@ const PedidoSemanalABodegaPage: React.FC = () => {
   // El filtro de estado (todos/activos/inactivos) ahora se aplica en el backend
   // dentro de la consulta paginada, por lo que ya no se filtra en el cliente:
   // los inactivos que antes quedaban fuera de la paginación ahora sí se listan.
-  const recetasAMostrar = recetas;
+  const pedidoSemanaBodegasAMostrar = pedidoSemanaBodegas;
 
-  const handleNuevaReceta = () => {
+  const handleNuevaPedidoSemanaBodega = () => {
     setModalMode('crear');
-    setRecetaSeleccionada(null);
+    setPedidoSemanaBodegaSeleccionada(null);
     onOpen();
   };
 
-  const handleEditarReceta = (receta: IPedidoSemanaBodegaPaginedDTO | any) => {
+  const handleEditarPedidoSemanaBodega = (pedidoSemanaBodega: IPedidoSemanaBodegaPaginedDTO | any) => {
     setModalMode('editar');
-    setRecetaSeleccionada(receta);
+    setPedidoSemanaBodegaSeleccionada(pedidoSemanaBodega);
     onOpen();
   };
 
-  const handleVerReceta = (receta: IPedidoSemanaBodegaPaginedDTO | any) => {
+  const handleVerPedidoSemanaBodega = (pedidoSemanaBodega: IPedidoSemanaBodegaPaginedDTO | any) => {
     setModalMode('ver');
-    setRecetaSeleccionada(receta);
+    setPedidoSemanaBodegaSeleccionada(pedidoSemanaBodega);
     onOpen();
   };
 
-  const cambiarEstadoReceta = async (id: number | string, receta: IPedidoSemanaBodegaPaginedDTO) => {
+  const cambiarEstadoPedidoSemanaBodega = async (id: number | string, pedidoSemanaBodega: IPedidoSemanaBodegaPaginedDTO) => {
     try {
-      console.log(`🔄 Cambiando estado de receta ${id}`);
-      const success = await cambiarEstadoRecetaService(id.toString());
+      console.log(`🔄 Cambiando estado de pedidoSemanaBodega ${id}`);
+      const success = await cambiarEstadoPedidoSemanaBodegaService(id.toString());
 
       if (success) {
         // Actualizar el estado en la tabla sin recargar
-        const nuevoEstado = receta.estadoPedido === 'Activo' ? 'Inactivo' : 'Activo';
-        setRecetas(prevRecetas =>
-          prevRecetas.map(r =>
-            r.idPedidoSemanaBodega === receta.idPedidoSemanaBodega
+        const nuevoEstado = pedidoSemanaBodega.estadoPedido === 'Activo' ? 'Inactivo' : 'Activo';
+        setPedidoSemanaBodegas(prevPedidoSemanaBodegas =>
+          prevPedidoSemanaBodegas.map(r =>
+            r.idPedidoSemanaBodega === pedidoSemanaBodega.idPedidoSemanaBodega
               ? { ...r, estadoPedido: nuevoEstado as 'Activo' | 'Inactivo' }
               : r
           )
         );
 
         // Actualizar contadores
-        setRecetaCounts(prev => {
+        setPedidoSemanaBodegaCounts(prev => {
           const newCounts = { ...prev };
-          if (receta.estadoPedido === 'Activo') {
+          if (pedidoSemanaBodega.estadoPedido === 'Activo') {
             newCounts.total_activos--;
             newCounts.total_inactivos++;
           } else {
@@ -336,30 +336,30 @@ const PedidoSemanalABodegaPage: React.FC = () => {
     }
   };
 
-  const handleGuardarReceta = async (receta: any, updatePayload?: IPedidoSemanaBodegaWithDetailsUpdateDTO) => {
+  const handleGuardarPedidoSemanaBodega = async (pedidoSemanaBodega: any, updatePayload?: IPedidoSemanaBodegaWithDetailsUpdateDTO) => {
     try {
       if (modalMode === 'crear') {
         const createPayload = {
-          nombrePedido: receta.nombre,
-          descripcionPedido: receta.descripcion,
-          listaItems: (receta.ingredientes || []).map((ing: IIngrediente & { observacion?: string }) => ({
+          nombrePedido: pedidoSemanaBodega.nombre,
+          descripcionPedido: pedidoSemanaBodega.descripcion,
+          listaItems: (pedidoSemanaBodega.ingredientes || []).map((ing: IIngrediente & { observacion?: string }) => ({
             idProducto: parseInt(ing.productoId),
             cantUnidadMedida: ing.cantidad,
             observacion: ing.observacion || undefined
           })),
-          estadoPedido: receta.estado === 'Activo' || (receta.estado as any) === 'Activa' ? 'Activo' : 'Inactivo',
-          idSemana: receta.idSemana,
-          idAsignatura: receta.idAsignatura
+          estadoPedido: pedidoSemanaBodega.estado === 'Activo' || (pedidoSemanaBodega.estado as any) === 'Activa' ? 'Activo' : 'Inactivo',
+          idSemana: pedidoSemanaBodega.idSemana,
+          idAsignatura: pedidoSemanaBodega.idAsignatura
         };
 
         let success: boolean;
         try {
-          success = await crearRecetaConDetallesService(createPayload);
+          success = await crearPedidoSemanaBodegaConDetallesService(createPayload);
         } catch (err: any) {
           if (err.status === 422 && createPayload.idSemana) {
             // La semana seleccionada no es válida para el backend — crear sin semana asignada
             toast.warning('La semana seleccionada no pudo asignarse. Creando sin semana.');
-            success = await crearRecetaConDetallesService({ ...createPayload, idSemana: undefined });
+            success = await crearPedidoSemanaBodegaConDetallesService({ ...createPayload, idSemana: undefined });
           } else {
             throw err;
           }
@@ -371,7 +371,7 @@ const PedidoSemanalABodegaPage: React.FC = () => {
           toast.error('No se pudo crear la pedido semanal');
         }
       } else if (modalMode === 'editar' && updatePayload) {
-        const success = await actualizarRecetaConDetallesService(updatePayload);
+        const success = await actualizarPedidoSemanaBodegaConDetallesService(updatePayload);
         if (success) {
           toast.success('Pedido Semanal actualizada correctamente');
         } else {
@@ -380,38 +380,30 @@ const PedidoSemanalABodegaPage: React.FC = () => {
       }
       await cargarDatosIniciales();
     } catch (error: any) {
-      toast.error(error.message || 'Error al guardar la receta');
+      toast.error(error.message || 'Error al guardar la pedidoSemanaBodega');
       throw error;
     }
   };
 
-  const handleEliminarReceta = async (receta: IPedidoSemanaBodegaPaginedDTO | any) => {
+  const handleEliminarPedidoSemanaBodega = async (pedidoSemanaBodega: IPedidoSemanaBodegaPaginedDTO | any) => {
     if (!isAdmin) {
       toast.warning('Solo el rol Administrador puede eliminar pedidos semanales.');
       return;
     }
 
-    const confirmado = await confirm('', {
+    const confirmado = await confirmDelete({
       title: 'Eliminar pedido semanal',
-      subtitle: 'Esta acción es irreversible',
-      headerVariant: 'danger',
-      alertTitle: 'Atención',
-      alertMessage: `Eliminarás definitivamente la pedido semanal "${receta.nombrePedido}". Esta acción no se puede deshacer.`,
-      confirmText: 'Eliminar',
-      confirmColor: 'danger',
-      requireText: 'ELIMINAR',
-      requireTextLabel: undefined,
-      requireTextHelper: 'Esta acción es irreversible. Escribe ELIMINAR para confirmar.',
+      itemDescription: `el pedido semanal "${pedidoSemanaBodega.nombrePedido}"`,
     });
 
     if (!confirmado) return;
 
     try {
-      await softDeleteRecetaService(receta.idReceta);
+      await softDeletePedidoSemanaBodegaService(pedidoSemanaBodega.idPedidoSemanaBodega);
       toast.success('Pedido Semanal eliminada correctamente', { title: 'Pedido Semanal eliminada' });
       await cargarDatosIniciales();
     } catch (error: any) {
-      toast.error(error.message || 'Error al eliminar la receta');
+      toast.error(error.message || 'Error al eliminar la pedidoSemanaBodega');
     }
   };
 
@@ -448,7 +440,7 @@ const PedidoSemanalABodegaPage: React.FC = () => {
             <CardBody className="flex flex-row items-center justify-between py-2.5 px-3 gap-3">
               <div>
                 <p className="text-[11px] font-semibold text-default-500 uppercase tracking-wide">Total Formulaciones</p>
-                <p className="text-2xl font-bold text-secondary leading-tight">{recetaCounts.totalPedidos}</p>
+                <p className="text-2xl font-bold text-secondary leading-tight">{pedidoSemanaBodegaCounts.totalPedidos}</p>
               </div>
               <div className="w-9 h-9 rounded-lg flex items-center justify-center bg-primary-100 dark:bg-primary-900/30 text-primary shrink-0">
                 <Icon icon="lucide:package-open" width={18} />
@@ -463,7 +455,7 @@ const PedidoSemanalABodegaPage: React.FC = () => {
             <CardBody className="flex flex-row items-center justify-between py-2.5 px-3 gap-3">
               <div>
                 <p className="text-[11px] font-semibold text-default-500 uppercase tracking-wide">Activos</p>
-                <p className="text-2xl font-bold text-secondary leading-tight">{recetaCounts.total_activos}</p>
+                <p className="text-2xl font-bold text-secondary leading-tight">{pedidoSemanaBodegaCounts.total_activos}</p>
               </div>
               <div className="w-9 h-9 rounded-lg flex items-center justify-center bg-success-100 dark:bg-success-900/30 text-success shrink-0">
                 <Icon icon="lucide:check-circle" width={18} />
@@ -478,7 +470,7 @@ const PedidoSemanalABodegaPage: React.FC = () => {
             <CardBody className="flex flex-row items-center justify-between py-2.5 px-3 gap-3">
               <div>
                 <p className="text-[11px] font-semibold text-default-500 uppercase tracking-wide">Inactivos</p>
-                <p className="text-2xl font-bold text-secondary leading-tight">{recetaCounts.total_inactivos}</p>
+                <p className="text-2xl font-bold text-secondary leading-tight">{pedidoSemanaBodegaCounts.total_inactivos}</p>
               </div>
               <div className="w-9 h-9 rounded-lg flex items-center justify-center bg-danger-100 dark:bg-danger-900/30 text-danger shrink-0">
                 <Icon icon="lucide:x-circle" width={18} />
@@ -657,7 +649,7 @@ const PedidoSemanalABodegaPage: React.FC = () => {
                       size="md"
                       className="font-bold text-secondary shadow-sm"
                       startContent={<Icon icon="lucide:plus" width={18} />}
-                      onPress={handleNuevaReceta}
+                      onPress={handleNuevaPedidoSemanaBodega}
                     >
                       Nuevo Pedido Semanal
                     </Button>
@@ -712,45 +704,45 @@ const PedidoSemanalABodegaPage: React.FC = () => {
                   </div>
                 }
               >
-                {recetasAMostrar.map((receta) => (
+                {pedidoSemanaBodegasAMostrar.map((pedidoSemanaBodega) => (
                   <TableRow
-                    key={receta.idPedidoSemanaBodega}
+                    key={pedidoSemanaBodega.idPedidoSemanaBodega}
                     className="hover:bg-default-100 dark:hover:bg-default-100/50 transition-colors"
                     style={{ cursor: "url('data:image/svg+xml;utf8,<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"24\" height=\"24\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" strokeWidth=\"2\" strokeLinecap=\"round\" strokeLinejoin=\"round\"><path d=\"M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z\"/><circle cx=\"12\" cy=\"12\" r=\"3\"/></svg>') 12 12, pointer" }}
                     onClick={(e: React.MouseEvent<Element>) => {
                       // Prevenir que se abra si hace clic en un botón de los de Acciones
                       const target = e.target as HTMLElement;
                       if (!target.closest('button')) {
-                        handleVerReceta(receta);
+                        handleVerPedidoSemanaBodega(pedidoSemanaBodega);
                       }
                     }}
                   >
                     <TableCell className="text-center">
-                      <Tooltip content={receta.nombrePedido} delay={500} closeDelay={0}>
+                      <Tooltip content={pedidoSemanaBodega.nombrePedido} delay={500} closeDelay={0}>
                         <div className="flex justify-center w-full">
                           <p className="font-semibold text-secondary dark:text-foreground truncate text-center w-full">
-                            {receta.nombrePedido}
+                            {pedidoSemanaBodega.nombrePedido}
                           </p>
                         </div>
                       </Tooltip>
                     </TableCell>
                     <TableCell className="text-center">
-                      <Tooltip content={receta.descripcionPedido || '-'} delay={800} closeDelay={0} className="max-w-[400px]">
+                      <Tooltip content={pedidoSemanaBodega.descripcionPedido || '-'} delay={800} closeDelay={0} className="max-w-[400px]">
                         <div className="flex justify-center w-full">
                           <p className="text-sm text-default-500 text-center w-full">
-                            {receta.descripcionPedido && receta.descripcionPedido.length > 100
-                              ? `${receta.descripcionPedido.substring(0, 100)}...`
-                              : receta.descripcionPedido || '-'}
+                            {pedidoSemanaBodega.descripcionPedido && pedidoSemanaBodega.descripcionPedido.length > 100
+                              ? `${pedidoSemanaBodega.descripcionPedido.substring(0, 100)}...`
+                              : pedidoSemanaBodega.descripcionPedido || '-'}
                           </p>
                         </div>
                       </Tooltip>
                     </TableCell>
                     <TableCell className="text-center">
                       <Chip size="sm" variant="flat">
-                        {receta.detalles?.length || 0} producto{(receta.detalles?.length || 0) > 1 ? 's' : ''}
+                        {pedidoSemanaBodega.detalles?.length || 0} producto{(pedidoSemanaBodega.detalles?.length || 0) > 1 ? 's' : ''}
                       </Chip>
                     </TableCell>
-                    <TableCell className="text-center">{renderEstado(receta.estadoPedido)}</TableCell>
+                    <TableCell className="text-center">{renderEstado(pedidoSemanaBodega.estadoPedido)}</TableCell>
                     <TableCell>
                       <div className="flex justify-center gap-1">
                         {/* Editar: requiere escritura (canUpdate). Solo lectura → atenuado y no clickable. */}
@@ -761,7 +753,7 @@ const PedidoSemanalABodegaPage: React.FC = () => {
                               variant="light"
                               size="sm"
                               isDisabled={!rec_Editar}
-                              onPress={() => handleEditarReceta(receta)}
+                              onPress={() => handleEditarPedidoSemanaBodega(pedidoSemanaBodega)}
                               className={`z-10 ${rec_Editar ? 'text-default-400 hover:text-primary cursor-pointer' : 'text-default-300 opacity-40 cursor-not-allowed'}`}
                             >
                               <Icon icon="lucide:edit" width={18} />
@@ -770,18 +762,18 @@ const PedidoSemanalABodegaPage: React.FC = () => {
                         </Tooltip>
 
                         {/* Inactivar/Activar: requiere el permiso de Inactivar (módulo propio). */}
-                        <Tooltip content={!rec_Inactivar ? 'Sin permiso para inactivar' : (receta.estadoPedido === 'Activo' ? 'Inactivar pedido semanal' : 'Activar pedido semanal')} delay={0}>
+                        <Tooltip content={!rec_Inactivar ? 'Sin permiso para inactivar' : (pedidoSemanaBodega.estadoPedido === 'Activo' ? 'Inactivar pedido semanal' : 'Activar pedido semanal')} delay={0}>
                           <span className="inline-flex">
                             <Button
                               isIconOnly
                               variant="light"
                               size="sm"
                               isDisabled={!rec_Inactivar}
-                              onPress={() => cambiarEstadoReceta(receta.idPedidoSemanaBodega, receta)}
-                              className={`z-10 ${!rec_Inactivar ? 'text-default-300 opacity-40 cursor-not-allowed' : (receta.estadoPedido === 'Activo' ? 'text-default-400 hover:text-danger cursor-pointer' : 'text-default-400 hover:text-success cursor-pointer')}`}
+                              onPress={() => cambiarEstadoPedidoSemanaBodega(pedidoSemanaBodega.idPedidoSemanaBodega, pedidoSemanaBodega)}
+                              className={`z-10 ${!rec_Inactivar ? 'text-default-300 opacity-40 cursor-not-allowed' : (pedidoSemanaBodega.estadoPedido === 'Activo' ? 'text-default-400 hover:text-danger cursor-pointer' : 'text-default-400 hover:text-success cursor-pointer')}`}
                             >
                               <Icon
-                                icon={receta.estadoPedido === 'Activo' ? 'lucide:x-circle' : 'lucide:check-circle'}
+                                icon={pedidoSemanaBodega.estadoPedido === 'Activo' ? 'lucide:x-circle' : 'lucide:check-circle'}
                                 width={18}
                               />
                             </Button>
@@ -796,7 +788,7 @@ const PedidoSemanalABodegaPage: React.FC = () => {
                               variant="light"
                               size="sm"
                               isDisabled={!rec_Eliminar}
-                              onPress={() => handleEliminarReceta(receta)}
+                              onPress={() => handleEliminarPedidoSemanaBodega(pedidoSemanaBodega)}
                               className={`z-10 ${rec_Eliminar ? 'text-default-400 hover:text-danger cursor-pointer' : 'text-default-300 opacity-40 cursor-not-allowed'}`}
                             >
                               <Icon icon="lucide:trash-2" width={18} />
@@ -830,13 +822,13 @@ const PedidoSemanalABodegaPage: React.FC = () => {
         <ModalContent>
           {(onClose) => (
             <DetallePedidoSemanaBodega
-              receta={recetaSeleccionada}
+              pedidoSemanaBodega={pedidoSemanaBodegaSeleccionada}
               mode={modalMode}
               productos={productos}
               onClose={onClose}
-              onSave={async (nuevaReceta, updatePayload) => {
+              onSave={async (nuevaPedidoSemanaBodega, updatePayload) => {
                 try {
-                  await handleGuardarReceta(nuevaReceta, updatePayload);
+                  await handleGuardarPedidoSemanaBodega(nuevaPedidoSemanaBodega, updatePayload);
                   onClose();
                 } catch (error) {
                   // Error ya manejado
@@ -851,11 +843,11 @@ const PedidoSemanalABodegaPage: React.FC = () => {
 };
 
 interface DetallePedidoSemanaBodegaProps {
-  receta: IPedidoSemanaBodegaPaginedDTO | null;
+  pedidoSemanaBodega: IPedidoSemanaBodegaPaginedDTO | null;
   mode: 'crear' | 'editar' | 'ver';
-  productos: IProductoRecetaSelection[];
+  productos: IProductoPedidoSemanaBodegaSelection[];
   onClose: () => void;
-  onSave: (receta: IPedidoSemanaBodega, updatePayload?: IPedidoSemanaBodegaWithDetailsUpdateDTO) => Promise<void>;
+  onSave: (pedidoSemanaBodega: IPedidoSemanaBodega, updatePayload?: IPedidoSemanaBodegaWithDetailsUpdateDTO) => Promise<void>;
 }
 
 const leerNombresHojas = async (file: File): Promise<string[]> => {
@@ -876,7 +868,7 @@ const leerNombresHojas = async (file: File): Promise<string[]> => {
   });
 };
 
-const DetallePedidoSemanaBodega: React.FC<DetallePedidoSemanaBodegaProps> = ({ receta, mode, productos, onClose, onSave }) => {
+const DetallePedidoSemanaBodega: React.FC<DetallePedidoSemanaBodegaProps> = ({ pedidoSemanaBodega, mode, productos, onClose, onSave }) => {
   const toast = useToast();
   const { user } = useAuth();
   const isAdmin = user?.rol === 'Administrador';
@@ -1105,11 +1097,11 @@ const DetallePedidoSemanaBodega: React.FC<DetallePedidoSemanaBodegaProps> = ({ r
       </ModalHeader>
       <ModalBody className="overflow-y-scroll custom-scrollbar">
         {mode === 'ver' ? (
-          receta && <VistaReceta receta={receta} />
+          pedidoSemanaBodega && <VistaPedidoSemanaBodega pedidoSemanaBodega={pedidoSemanaBodega} />
         ) : (
-          <FormularioReceta
+          <FormularioPedidoSemanaBodega
             ref={formRef}
-            receta={receta}
+            pedidoSemanaBodega={pedidoSemanaBodega}
             mode={mode}
             productos={productos}
             onSave={onSave}
@@ -1163,12 +1155,12 @@ const DetallePedidoSemanaBodega: React.FC<DetallePedidoSemanaBodegaProps> = ({ r
   );
 };
 
-interface VistaRecetaProps {
-  receta: IPedidoSemanaBodegaPaginedDTO;
+interface VistaPedidoSemanaBodegaProps {
+  pedidoSemanaBodega: IPedidoSemanaBodegaPaginedDTO;
 }
 
-const VistaReceta: React.FC<VistaRecetaProps> = ({ receta }) => {
-  const isActivo = receta.estadoPedido === 'Activo';
+const VistaPedidoSemanaBodega: React.FC<VistaPedidoSemanaBodegaProps> = ({ pedidoSemanaBodega }) => {
+  const isActivo = pedidoSemanaBodega.estadoPedido === 'Activo';
 
   return (
     <div className="space-y-6">
@@ -1193,9 +1185,9 @@ const VistaReceta: React.FC<VistaRecetaProps> = ({ receta }) => {
               <Icon icon="lucide:chef-hat" width={28} className={isActivo ? 'text-success-700' : 'text-danger-700'} />
             </div>
             <div className="min-w-0">
-              <h3 className="text-xl font-bold text-secondary dark:text-foreground truncate">{receta.nombrePedido}</h3>
-              {receta.descripcionPedido && (
-                <p className="text-sm text-default-600 mt-1 line-clamp-2">{receta.descripcionPedido}</p>
+              <h3 className="text-xl font-bold text-secondary dark:text-foreground truncate">{pedidoSemanaBodega.nombrePedido}</h3>
+              {pedidoSemanaBodega.descripcionPedido && (
+                <p className="text-sm text-default-600 mt-1 line-clamp-2">{pedidoSemanaBodega.descripcionPedido}</p>
               )}
             </div>
           </div>
@@ -1206,7 +1198,7 @@ const VistaReceta: React.FC<VistaRecetaProps> = ({ receta }) => {
             className="font-bold shrink-0"
             startContent={<Icon icon={isActivo ? 'lucide:check-circle-2' : 'lucide:x-circle'} width={14} className="ml-1" />}
           >
-            {receta.estadoPedido}
+            {pedidoSemanaBodega.estadoPedido}
           </Chip>
         </div>
       </div>
@@ -1222,17 +1214,17 @@ const VistaReceta: React.FC<VistaRecetaProps> = ({ receta }) => {
             <div>
               <h4 className="font-bold text-base text-secondary dark:text-foreground">Ingredientes de la Pedido Semanal</h4>
               <p className="text-xs text-default-400">
-                {receta.totalDetalles} producto{receta.totalDetalles > 1 ? 's' : ''} en esta receta
+                {pedidoSemanaBodega.totalDetalles} producto{pedidoSemanaBodega.totalDetalles > 1 ? 's' : ''} en esta pedidoSemanaBodega
               </p>
             </div>
           </div>
           <Chip color="warning" size="sm" variant="flat">
-            Total: {receta.detalles?.length || 0} item{(receta.detalles?.length || 0) > 1 ? 's' : ''}
+            Total: {pedidoSemanaBodega.detalles?.length || 0} item{(pedidoSemanaBodega.detalles?.length || 0) > 1 ? 's' : ''}
           </Chip>
         </div>
 
         <div className="space-y-2">
-          {(receta.detalles || []).map((detalle, index) => (
+          {(pedidoSemanaBodega.detalles || []).map((detalle, index) => (
             <Card
               key={detalle.idDetallePedido}
               shadow="none"
@@ -1261,28 +1253,28 @@ const VistaReceta: React.FC<VistaRecetaProps> = ({ receta }) => {
   );
 };
 
-interface FormularioRecetaProps {
-  receta: IPedidoSemanaBodegaPaginedDTO | null;
+interface FormularioPedidoSemanaBodegaProps {
+  pedidoSemanaBodega: IPedidoSemanaBodegaPaginedDTO | null;
   mode: 'crear' | 'editar';
-  productos: IProductoRecetaSelection[];
-  onSave: (receta: IPedidoSemanaBodega, updatePayload?: IPedidoSemanaBodegaWithDetailsUpdateDTO) => Promise<void>;
+  productos: IProductoPedidoSemanaBodegaSelection[];
+  onSave: (pedidoSemanaBodega: IPedidoSemanaBodega, updatePayload?: IPedidoSemanaBodegaWithDetailsUpdateDTO) => Promise<void>;
   onValidationChange: (isValid: boolean) => void;
   history: any;
   isAdmin: boolean;
 }
 
-export const FormularioReceta = React.forwardRef<any, FormularioRecetaProps>(
-  ({ receta, mode, productos, onSave, onValidationChange, history, isAdmin }, ref) => {
+export const FormularioPedidoSemanaBodega = React.forwardRef<any, FormularioPedidoSemanaBodegaProps>(
+  ({ pedidoSemanaBodega, mode, productos, onSave, onValidationChange, history, isAdmin }, ref) => {
     const toast = useToast();
     const { periodos, semanas, periodo, defaultSemanaId, isLoading: isLoadingSemanas, seleccionarPeriodo, seleccionarSemana } = usePeriodoSemana();
-    const [nombre, setNombre] = React.useState(receta?.nombrePedido || '');
-    const [descripcion, setDescripcion] = React.useState(receta?.descripcionPedido || '');
-    const [estado, setEstado] = React.useState<'Activo' | 'Inactivo'>(receta?.estadoPedido || 'Activo');
+    const [nombre, setNombre] = React.useState(pedidoSemanaBodega?.nombrePedido || '');
+    const [descripcion, setDescripcion] = React.useState(pedidoSemanaBodega?.descripcionPedido || '');
+    const [estado, setEstado] = React.useState<'Activo' | 'Inactivo'>(pedidoSemanaBodega?.estadoPedido || 'Activo');
     const [vistaTabla, setVistaTabla] = React.useState(false);
     const [asignaturas, setAsignaturas] = React.useState<IAsignatura[]>([]);
     const [idAsignaturaSeleccionada, setIdAsignaturaSeleccionada] = React.useState<string>(() => {
-      if (mode === 'editar' && receta?.idAsignatura) {
-        return receta.idAsignatura.toString();
+      if (mode === 'editar' && pedidoSemanaBodega?.idAsignatura) {
+        return pedidoSemanaBodega.idAsignatura.toString();
       }
       return '';
     });
@@ -1292,7 +1284,7 @@ export const FormularioReceta = React.forwardRef<any, FormularioRecetaProps>(
     // Se guarda en BD como NUMERIC(10, 3) de PostgreSQL (ej: 1500.5), pero se muestra con formato CL (ej: 1.500,5)
     const [cantidadesTexto, setCantidadesTexto] = React.useState<Record<string, string>>(() => {
       const inicial: Record<string, string> = {};
-      (receta?.detalles || []).forEach(d => {
+      (pedidoSemanaBodega?.detalles || []).forEach(d => {
         inicial[d.idDetallePedido.toString()] = d.cantProducto
           ? d.cantProducto.toLocaleString('es-CL', { minimumFractionDigits: 0, maximumFractionDigits: 3 })
           : '';
@@ -1391,10 +1383,10 @@ export const FormularioReceta = React.forwardRef<any, FormularioRecetaProps>(
       }
     };
 
-    // Inicializar idSemana desde sessionStorage (cache) o valor guardado en receta
+    // Inicializar idSemana desde sessionStorage (cache) o valor guardado en pedidoSemanaBodega
     const [idSemana, setIdSemana] = React.useState<string>(() => {
-      if (mode === 'editar' && receta?.idSemana) {
-        return receta.idSemana.toString();
+      if (mode === 'editar' && pedidoSemanaBodega?.idSemana) {
+        return pedidoSemanaBodega.idSemana.toString();
       }
       const stored = sessionStorage.getItem('kuhub_semana_id');
       return stored || 'ninguno';
@@ -1406,19 +1398,19 @@ export const FormularioReceta = React.forwardRef<any, FormularioRecetaProps>(
     const qtyRefs = React.useRef<Record<string, HTMLInputElement | null>>({});
 
     // Snapshot de los detalles originales para calcular deltas en modo editar
-    const originalDetallesRef = React.useRef<IDetallePedidoSemanaBodegaDTO[]>(receta?.detalles || []);
+    const originalDetallesRef = React.useRef<IDetallePedidoSemanaBodegaDTO[]>(pedidoSemanaBodega?.detalles || []);
 
     // REEMPLAZAR deletedDetailIds por deletedProductIds
     const [deletedProductIds, setDeletedProductIds] = React.useState<number[]>([]);
 
     // Set de IDs de productos originales (los que vinieron de la DB)
     const originalProductIdsRef = React.useRef<Set<string>>(
-      new Set((receta?.detalles || []).map(d => d.idProducto.toString()))
+      new Set((pedidoSemanaBodega?.detalles || []).map(d => d.idProducto.toString()))
     );
 
-    // REEMPLAZAR el estado y la inicialización de ingredientes en FormularioReceta
+    // REEMPLAZAR el estado y la inicialización de ingredientes en FormularioPedidoSemanaBodega
     const [ingredientes, setIngredientes] = React.useState<(IIngrediente & { observacion?: string })[]>(
-      (receta?.detalles || []).map(d => ({
+      (pedidoSemanaBodega?.detalles || []).map(d => ({
         id: d.idDetallePedido.toString(),
         productoId: d.idProducto.toString(),
         productoNombre: d.nombreProducto,
@@ -1458,14 +1450,14 @@ export const FormularioReceta = React.forwardRef<any, FormularioRecetaProps>(
 
       // 2. Detección de cambios (solo relevante en modo editar)
       let hasChanges = false;
-      if (mode === 'editar' && receta) {
-        const changedNombre = nombre.trim() !== (receta.nombrePedido || '');
-        const changedDesc = descripcion.trim() !== (receta.descripcionPedido || '');
-        const changedEstado = estado !== (receta.estadoPedido || 'Activo');
+      if (mode === 'editar' && pedidoSemanaBodega) {
+        const changedNombre = nombre.trim() !== (pedidoSemanaBodega.nombrePedido || '');
+        const changedDesc = descripcion.trim() !== (pedidoSemanaBodega.descripcionPedido || '');
+        const changedEstado = estado !== (pedidoSemanaBodega.estadoPedido || 'Activo');
 
         // Comparar idSemana (convertir a string para comparación)
         const currentIdSemana = idSemana && idSemana !== 'ninguno' ? Number(idSemana) : null;
-        const originalIdSemana = receta.idSemana || null;
+        const originalIdSemana = pedidoSemanaBodega.idSemana || null;
         const changedSemana = currentIdSemana !== originalIdSemana;
 
         // Comparar ingredientes consolidando cantidades para la comparación
@@ -1485,7 +1477,7 @@ export const FormularioReceta = React.forwardRef<any, FormularioRecetaProps>(
         });
 
         const originalIngsMap = new Map(
-          (receta.detalles || []).map(d => [d.idProducto.toString(), { cantidad: d.cantProducto, observacion: d.observacion }])
+          (pedidoSemanaBodega.detalles || []).map(d => [d.idProducto.toString(), { cantidad: d.cantProducto, observacion: d.observacion }])
         );
 
         // ¿Diferente cantidad de productos únicos?
@@ -1505,7 +1497,7 @@ export const FormularioReceta = React.forwardRef<any, FormularioRecetaProps>(
         }
 
         const currentIdAsignatura = idAsignaturaSeleccionada ? parseInt(idAsignaturaSeleccionada) : null;
-        const originalIdAsignatura = receta.idAsignatura || null;
+        const originalIdAsignatura = pedidoSemanaBodega.idAsignatura || null;
         const changedAsignatura = currentIdAsignatura !== originalIdAsignatura;
 
         hasChanges = changedNombre || changedDesc || changedEstado || changedIngs || changedSemana || changedAsignatura;
@@ -1514,7 +1506,7 @@ export const FormularioReceta = React.forwardRef<any, FormularioRecetaProps>(
       // En modo 'crear' habilitamos si es válido. En 'editar' solo si es válido Y hubo cambios.
       const canSave = mode === 'crear' ? isValid : (isValid && hasChanges);
       onValidationChange(canSave);
-    }, [nombre, descripcion, estado, ingredientes, idSemana, idAsignaturaSeleccionada, mode, receta, onValidationChange]);
+    }, [nombre, descripcion, estado, ingredientes, idSemana, idAsignaturaSeleccionada, mode, pedidoSemanaBodega, onValidationChange]);
 
     React.useImperativeHandle(ref, () => ({
       importarDesdeExcel: (resultados: IResultadoItemExcel[]) => {
@@ -1587,8 +1579,8 @@ export const FormularioReceta = React.forwardRef<any, FormularioRecetaProps>(
           }
         });
 
-        const recetaData: any = {
-          id: receta?.idPedidoSemanaBodega?.toString() || '',
+        const pedidoSemanaBodegaData: any = {
+          id: pedidoSemanaBodega?.idPedidoSemanaBodega?.toString() || '',
           nombre: nombre.trim(),
           descripcion: descripcion.trim(),
           ingredientes: ingredientesConsolidados,
@@ -1601,7 +1593,7 @@ export const FormularioReceta = React.forwardRef<any, FormularioRecetaProps>(
         };
 
         // REEMPLAZAR la sección de cálculo de deltas dentro del submit (modo editar)
-        if (mode === 'editar' && receta) {
+        if (mode === 'editar' && pedidoSemanaBodega) {
           const originalDetalles = originalDetallesRef.current;
           const originalMap = new Map(originalDetalles.map(d => [d.idProducto.toString(), d]));
 
@@ -1622,7 +1614,7 @@ export const FormularioReceta = React.forwardRef<any, FormularioRecetaProps>(
           });
 
           const updatePayload: IPedidoSemanaBodegaWithDetailsUpdateDTO = {
-            idPedidoSemanaBodega: receta.idPedidoSemanaBodega,
+            idPedidoSemanaBodega: pedidoSemanaBodega.idPedidoSemanaBodega,
             nombrePedido: nombre.trim(),
             descripcionPedido: descripcion.trim() || undefined,
             estadoPedido: estado,
@@ -1633,9 +1625,9 @@ export const FormularioReceta = React.forwardRef<any, FormularioRecetaProps>(
             idAsignatura: idAsignaturaSeleccionada ? parseInt(idAsignaturaSeleccionada) : null,
           };
 
-          await onSave(recetaData, updatePayload);
+          await onSave(pedidoSemanaBodegaData, updatePayload);
         } else {
-          await onSave(recetaData);
+          await onSave(pedidoSemanaBodegaData);
         }
       }
     }));
@@ -1755,7 +1747,7 @@ export const FormularioReceta = React.forwardRef<any, FormularioRecetaProps>(
                 minRows={2}
                 classNames={{ inputWrapper: "bg-white dark:bg-default-100/50" }}
               />
-              <div className="space-y-3">
+              <div className={`space-y-3 p-3 ${idSemana === 'ninguno' ? 'glow-gold' : ''}`}>
                 <label className="text-sm font-medium text-default-700">Semana (Opcional)</label>
 
                 {/* Seleccionar Período */}
@@ -1884,32 +1876,34 @@ export const FormularioReceta = React.forwardRef<any, FormularioRecetaProps>(
 
               {/* Asignatura (Opcional) */}
               {asignaturas.length > 0 ? (
-                <Select
-                  label="Asignatura (Opcional)"
-                  placeholder="Selecciona una asignatura"
-                  variant="bordered"
-                  selectedKeys={idAsignaturaSeleccionada ? new Set([idAsignaturaSeleccionada]) : new Set()}
-                  onSelectionChange={(keys) => setIdAsignaturaSeleccionada(Array.from(keys as Set<string>)[0] || '')}
-                  classNames={{
-                    label: 'text-sm font-medium text-default-700',
-                    trigger: 'bg-white dark:bg-default-100/50',
-                  }}
-                  startContent={<Icon icon="lucide:book-open" width={14} className="text-default-400 shrink-0" />}
-                >
-                  <SelectItem key="" textValue="Ninguna">
-                    <span className="text-default-500">Ninguna</span>
-                  </SelectItem>
-                  <>
-                    {asignaturas?.map(asignatura => (
-                      <SelectItem key={asignatura.idAsignatura.toString()} textValue={`${asignatura.nombreAsignatura} (${asignatura.codAsignatura})`}>
-                        <div className="flex items-center gap-2">
-                          <span className="font-semibold">{asignatura.nombreAsignatura}</span>
-                          <span className="text-default-400 text-xs">({asignatura.codAsignatura})</span>
-                        </div>
-                      </SelectItem>
-                    ))}
-                  </>
-                </Select>
+                <div className={`p-3 ${idAsignaturaSeleccionada === '' ? 'glow-gold' : ''}`}>
+                  <Select
+                    label="Asignatura (Opcional)"
+                    placeholder="Selecciona una asignatura"
+                    variant="bordered"
+                    selectedKeys={idAsignaturaSeleccionada ? new Set([idAsignaturaSeleccionada]) : new Set()}
+                    onSelectionChange={(keys) => setIdAsignaturaSeleccionada(Array.from(keys as Set<string>)[0] || '')}
+                    classNames={{
+                      label: 'text-sm font-medium text-default-700',
+                      trigger: 'bg-white dark:bg-default-100/50',
+                    }}
+                    startContent={<Icon icon="lucide:book-open" width={14} className="text-default-400 shrink-0" />}
+                  >
+                    <SelectItem key="" textValue="Ninguna">
+                      <span className="text-default-500">Ninguna</span>
+                    </SelectItem>
+                    <>
+                      {asignaturas?.map(asignatura => (
+                        <SelectItem key={asignatura.idAsignatura.toString()} textValue={`${asignatura.nombreAsignatura} (${asignatura.codAsignatura})`}>
+                          <div className="flex items-center gap-2">
+                            <span className="font-semibold">{asignatura.nombreAsignatura}</span>
+                            <span className="text-default-400 text-xs">({asignatura.codAsignatura})</span>
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </>
+                  </Select>
+                </div>
               ) : (
                 <div className="flex items-center gap-3 p-4 bg-warning-50 dark:bg-warning-900/20 border border-warning-200 dark:border-warning-200/30 rounded-lg">
                   <Icon icon="lucide:alert-circle" width={18} className="text-warning-600 dark:text-warning-400 shrink-0" />

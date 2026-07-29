@@ -41,7 +41,7 @@ public class Solicitud {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "id_pedido_semana_bodega", nullable = true)
-    private PedidoSemanaBodega receta;
+    private PedidoSemanaBodega pedidoSemanaBodega;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "id_reserva_sala", nullable = true)
@@ -76,10 +76,10 @@ public class Solicitud {
         }
     }
 
-    public void setIdReceta(Integer id) {
+    public void setIdPedidoSemanaBodega(Integer id) {
         if (id != null) {
-            this.receta = new PedidoSemanaBodega();
-            this.receta.setIdPedidoSemanaBodega(id);
+            this.pedidoSemanaBodega = new PedidoSemanaBodega();
+            this.pedidoSemanaBodega.setIdPedidoSemanaBodega(id);
         }
     }
 

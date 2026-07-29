@@ -48,6 +48,7 @@ vi.mock('../../hooks/usePageTitle', () => ({ usePageTitle: vi.fn() }));
 vi.mock('../../hooks/useToast', () => ({
   useToast: () => ({ success: vi.fn(), error: vi.fn(), warning: vi.fn(), info: vi.fn() }),
   useConfirm: () => vi.fn(),
+  useConfirmDelete: () => vi.fn(),
 }));
 
 vi.mock('../../services/inventario/movimiento-service', () => ({

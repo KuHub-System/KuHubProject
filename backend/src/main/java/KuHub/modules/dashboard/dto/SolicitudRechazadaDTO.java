@@ -4,7 +4,7 @@ public record SolicitudRechazadaDTO(
     Integer idSolicitud,
     String motivo,
     String fechaSolicitada,
-    String nombreReceta,
+    String nombrePedidoSemanaBodega,
     String nombreAsignatura,
     String nombreSeccion,
     String nombreDocente

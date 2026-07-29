@@ -108,3 +108,66 @@ export const useConfirm = () => {
   return confirm;
 };
 
+/**
+ * Hook para confirmar eliminaciones (soft delete).
+ * Preset reutilizable sobre useConfirm(): estilo "danger", mensaje estándar de
+ * acción irreversible, y confirmación con un solo click en el botón (sin exigir
+ * escribir texto). Usar en cualquier página que necesite un modal de eliminación
+ * consistente con el resto del sistema.
+ */
+export const useConfirmDelete = () => {
+  const confirm = useConfirm();
+
+  const confirmDelete = (options: {
+    /** Texto del ModalHeader, ej: "Eliminar producto" */
+    title: string;
+    /** Frase ya armada con género/artículo correctos, ej: `el producto "${nombre}"` */
+    itemDescription: string;
+    /** Texto del botón de confirmación. Default: "Eliminar" */
+    confirmText?: string;
+  }): Promise<boolean> => {
+    return confirm('', {
+      title: options.title,
+      subtitle: 'Esta acción es irreversible',
+      headerVariant: 'danger',
+      alertTitle: 'Atención',
+      alertMessage: `Eliminarás definitivamente ${options.itemDescription}. Esta acción no se puede deshacer.`,
+      confirmText: options.confirmText || 'Eliminar',
+      confirmColor: 'danger',
+    });
+  };
+
+  return confirmDelete;
+};
+
+/**
+ * Hook para confirmar desactivaciones (soft-toggle activo=false, reversible).
+ * Preset "hermano" de useConfirmDelete(), pero con tono distinto a propósito:
+ * estilo "warning" (no "danger") y mensaje que deja claro que se puede reactivar
+ * más adelante, para no dar la falsa impresión de que es una acción irreversible.
+ */
+export const useConfirmDeactivate = () => {
+  const confirm = useConfirm();
+
+  const confirmDeactivate = (options: {
+    /** Texto del ModalHeader, ej: "Desactivar usuario" */
+    title: string;
+    /** Frase ya armada con género/artículo correctos, ej: `al usuario "Juan Pérez"` */
+    itemDescription: string;
+    /** Texto del botón de confirmación. Default: "Desactivar" */
+    confirmText?: string;
+  }): Promise<boolean> => {
+    return confirm('', {
+      title: options.title,
+      subtitle: 'Podrás reactivarlo más adelante',
+      headerVariant: 'warning',
+      alertTitle: 'Confirmar desactivación',
+      alertMessage: `Desactivarás ${options.itemDescription}. Esta acción se puede revertir reactivándolo(a) más adelante.`,
+      confirmText: options.confirmText || 'Desactivar',
+      confirmColor: 'warning',
+    });
+  };
+
+  return confirmDeactivate;
+};
+

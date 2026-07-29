@@ -128,7 +128,7 @@ const DashboardPage: React.FC = () => {
     );
   }
 
-  // ── Profesor a Cargo / Docente: solicitudes + recetas ──
+  // ── Profesor a Cargo / Docente: solicitudes + pedidoSemanaBodegas ──
   if (canRead('SOLICITUD') || canCreate('SOLICITUD')) {
     return <DashboardProfesorView />;
   }

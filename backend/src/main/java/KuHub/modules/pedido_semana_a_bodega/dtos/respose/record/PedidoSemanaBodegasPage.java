@@ -16,7 +16,7 @@ public record PedidoSemanaBodegasPage(
         PaginationUtils.PagingResult paging
 ) {
 
-    // ─── RECORD INTERNO: Item de receta con sus detalles ─────────────────────
+    // ─── RECORD INTERNO: Item de pedidoSemanaBodega con sus detalles ─────────────────────
     public record RecipeItem(
             Integer idPedidoSemanaBodega,
             String nombrePedido,

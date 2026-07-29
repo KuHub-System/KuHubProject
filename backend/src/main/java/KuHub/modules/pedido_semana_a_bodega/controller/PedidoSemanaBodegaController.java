@@ -27,7 +27,7 @@ public class PedidoSemanaBodegaController {
     private PedidoSemanaBodegaService pedidoSemanaBodegaService;
 
     /**
-     * Conta total de recetas, activas, inactivas
+     * Conta total de pedidoSemanaBodegas, activas, inactivas
      * ✅ FUNCIONAL IMPLEMENTADO EN EL FRONT*/
     @GetMapping("/count-recipes")
     public ResponseEntity<CountPedidoSemanaBodegaAndStatusView> countRecipesAndStatus(){
@@ -37,7 +37,7 @@ public class PedidoSemanaBodegaController {
     }
 
     /**
-     * llama todas las recetas paginas, con soporte de filtro por semana, asignatura y/o estado.
+     * llama todas las pedidoSemanaBodegas paginas, con soporte de filtro por semana, asignatura y/o estado.
      * El filtro estadoPedido ("ACTIVO"/"INACTIVO"/null) se aplica DENTRO de la consulta para que
      * los inactivos no queden fuera por la paginación.
      * ✅ FUNCIONAL IMPLEMENTADO EN EL FRONT*/
@@ -54,7 +54,7 @@ public class PedidoSemanaBodegaController {
     }
 
     /**
-     * Llama las recetas por el nombre o descripcion similares paginada, con soporte de filtro por estado.
+     * Llama las pedidoSemanaBodegas por el nombre o descripcion similares paginada, con soporte de filtro por estado.
      * ✅ FUNCIONAL IMPLEMENTADO EN EL FRONT*/
     @PostMapping("/search-recipes")
     public ResponseEntity<PedidoSemanaBodegasPage> findAllWithDetailsAndSearchPaging(
@@ -65,7 +65,7 @@ public class PedidoSemanaBodegaController {
                 .body(pedidoSemanaBodegaService.findAllWithDetailsAndSearchPaging(searchDto));
     }
 
-    /**Crea la receta con detalles
+    /**Crea la pedidoSemanaBodega con detalles
      * ✅ FUNCIONAL IMPLEMENTADO EN EL FRONT*/
     @PostMapping("/create-recipe-with-details")
     public ResponseEntity<Boolean> saveRecipeWithDetails(
@@ -75,15 +75,15 @@ public class PedidoSemanaBodegaController {
                 .body(pedidoSemanaBodegaService.saveRecipeWithDetails(request));
     }
 
-    /**Actualiza el estado de la receta del tipo enum manejada para usar la receta en solicitudes
+    /**Actualiza el estado de la pedidoSemanaBodega del tipo enum manejada para usar la pedidoSemanaBodega en solicitudes
      * ✅ FUNCIONAL IMPLEMENTADO EN EL FRONT*/
-    @PatchMapping("/change-status/{idReceta}")
+    @PatchMapping("/change-status/{idPedidoSemanaBodega}")
     public ResponseEntity<Boolean> changeStatus(
-            @PathVariable Integer idReceta
+            @PathVariable Integer idPedidoSemanaBodega
     ){
         return ResponseEntity
                 .status(200)
-                .body(pedidoSemanaBodegaService.changeStatus(idReceta));
+                .body(pedidoSemanaBodegaService.changeStatus(idPedidoSemanaBodega));
     }
 
     @PatchMapping("/update-recipe-with-details")
@@ -94,18 +94,18 @@ public class PedidoSemanaBodegaController {
                 .body(pedidoSemanaBodegaService.updateRecipeWithDetails(request));
     }
 
-    @DeleteMapping("/soft-delete-receta/{idReceta}")
+    @DeleteMapping("/soft-delete-pedido-semana-bodega/{idPedidoSemanaBodega}")
     public ResponseEntity<Boolean> softDeleteRecipeWithDetails(
-        @PathVariable Integer idReceta){
+        @PathVariable Integer idPedidoSemanaBodega){
         return ResponseEntity
                 .status(204)
-                .body(pedidoSemanaBodegaService.softDeleteRecipeWithDetails(idReceta));
+                .body(pedidoSemanaBodegaService.softDeleteRecipeWithDetails(idPedidoSemanaBodega));
     }
 
     /**
      * Parsea un archivo Excel (.xlsx/.xlsm) con el listado de pedido (filas 12-80).
      * Si se pasa nombreHoja se lee esa hoja por nombre exacto; si no, se lee la hoja activa.
-     * ✅ En uso: consumido por importarExcelPedidoService en receta-service.ts.
+     * ✅ En uso: consumido por importarExcelPedidoService en pedidoSemanaBodega-service.ts.
      */
     @PostMapping(value = "/importar-excel", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<ImportarExcelResultado> importarExcel(
@@ -151,17 +151,17 @@ public class PedidoSemanaBodegaController {
 
     /**
     @GetMapping("/find-by-id/{id}")
-    public ResponseEntity<Receta> findById(@PathVariable Integer id){
+    public ResponseEntity<PedidoSemanaBodega> findById(@PathVariable Integer id){
         return ResponseEntity
                 .status(200)
                 .body(pedidoSemanaBodegaService.findById(id));
     }
 
     @GetMapping("/find-by-id-active-recipe-true/{id}")
-    public ResponseEntity<Receta> findByIdRecetaAndActivoRecetaIsTrue(@PathVariable Integer id){
+    public ResponseEntity<PedidoSemanaBodega> findByIdPedidoSemanaBodegaAndActivoPedidoSemanaBodegaIsTrue(@PathVariable Integer id){
         return ResponseEntity
                 .status(200)
-                .body(pedidoSemanaBodegaService.findByIdRecetaAndActivoRecetaIsTrue(id));
+                .body(pedidoSemanaBodegaService.findByIdPedidoSemanaBodegaAndActivoPedidoSemanaBodegaIsTrue(id));
     }
 
     /**
@@ -175,26 +175,26 @@ public class PedidoSemanaBodegaController {
     }
 
     @GetMapping("/find-all/")
-    public ResponseEntity<List<Receta>> findAll(){
+    public ResponseEntity<List<PedidoSemanaBodega>> findAll(){
         return ResponseEntity
                 .status(200)
                 .body(pedidoSemanaBodegaService.findAll());
     }
 
     @GetMapping("/find-all-by-active-recipe-true/")
-    public ResponseEntity<List<Receta>> findAllByActivoRecetaTrue(){
+    public ResponseEntity<List<PedidoSemanaBodega>> findAllByActivoPedidoSemanaBodegaTrue(){
         return ResponseEntity
                 .status(200)
-                .body(pedidoSemanaBodegaService.findAllByActivoRecetaTrue());
+                .body(pedidoSemanaBodegaService.findAllByActivoPedidoSemanaBodegaTrue());
     }
 
     @GetMapping("/exist-by-name-recipe-active-true/{nameRecipe}")
-    public ResponseEntity<Boolean> existByNombreRecetaAndActivoRecetaTrue(
+    public ResponseEntity<Boolean> existByNombrePedidoSemanaBodegaAndActivoPedidoSemanaBodegaTrue(
             @PathVariable String nameRecipe
     ){
         return ResponseEntity
                 .status(200)
-                .body(pedidoSemanaBodegaService.existsByNombreRecetaAndActivoRecetaTrue(nameRecipe));
+                .body(pedidoSemanaBodegaService.existsByNombrePedidoSemanaBodegaAndActivoPedidoSemanaBodegaTrue(nameRecipe));
     }
 
     @GetMapping("/find-all-recipe-with-details-active/")
@@ -209,8 +209,8 @@ public class PedidoSemanaBodegaController {
     }
 
     @PostMapping("/create-recipe/")
-    public ResponseEntity<Receta> save(
-            @RequestBody Receta recipe
+    public ResponseEntity<PedidoSemanaBodega> save(
+            @RequestBody PedidoSemanaBodega recipe
     ){
         return ResponseEntity
                 .status(201)
@@ -229,11 +229,11 @@ public class PedidoSemanaBodegaController {
                     .body(pedidoSemanaBodegaService.updateRecipeWithDelta(dtoUpdate));
         } catch (EntityNotFoundException ex) {
             return ResponseEntity.status(404)
-                    .body("La receta que intentas actualizar no existe.");
+                    .body("La pedidoSemanaBodega que intentas actualizar no existe.");
 
         } catch (IllegalArgumentException ex) {
             return ResponseEntity.status(400)
-                    .body("Los datos enviados para actualizar la receta no son válidos.");
+                    .body("Los datos enviados para actualizar la pedidoSemanaBodega no son válidos.");
 
         } catch (Exception ex) {
             return ResponseEntity.status(500)
@@ -241,16 +241,16 @@ public class PedidoSemanaBodegaController {
         }
     }
 
-    @PutMapping("/update-status-active-false-recipe-with-details/{id_receta}")
+    @PutMapping("/update-status-active-false-recipe-with-details/{id_pedido_semana_bodega}")
     public ResponseEntity<?> updateDeleteStatusActiveFalseRecipeWithDetails(
-            @PathVariable("id_receta") Integer idReceta) {
+            @PathVariable("id_pedido_semana_bodega") Integer idPedidoSemanaBodega) {
         try {
-            pedidoSemanaBodegaService.updateDeleteStatusActiveFalseRecipeWithDetails(idReceta);
+            pedidoSemanaBodegaService.updateDeleteStatusActiveFalseRecipeWithDetails(idPedidoSemanaBodega);
             return ResponseEntity.status(204).build();
 
         } catch (EntityNotFoundException ex) {
             return ResponseEntity.status(404)
-                    .body("La receta con ID " + idReceta + " no existe o ya está inactiva.");
+                    .body("La pedidoSemanaBodega con ID " + idPedidoSemanaBodega + " no existe o ya está inactiva.");
 
         } catch (Exception ex) {
             return ResponseEntity.status(500)
@@ -258,16 +258,16 @@ public class PedidoSemanaBodegaController {
         }
     }
 
-    @PutMapping("/update-changing-status-recipe-with/{id_receta}")
+    @PutMapping("/update-changing-status-recipe-with/{id_pedido_semana_bodega}")
     public ResponseEntity<?> updateChangingStatusRecipeWithDetalis(
-            @PathVariable("id_receta") Integer idReceta) {
+            @PathVariable("id_pedido_semana_bodega") Integer idPedidoSemanaBodega) {
         try {
-            pedidoSemanaBodegaService.updateChangingStatusRecipeWith(idReceta);
+            pedidoSemanaBodegaService.updateChangingStatusRecipeWith(idPedidoSemanaBodega);
             return ResponseEntity.status(200).build();
         } catch (EntityNotFoundException ex) {
             return ResponseEntity
                     .status(404)
-                    .body("La receta con el ID especificado no existe.");
+                    .body("La pedidoSemanaBodega con el ID especificado no existe.");
         } catch (Exception ex) {
             return ResponseEntity
                     .status(500)
@@ -282,7 +282,7 @@ public class PedidoSemanaBodegaController {
             pedidoSemanaBodegaService.deleteById(id);
             return ResponseEntity.noContent().build(); // 204 - Eliminación exitosa, sin body
         } catch (EntityNotFoundException ex) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).build(); // 404 - No existe la receta
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).build(); // 404 - No existe la pedidoSemanaBodega
         } catch (IllegalArgumentException ex) {
             return ResponseEntity.badRequest().build(); // 400 - id inválido o error de argumento
         } catch (Exception ex) {

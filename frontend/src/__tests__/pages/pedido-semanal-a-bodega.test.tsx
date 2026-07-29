@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { render, screen, fireEvent, waitFor, act, cleanup } from '@testing-library/react';
 import { BrowserRouter } from 'react-router-dom';
 import { HeroUIProvider } from '@heroui/react';
-import PedidoSemanalABodegaPage, { FormularioReceta } from '../../pages/pedido-semanal-a-bodega';
+import PedidoSemanalABodegaPage, { FormularioPedidoSemanaBodega } from '../../pages/pedido-semanal-a-bodega';
 import * as authContext from '../../contexts/auth-context';
 import * as permissionContext from '../../contexts/permission-context';
 
@@ -60,6 +60,7 @@ vi.mock('../../hooks/useToast', () => ({
     info:    vi.fn(),
   }),
   useConfirm: () => vi.fn().mockResolvedValue(true),
+  useConfirmDelete: () => vi.fn().mockResolvedValue(true),
 }));
 
 // ============================================
@@ -83,22 +84,22 @@ vi.mock('../../contexts/periodo-semana-context', () => ({
 // ============================================
 
 vi.mock('../../services/pedido/pedido-semanal-bodega-service', () => ({
-  obtenerRecetasPaginadasService:       mockObtenerPaginados,
-  obtenerRecetasCountService:           mockObtenerCounts,
+  obtenerPedidoSemanaBodegasPaginadasService:       mockObtenerPaginados,
+  obtenerPedidoSemanaBodegasCountService:           mockObtenerCounts,
   obtenerAsignaturasActivasService:     mockObtenerAsignaturas,
-  buscarRecetasPaginadasService:        mockBuscarPaginados,
-  cambiarEstadoRecetaService:           mockCambiarEstado,
-  crearRecetaConDetallesService:        mockCrearConDetalles,
-  actualizarRecetaConDetallesService:   mockActualizarConDetalles,
-  softDeleteRecetaService:              mockSoftDelete,
-  crearRecetaService:                   vi.fn(),
-  actualizarRecetaService:              vi.fn(),
-  eliminarRecetaService:                vi.fn(),
+  buscarPedidoSemanaBodegasPaginadasService:        mockBuscarPaginados,
+  cambiarEstadoPedidoSemanaBodegaService:           mockCambiarEstado,
+  crearPedidoSemanaBodegaConDetallesService:        mockCrearConDetalles,
+  actualizarPedidoSemanaBodegaConDetallesService:   mockActualizarConDetalles,
+  softDeletePedidoSemanaBodegaService:              mockSoftDelete,
+  crearPedidoSemanaBodegaService:                   vi.fn(),
+  actualizarPedidoSemanaBodegaService:              vi.fn(),
+  eliminarPedidoSemanaBodegaService:                vi.fn(),
   importarExcelPedidoService:           vi.fn().mockResolvedValue({ totalOk: 0, totalNoEncontrados: 0, resultados: [] }),
 }));
 
 vi.mock('../../services/inventario/producto-service', () => ({
-  obtenerProductosParaRecetaService: mockObtenerProductos,
+  obtenerProductosParaPedidoSemanaBodegaService: mockObtenerProductos,
 }));
 
 vi.mock('../../utils/request-throttle', () => ({
@@ -310,7 +311,7 @@ describe('PedidoSemanalABodegaPage — Toggle Estado', () => {
 });
 
 // ============================================
-// SUITE: FormularioReceta — Validaciones
+// SUITE: FormularioPedidoSemanaBodega — Validaciones
 // ============================================
 
 const periodoContextDefault = {
@@ -323,9 +324,9 @@ const periodoContextDefault = {
   seleccionarSemana:  vi.fn(),
 };
 
-const renderFormulario = (props: Partial<React.ComponentProps<typeof FormularioReceta>> = {}) => {
+const renderFormulario = (props: Partial<React.ComponentProps<typeof FormularioPedidoSemanaBodega>> = {}) => {
   const defaults = {
-    receta:             null,
+    pedidoSemanaBodega:             null,
     mode:               'crear' as const,
     productos:          [],
     onSave:             vi.fn(),
@@ -334,11 +335,11 @@ const renderFormulario = (props: Partial<React.ComponentProps<typeof FormularioR
     isAdmin:            false,
   };
   return renderWithProviders(
-    <FormularioReceta ref={null} {...defaults} {...props} />
+    <FormularioPedidoSemanaBodega ref={null} {...defaults} {...props} />
   );
 };
 
-describe('FormularioReceta — Validaciones de formulario', () => {
+describe('FormularioPedidoSemanaBodega — Validaciones de formulario', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockAdmin();
@@ -380,10 +381,10 @@ describe('FormularioReceta — Validaciones de formulario', () => {
 });
 
 // ============================================
-// SUITE: FormularioReceta — Formato es-CL (Cantidades)
+// SUITE: FormularioPedidoSemanaBodega — Formato es-CL (Cantidades)
 // ============================================
 
-describe('FormularioReceta — Formato es-CL en cantidades', () => {
+describe('FormularioPedidoSemanaBodega — Formato es-CL en cantidades', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockAdmin();
@@ -462,10 +463,10 @@ describe('FormularioReceta — Formato es-CL en cantidades', () => {
 });
 
 // ============================================
-// SUITE: FormularioReceta — Controles de UI
+// SUITE: FormularioPedidoSemanaBodega — Controles de UI
 // ============================================
 
-describe('FormularioReceta — Controles de UI', () => {
+describe('FormularioPedidoSemanaBodega — Controles de UI', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockAdmin();

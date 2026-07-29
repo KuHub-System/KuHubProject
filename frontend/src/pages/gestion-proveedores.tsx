@@ -100,7 +100,7 @@ import type {
   IDetalleOrdenPedido,
   IEntregaReal,
 } from '../types/proveedor/proveedor.types';
-import type { IProductoRecetaSelection } from '../types/inventario/producto.types';
+import type { IProductoPedidoSemanaBodegaSelection } from '../types/inventario/producto.types';
 import { nombreFeriadoChile } from '../utils/feriados-chile';
 
 import {

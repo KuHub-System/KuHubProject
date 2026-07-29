@@ -1,7 +1,7 @@
 'use client';
 /**
- * DASHBOARD RECETAS — PROFESOR_A_CARGO / DOCENTE
- * Muestra KPIs de recetas, distribución por estado y top de ingredientes.
+ * DASHBOARD PEDIDO_SEMANAL_BODEGAS — PROFESOR_A_CARGO / DOCENTE
+ * Muestra KPIs de pedidoSemanaBodegas, distribución por estado y top de ingredientes.
  */
 
 import React from 'react';
@@ -82,7 +82,7 @@ export const DashboardPedidoSemanalBodegaView: React.FC = () => {
     );
   }
 
-  const pieData          = data.recetasPorEstado.map(p => ({ name: p.name, value: p.value, color: p.color }));
+  const pieData          = data.pedidoSemanaBodegasPorEstado.map(p => ({ name: p.name, value: p.value, color: p.color }));
   const ingredientesData = data.topIngredientes.map(p => ({ name: p.label, value: p.value }));
 
   return (
@@ -96,21 +96,21 @@ export const DashboardPedidoSemanalBodegaView: React.FC = () => {
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <KpiCard
           title="Pedidos Activos"
-          value={data.recetasActivas}
+          value={data.pedidoSemanaBodegasActivas}
           icon="lucide:package-check"
           iconColor="text-success-600"
           bgColor="bg-success-100"
         />
         <KpiCard
           title="Pedidos Inactivos"
-          value={data.recetasInactivas}
+          value={data.pedidoSemanaBodegasInactivas}
           icon="lucide:pause"
           iconColor="text-default-400"
           bgColor="bg-default-100"
         />
         <KpiCard
           title="Total Pedidos"
-          value={data.recetasTotal}
+          value={data.pedidoSemanaBodegasTotal}
           icon="lucide:package"
         />
       </div>
@@ -134,7 +134,7 @@ export const DashboardPedidoSemanalBodegaView: React.FC = () => {
 
       {/* ── Charts: Pie + Bar Horizontal ── */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {/* Pie: Estado de Recetas */}
+        {/* Pie: Estado de PedidoSemanaBodegas */}
         <Card className="shadow-sm border border-divider">
           <CardHeader className="pb-0 pt-4 px-5">
             <h3 className="text-sm font-semibold text-default-700">Estado de Pedidos</h3>

@@ -17,7 +17,7 @@ import java.util.List;
  * Controller REST para gestión de Productos
  * Endpoints: /api/v1/producto
  * ✅ En uso parcial: La mayoría de las funciones de inventario se gestionan a través de InventarioController.
- * Este controlador se usa principalmente para obtener la lista de productos activos para selección en recetas
+ * Este controlador se usa principalmente para obtener la lista de productos activos para selección en pedidoSemanaBodegas
  * (endpoint /find-all-product-active-for-option).
  */
 @RestController
@@ -40,7 +40,7 @@ public class ProductoController {
     }
 
     /**
-     * Obtiene la lista de productos activos optimizada para selección en la creación de recetas.
+     * Obtiene la lista de productos activos optimizada para selección en la creación de pedidoSemanaBodegas.
      * ✅ En uso: Consumido por obtenerProductosOpcionService en solicitud-service.ts.
      */
     @GetMapping("/find-all-product-active-for-option")

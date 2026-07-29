@@ -34,7 +34,7 @@ public interface DetallePedidoSemanaBodegaRepository extends JpaRepository<Detal
     @Query("DELETE FROM DetallePedidoSemanaBodega d " +
             "WHERE d.pedidoSemanaBodega.idPedidoSemanaBodega = :idPedidoSemanaBodega " +
             "AND d.producto.idProducto IN :idsProducto")
-    int deleteByRecetaAndProductoIds(@Param("idPedidoSemanaBodega") Integer idPedidoSemanaBodega,
+    int deleteByPedidoSemanaBodegaAndProductoIds(@Param("idPedidoSemanaBodega") Integer idPedidoSemanaBodega,
                                      @Param("idsProducto") List<Integer> idsProducto);
 
     /** Actualiza la cantidad de un producto en un pedido semana bodega. */
@@ -87,7 +87,7 @@ public interface DetallePedidoSemanaBodegaRepository extends JpaRepository<Detal
     JOIN d.producto p
     WHERE d.pedidoSemanaBodega.idPedidoSemanaBodega = :idPedidoSemanaBodega
 """)
-    List<DetallePedidoSemanaBodegaItemProjection> findItemsByRecetaId(@Param("idPedidoSemanaBodega") Integer idPedidoSemanaBodega);
+    List<DetallePedidoSemanaBodegaItemProjection> findItemsByPedidoSemanaBodegaId(@Param("idPedidoSemanaBodega") Integer idPedidoSemanaBodega);
 
     @Query("""
         SELECT d.producto.idProducto AS idProducto,
@@ -96,11 +96,11 @@ public interface DetallePedidoSemanaBodegaRepository extends JpaRepository<Detal
         WHERE d.pedidoSemanaBodega.idPedidoSemanaBodega = :idPedidoSemanaBodega
           AND d.producto.activo = true
     """)
-    List<DetallePedidoSemanaBodegaIdProductoProjection> findAllIdProductoAndCantidadByReceta(
+    List<DetallePedidoSemanaBodegaIdProductoProjection> findAllIdProductoAndCantidadByPedidoSemanaBodega(
             @Param("idPedidoSemanaBodega") Integer idPedidoSemanaBodega
     );
 
-    List<DetallePedidoSemanaBodega> findDetalleRecetaByPedidoSemanaBodega_IdPedidoSemanaBodega(Integer idPedidoSemanaBodega);
+    List<DetallePedidoSemanaBodega> findDetallePedidoSemanaBodegaByPedidoSemanaBodega_IdPedidoSemanaBodega(Integer idPedidoSemanaBodega);
 
     @Query("SELECT " +
             "  dr.idDetallePedidoSemana AS idDetallePedidoSemana, " +
@@ -114,7 +114,7 @@ public interface DetallePedidoSemanaBodegaRepository extends JpaRepository<Detal
 
 
     @Query("SELECT d.producto.idProducto FROM DetallePedidoSemanaBodega d WHERE d.pedidoSemanaBodega.idPedidoSemanaBodega = :idPedidoSemanaBodega")
-    List<Integer> findProductoIdsByRecetaId(@Param("idPedidoSemanaBodega") Integer idPedidoSemanaBodega);
+    List<Integer> findProductoIdsByPedidoSemanaBodegaId(@Param("idPedidoSemanaBodega") Integer idPedidoSemanaBodega);
 
     List<DetallePedidoSemanaBodega> findAllByPedidoSemanaBodega(PedidoSemanaBodega pedidoSemanaBodega);
 }

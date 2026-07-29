@@ -12,21 +12,21 @@ public interface DetallePedidoSemanaBodegaService {
 
     DetallePedidoSemanaBodega findById(Integer id);
 
-    List<DetallePedidoSemanaBodegaIdProductoProjection> findAllIdProductoAndCantidadByReceta(Integer idReceta);
+    List<DetallePedidoSemanaBodegaIdProductoProjection> findAllIdProductoAndCantidadByPedidoSemanaBodega(Integer idPedidoSemanaBodega);
 
     List<DetallePedidoSemanaBodega> findAll();
 
-    List<DetallePedidoSemanaBodega> findAllByReceta(PedidoSemanaBodega receta);
+    List<DetallePedidoSemanaBodega> findAllByPedidoSemanaBodega(PedidoSemanaBodega pedidoSemanaBodega);
 
-    List<DetallePedidoSemanaBodega> findAllByIdReceta(Integer id);
+    List<DetallePedidoSemanaBodega> findAllByIdPedidoSemanaBodega(Integer id);
 
-    List<Integer> findProductoIdsByRecetaId(@Param("idReceta") Integer idReceta);
+    List<Integer> findProductoIdsByPedidoSemanaBodegaId(@Param("idPedidoSemanaBodega") Integer idPedidoSemanaBodega);
 
-    List<DetallePedidoSemanaBodegaItemProjection> findItemsByRecetaId(@Param("idReceta") Integer idReceta);
+    List<DetallePedidoSemanaBodegaItemProjection> findItemsByPedidoSemanaBodegaId(@Param("idPedidoSemanaBodega") Integer idPedidoSemanaBodega);
 
     List<DetallePedidoSemanaBodega> saveAll(List<DetallePedidoSemanaBodega> detalles);
 
-    DetallePedidoSemanaBodega save(DetallePedidoSemanaBodega detalleReceta);
+    DetallePedidoSemanaBodega save(DetallePedidoSemanaBodega detallePedidoSemanaBodega);
 
 
 

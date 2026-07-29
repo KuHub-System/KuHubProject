@@ -163,10 +163,10 @@ export interface IValidateStockConflictResponse {
 }
 
 /**
- * DTO para la selección de productos en recetas/solicitudes.
+ * DTO para la selección de productos en pedidoSemanaBodegas/solicitudes.
  * GET /v1/producto/find-all-product-active-for-option
  */
-export interface IProductoRecetaSelection {
+export interface IProductoPedidoSemanaBodegaSelection {
   idProducto: number;
   nombreProducto: string;
   idUnidad: number;

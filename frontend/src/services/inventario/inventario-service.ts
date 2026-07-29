@@ -16,7 +16,7 @@ import {
     IInventoryPageResponse,
     IValidateStockRequest,
     IValidateStockConflictResponse,
-    IProductoRecetaSelection
+    IProductoPedidoSemanaBodegaSelection
 } from '../../types/inventario/producto.types';
 import {
     ISincronizarInventarioExcelResultado,
@@ -172,12 +172,12 @@ export const obtenerProductosService = async (): Promise<IProducto[]> => {
 };
 
 /**
- * Obtiene todos los productos activos para selección en recetas/solicitudes
+ * Obtiene todos los productos activos para selección en pedidoSemanaBodegas/solicitudes
  * GET /v1/producto/find-all-product-active-for-option
  */
-export const obtenerProductosParaRecetaService = async (): Promise<IProductoRecetaSelection[]> => {
+export const obtenerProductosParaPedidoSemanaBodegaService = async (): Promise<IProductoPedidoSemanaBodegaSelection[]> => {
     try {
-        const response = await api.get<IProductoRecetaSelection[]>(
+        const response = await api.get<IProductoPedidoSemanaBodegaSelection[]>(
             '/producto/find-all-product-active-for-option'
         );
         return response.data;

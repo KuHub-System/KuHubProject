@@ -26,7 +26,7 @@ import {
   IPedidoSemanaBodegaSolicitud, IProductoOpcionConCategoria,
   IResultsMassSolicitation,
   obtenerCursosParaSolicitudService,
-  obtenerRecetasSolicitudService,
+  obtenerPedidoSemanaBodegasSolicitudService,
   obtenerProductosOpcionConCategoriaService,
   generarSolicitudesMasivasService,
 } from '../services/solicitud/solicitud-service';
@@ -49,7 +49,7 @@ interface AsigConfig {
   /** Claves de bloques seleccionados: "${secId}|${diaSemana}|${idSala}" */
   bloquesIds: Set<string>;
   semanaId: string;
-  recetaId: string;
+  pedidoSemanaBodegaId: string;
   items: ItemSolicitud[];
   itemsEliminadosIds: number[];
   observaciones: string;
@@ -124,7 +124,7 @@ const seccionesSeleccionadas = (secciones: ISeccionCurso[], bloquesIds: Set<stri
 
 const makeEmptyConfig = (defaultSemanaId: string): AsigConfig => ({
   bloquesIds: new Set(), semanaId: defaultSemanaId,
-  recetaId: '', items: [], itemsEliminadosIds: [], observaciones: '',
+  pedidoSemanaBodegaId: '', items: [], itemsEliminadosIds: [], observaciones: '',
   extraProductoId: '', extraCantidad: '',
 });
 
@@ -140,14 +140,14 @@ interface AsigCardProps {
   defaultSemanaId: string;
   isLoadingSemanas: boolean;
   sinPeriodos: boolean;
-  recetas: IPedidoSemanaBodegaSolicitud[];
+  pedidoSemanaBodegas: IPedidoSemanaBodegaSolicitud[];
   productos: IProductoOpcionConCategoria[];
   onToggleExpand: () => void;
   onUpdate: (fn: (prev: AsigConfig) => AsigConfig) => void;
 }
 
 const AsigCard: React.FC<AsigCardProps> = ({
-  asig, config, isExpanded, semanas, defaultSemanaId, isLoadingSemanas, sinPeriodos, recetas, productos, onToggleExpand, onUpdate,
+  asig, config, isExpanded, semanas, defaultSemanaId, isLoadingSemanas, sinPeriodos, pedidoSemanaBodegas, productos, onToggleExpand, onUpdate,
 }) => {
   const { isAdmin: isAdminCard } = usePermission();
   const historyCard = useHistory();
@@ -187,13 +187,13 @@ const AsigCard: React.FC<AsigCardProps> = ({
 
   const semanasParaFiltro = periodMatchesGlobal ? (contextSemanas as ISemana[]) : localSemanas;
 
-  const recetasFiltradas = React.useMemo(() => {
+  const pedidoSemanaBodegasFiltradas = React.useMemo(() => {
     const porAsignatura = soloEstaAsignatura
-      ? recetas.filter(r => r.idAsignatura === asig.idAsignatura)
-      : recetas;
+      ? pedidoSemanaBodegas.filter(r => r.idAsignatura === asig.idAsignatura)
+      : pedidoSemanaBodegas;
     if (filterIdSemana === 'todas') return porAsignatura;
     return porAsignatura.filter(r => r.idSemana != null && String(r.idSemana) === filterIdSemana);
-  }, [recetas, filterIdSemana, soloEstaAsignatura, asig.idAsignatura]);
+  }, [pedidoSemanaBodegas, filterIdSemana, soloEstaAsignatura, asig.idAsignatura]);
 
   // ── derivados de bloquesIds ──
   const secSel         = seccionesSeleccionadas(asig.secciones, config.bloquesIds);
@@ -221,7 +221,7 @@ const AsigCard: React.FC<AsigCardProps> = ({
 
   const blkCount      = config.bloquesIds.size;
   const tieneItems    = config.items.length > 0;
-  const isValid       = selCount > 0 && config.semanaId !== '' && (config.recetaId !== '' || tieneItems);
+  const isValid       = selCount > 0 && config.semanaId !== '' && (config.pedidoSemanaBodegaId !== '' || tieneItems);
   const isPartial     = selCount > 0 && !isValid;
 
   const recomputeIns = (next: Set<string>) =>
@@ -258,15 +258,15 @@ const AsigCard: React.FC<AsigCardProps> = ({
     return { ...prev, bloquesIds: next };
   });
 
-  const handleSelectReceta = (recetaId: string) => {
-    const receta = recetas.find(r => String(r.idReceta) === recetaId);
-    if (!receta) return;
+  const handleSelectPedidoSemanaBodega = (pedidoSemanaBodegaId: string) => {
+    const pedidoSemanaBodega = pedidoSemanaBodegas.find(r => String(r.idPedidoSemanaBodega) === pedidoSemanaBodegaId);
+    if (!pedidoSemanaBodega) return;
     onUpdate(prev => ({
-      ...prev, recetaId,
+      ...prev, pedidoSemanaBodegaId,
       itemsEliminadosIds: [],
-      // Las cantidades se guardan tal como vienen de la receta (base 20 porciones)
+      // Las cantidades se guardan tal como vienen de la pedidoSemanaBodega (base 20 porciones)
       // El backend escala según los alumnos inscritos por sección
-      items: receta.detalles.map(d => ({
+      items: pedidoSemanaBodega.detalles.map(d => ({
         id: String(d.idDetallePedidoSemana),
         nombre: d.nombreProducto,
         cantidadBase: d.cantProducto,
@@ -362,7 +362,7 @@ const AsigCard: React.FC<AsigCardProps> = ({
         <div className="flex items-center gap-2 shrink-0">
           {selCount > 0 && <Chip size="sm" color={isValid ? 'success' : 'primary'} variant="flat">{selCount} secc.</Chip>}
           {semana && selCount > 0 && <Chip size="sm" color="default" variant="flat" className="hidden sm:flex">{semana.nombreSemana}</Chip>}
-          {config.recetaId && <Icon icon="lucide:book-open" width={14} className="text-success hidden sm:block" />}
+          {config.pedidoSemanaBodegaId && <Icon icon="lucide:book-open" width={14} className="text-success hidden sm:block" />}
         </div>
         <Icon icon={isExpanded ? 'lucide:chevron-up' : 'lucide:chevron-down'} className="text-default-400 shrink-0" width={16} />
       </button>
@@ -562,7 +562,7 @@ const AsigCard: React.FC<AsigCardProps> = ({
                   </span>
                 </div>
 
-                {recetas.length === 0 ? (
+                {pedidoSemanaBodegas.length === 0 ? (
                   isAdminCard ? (
                     <button
                       type="button"
@@ -659,24 +659,24 @@ const AsigCard: React.FC<AsigCardProps> = ({
 
                     {/* Buscador de pedido semanal bodega */}
                     <Autocomplete
-                      selectedKey={config.recetaId || null}
-                      onSelectionChange={key => handleSelectReceta(String(key ?? ''))}
+                      selectedKey={config.pedidoSemanaBodegaId || null}
+                      onSelectionChange={key => handleSelectPedidoSemanaBodega(String(key ?? ''))}
                       variant="bordered" size="sm" placeholder="Buscar pedidos semanales..."
                       classNames={{ base: 'flex-1 min-w-[160px]', popoverContent: 'dark:bg-content1' }}
                       inputProps={{ classNames: { inputWrapper: 'bg-default-50' } }}
                       startContent={<Icon icon="lucide:book-open" width={13} className="text-default-400 shrink-0" />}
                     >
-                      {recetasFiltradas.map(r => (
-                        <AutocompleteItem key={String(r.idReceta)} textValue={r.nombreReceta}>
+                      {pedidoSemanaBodegasFiltradas.map(r => (
+                        <AutocompleteItem key={String(r.idPedidoSemanaBodega)} textValue={r.nombrePedidoSemanaBodega}>
                           <div className="flex items-center gap-2">
-                            <span>{r.nombreReceta}</span>
+                            <span>{r.nombrePedidoSemanaBodega}</span>
                             <span className="text-default-400 text-xs ml-auto">{r.detalles.length} items</span>
                           </div>
                         </AutocompleteItem>
                       ))}
                     </Autocomplete>
 
-                    {recetasFiltradas.length === 0 && (
+                    {pedidoSemanaBodegasFiltradas.length === 0 && (
                       <p className="text-xs text-default-400 w-full mt-1">
                         {soloEstaAsignatura
                           ? `Sin pedidos semanales bodega asignados a ${asig.nombreAsignatura}. Desactiva el filtro para ver todos.`
@@ -890,7 +890,7 @@ const SolicitudPage: React.FC = () => {
   const [isLoadingAsig,    setIsLoadingAsig]      = React.useState(true);
 
   // ── pedidos semanales bodega + productos state ──
-  const [recetas,          setRecetas]           = React.useState<IPedidoSemanaBodegaSolicitud[]>([]);
+  const [pedidoSemanaBodegas,          setPedidoSemanaBodegas]           = React.useState<IPedidoSemanaBodegaSolicitud[]>([]);
   const [productos,        setProductos]         = React.useState<IProductoOpcionConCategoria[]>([]);
 
   // ── form state ──
@@ -925,13 +925,13 @@ const SolicitudPage: React.FC = () => {
     const load = async () => {
       setIsLoadingAsig(true);
       try {
-        const [asigData, recetasData, productosData] = await Promise.all([
+        const [asigData, pedidoSemanaBodegasData, productosData] = await Promise.all([
           obtenerCursosParaSolicitudService(),
-          obtenerRecetasSolicitudService(),
+          obtenerPedidoSemanaBodegasSolicitudService(),
           obtenerProductosOpcionConCategoriaService(),
         ]);
         setAsignaturas(asigData);
-        setRecetas(recetasData);
+        setPedidoSemanaBodegas(pedidoSemanaBodegasData);
         setProductos(productosData);
       } catch {
         toast.error('Error al cargar los datos de la solicitud');
@@ -954,7 +954,7 @@ const SolicitudPage: React.FC = () => {
       const cfg      = getConfig(String(asig.idAsignatura));
       const secSel   = seccionesSeleccionadas(asig.secciones, cfg.bloquesIds);
       const blkCount = cfg.bloquesIds.size; // one solicitud per selected block (day×room)
-      if (secSel.length > 0 && cfg.semanaId && (cfg.recetaId || cfg.items.length > 0)) {
+      if (secSel.length > 0 && cfg.semanaId && (cfg.pedidoSemanaBodegaId || cfg.items.length > 0)) {
         totalSolicitudes += blkCount;
         // sum students × number of blocks selected for each section
         totalAlumnos += secSel.reduce((sum, sec) => {
@@ -979,21 +979,21 @@ const SolicitudPage: React.FC = () => {
     try {
       const payload = resumen.asigConfiguradas.map(({ asig, cfg, secSel }) => {
         const semana = semanas.find(s => String(s.idSemana) === cfg.semanaId)!;
-        const receta = cfg.recetaId ? recetas.find((r: IPedidoSemanaBodegaSolicitud) => String(r.idReceta) === cfg.recetaId) : null;
+        const pedidoSemanaBodega = cfg.pedidoSemanaBodegaId ? pedidoSemanaBodegas.find((r: IPedidoSemanaBodegaSolicitud) => String(r.idPedidoSemanaBodega) === cfg.pedidoSemanaBodegaId) : null;
 
         // ── deltas ──────────────────────────────────────────────────────────
         // Las cantidades se envían tal como están (base 20 porciones).
         // El backend es responsable de escalar por sección según cant_inscritos.
-        let deltas: { eliminados: number[]; modificados: { idDetalleReceta: number; cantProducto: number; observacion?: string }[]; nuevos: { idProducto: number; cantProducto: number; observacion: string }[] } | undefined;
-        if (receta) {
-          const originalIds = new Set(receta.detalles.map(d => String(d.idDetallePedidoSemana)));
+        let deltas: { eliminados: number[]; modificados: { idDetallePedidoSemana: number; cantProducto: number; observacion?: string }[]; nuevos: { idProducto: number; cantProducto: number; observacion: string }[] } | undefined;
+        if (pedidoSemanaBodega) {
+          const originalIds = new Set(pedidoSemanaBodega.detalles.map(d => String(d.idDetallePedidoSemana)));
 
           const eliminados = cfg.itemsEliminadosIds;
 
           const modificados = cfg.items
             .filter(i => !i.esExtra && originalIds.has(i.id))
             .filter(i => {
-              const orig = receta.detalles.find(d => String(d.idDetallePedidoSemana) === i.id);
+              const orig = pedidoSemanaBodega.detalles.find(d => String(d.idDetallePedidoSemana) === i.id);
               // Comparamos directamente con cantidadBase (sin multiplicar)
               const cantidadCambiada = orig && Math.abs(i.cantidad - orig.cantProducto) > 0.0001;
               const observacionOriginal = orig?.observacion ?? null;
@@ -1002,7 +1002,7 @@ const SolicitudPage: React.FC = () => {
               return cantidadCambiada || observacionCambiada;
             })
             .map(i => ({
-              idDetalleReceta: parseInt(i.id),
+              idDetallePedidoSemana: parseInt(i.id),
               cantProducto: i.cantidad, // Se envía la cantidad base sin multiplicar
               ...(i.observacion ? { observacion: i.observacion } : {}),
             }));
@@ -1053,7 +1053,7 @@ const SolicitudPage: React.FC = () => {
         return {
           idAsignatura: asig.idAsignatura,
           idSemana: parseInt(cfg.semanaId),
-          ...(cfg.recetaId ? { idReceta: parseInt(cfg.recetaId) } : {}),
+          ...(cfg.pedidoSemanaBodegaId ? { idPedidoSemanaBodega: parseInt(cfg.pedidoSemanaBodegaId) } : {}),
           ...(cfg.observaciones ? { observacion: cfg.observaciones } : {}),
           secciones,
           ...(deltas ? { deltas } : {}),
@@ -1224,7 +1224,7 @@ const SolicitudPage: React.FC = () => {
                 defaultSemanaId={defaultSemanaId}
                 isLoadingSemanas={isLoadingSemanas}
                 sinPeriodos={sinPeriodos}
-                recetas={recetas}
+                pedidoSemanaBodegas={pedidoSemanaBodegas}
                 productos={productos}
                 onToggleExpand={() => toggleExpand(String(asig.idAsignatura))}
                 onUpdate={fn => updateConfig(String(asig.idAsignatura), fn)}
@@ -1264,7 +1264,7 @@ const SolicitudPage: React.FC = () => {
                     <div className="space-y-3">
                       {resumen.asigConfiguradas.map(({ asig, cfg, secSel, blkCount }) => {
                         const s   = semanas.find(s => String(s.idSemana) === cfg.semanaId);
-                        const r   = recetas.find((r: IPedidoSemanaBodegaSolicitud) => String(r.idReceta) === cfg.recetaId);
+                        const r   = pedidoSemanaBodegas.find((r: IPedidoSemanaBodegaSolicitud) => String(r.idPedidoSemanaBodega) === cfg.pedidoSemanaBodegaId);
                         const ins = secSel.reduce((sum, sec) => sum + sec.cant_inscritos, 0);
                         return (
                           <div key={asig.idAsignatura} className="rounded-xl border border-default-200 p-3 space-y-1.5">
@@ -1272,7 +1272,7 @@ const SolicitudPage: React.FC = () => {
                             <div className="space-y-0.5 text-xs text-default-500 pl-1">
                               <div className="flex items-center gap-1.5"><Icon icon="lucide:layers" width={11} />{secSel.length} sección(es) · {ins} alumnos</div>
                               <div className="flex items-center gap-1.5"><Icon icon="lucide:calendar" width={11} />{s?.nombreSemana ?? '—'}</div>
-                              <div className="flex items-center gap-1.5"><Icon icon="lucide:book-open" width={11} /><span className="truncate">{r?.nombreReceta ?? '—'}</span></div>
+                              <div className="flex items-center gap-1.5"><Icon icon="lucide:book-open" width={11} /><span className="truncate">{r?.nombrePedidoSemanaBodega ?? '—'}</span></div>
                             </div>
                             <Chip size="sm" color="success" variant="flat" className="text-[10px] w-full justify-center">
                               {blkCount} solicitud{blkCount > 1 ? 'es' : ''} a crear

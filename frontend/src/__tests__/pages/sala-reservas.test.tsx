@@ -46,7 +46,7 @@ vi.mock('../../hooks/useToast', () => {
     warning: vi.fn(),
     info:    vi.fn(),
   };
-  return { useToast: () => toastObj, useConfirm: () => vi.fn() };
+  return { useToast: () => toastObj, useConfirm: () => vi.fn(), useConfirmDelete: () => vi.fn() };
 });
 
 vi.mock('../../utils/notifications', () => ({

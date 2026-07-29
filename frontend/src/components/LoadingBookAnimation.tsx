@@ -288,7 +288,7 @@ const FloatingParticles: React.FC<{ accent: string }> = ({ accent }) => (
 const LoadingBookAnimation: React.FC<LoadingBookAnimationProps> = ({
   pageCount          = PAGES.length,
   pageChangeInterval = 2000,
-  message            = 'Cargando recetas',
+  message            = 'Cargando pedidoSemanaBodegas',
   subMessage         = 'Preparando el menú...',
   size               = 'medium',
   showPageIndicators = true,

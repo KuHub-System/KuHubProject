@@ -27,7 +27,7 @@ import java.util.Map;
 /**
  * Controller REST para gestión de Solicitudes
  * Endpoints: /api/v1/solicitud
- * ✅ En uso: Este controlador maneja la lógica de solicitudes masivas, carga de cursos/recetas
+ * ✅ En uso: Este controlador maneja la lógica de solicitudes masivas, carga de cursos/pedidoSemanaBodegas
  * para solicitudes y vista semanal consolidada.
  * Es consumido por solicitud-service.ts en el frontend.
  */
@@ -85,9 +85,9 @@ public class SolicitudController {
     }
 
     /**
-     * Obtiene la lista de recetas activas incluyendo el detalle de sus insumos.
+     * Obtiene la lista de pedidoSemanaBodegas activas incluyendo el detalle de sus insumos.
      * Si se pasa idAsignatura filtra por asignatura en BD; si es null retorna todas.
-     * ✅ En uso: Consumido por obtenerRecetasSolicitudService en solicitud-service.ts.
+     * ✅ En uso: Consumido por obtenerPedidoSemanaBodegasSolicitudService en solicitud-service.ts.
      */
     @GetMapping("/recipes-with-details-by-solicitation")
     public ResponseEntity<List<RecipeSolicitation>> findActiveRecipesWithDetails(

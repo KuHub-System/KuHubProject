@@ -170,7 +170,7 @@ public class PermisoRolServiceImpl implements PermisoRolService {
     }
 
     private boolean[] defaultProfesorACargo(String m) {
-        if (Set.of("DASHBOARD", "GESTION_RECETAS").contains(m))
+        if (Set.of("DASHBOARD", "PEDIDO_SEMANAL_BODEGA").contains(m))
             return new boolean[]{true, false, false, false};
         if ("SOLICITUD".equals(m))
             return new boolean[]{true, true, true, false};
@@ -178,7 +178,7 @@ public class PermisoRolServiceImpl implements PermisoRolService {
     }
 
     private boolean[] defaultDocente(String m) {
-        if (Set.of("DASHBOARD", "SOLICITUD", "GESTION_RECETAS").contains(m))
+        if (Set.of("DASHBOARD", "SOLICITUD", "PEDIDO_SEMANAL_BODEGA").contains(m))
             return new boolean[]{true, false, false, false};
         return new boolean[]{false, false, false, false};
     }

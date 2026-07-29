@@ -108,14 +108,14 @@ const mkSolicitudVinculada = (
   id: number,
   fecha: string,
   rangoHoras: string,
-  nombreReceta    = 'Pan Amasado',
+  nombrePedidoSemanaBodega    = 'Pan Amasado',
   nombreSeccion   = `S${id}`,
   nombreAsignatura = 'Gastronomía Básica',
 ) => ({
   idSolicitud:     id,
   fechaSolicitada: fecha,
   estadoSolicitud: 'PROCESADO',
-  nombreReceta,
+  nombrePedidoSemanaBodega,
   observaciones:   '',
   cantProductos:   1,
   productosSolicitados: [{ nombreProducto: 'Harina', cantidad: 10, unidadAbreviada: 'kg' }],
@@ -652,7 +652,7 @@ describe('GestionSolicitudesPage / pestaña Conglomerado — Cronograma y Totale
     expect(screen.getByText(/§S2/)).toBeInTheDocument();
   });
 
-  it('CONG-15: búsqueda en cronograma filtra solicitudes por nombre de receta', async () => {
+  it('CONG-15: búsqueda en cronograma filtra solicitudes por nombre de pedidoSemanaBodega', async () => {
     const sol1 = mkSolicitudVinculada(1, '2026-05-25', '08:00-09:30', 'Pan Amasado', 'S1');
     const sol2 = mkSolicitudVinculada(2, '2026-05-25', '10:00-11:30', 'Torta Mil Hojas', 'S2');
 
@@ -671,7 +671,7 @@ describe('GestionSolicitudesPage / pestaña Conglomerado — Cronograma y Totale
     );
 
     // Filtrar por "pan"
-    const searchInput = screen.getByPlaceholderText(/Buscar receta/i);
+    const searchInput = screen.getByPlaceholderText(/Buscar pedidoSemanaBodega/i);
     fireEvent.change(searchInput, { target: { value: 'pan' } });
 
     await waitFor(() => {

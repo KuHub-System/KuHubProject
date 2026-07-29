@@ -202,7 +202,7 @@ const GestionPedidosPage: React.FC = () => {
     <h2 style="text-align:center">Vista previa para Consolidado — Detalle Solicitud</h2>
     <p class="sub">${sol.asignaturaDetalle.nombre_asignatura} · §${seccion.nombre_seccion} · ${new Date(sol.fechaSolicitada + 'T00:00:00').toLocaleDateString('es-CL', { weekday: 'long', day: 'numeric', month: 'long' })}</p>
     <div class="grid">
-      <div class="field"><label>Receta</label><span>${sol.nombreReceta}</span></div>
+      <div class="field"><label>PedidoSemanaBodega</label><span>${sol.nombrePedidoSemanaBodega}</span></div>
       <div class="field"><label>Docente</label><span>${seccion.nombre_docente}</span></div>
       <div class="field"><label>Horario</label><span>${seccion.horarios.rangoHoras}</span></div>
       <div class="field"><label>Sala</label><span>${seccion.horarios.nombreSala}</span></div>
@@ -548,7 +548,7 @@ const GestionPedidosPage: React.FC = () => {
                                 <span className="text-sm text-default-600">{seccion.nombre_docente}</span>
                               </div>
                               <div className="flex items-center gap-5 mt-1.5 text-xs text-default-500 flex-wrap">
-                                <span className="flex items-center gap-1.5"><Icon icon="lucide:book-open" width={12} />{sol.nombreReceta}</span>
+                                <span className="flex items-center gap-1.5"><Icon icon="lucide:book-open" width={12} />{sol.nombrePedidoSemanaBodega}</span>
                                 <span className="flex items-center gap-1.5"><Icon icon="lucide:clock" width={12} />{seccion.horarios.rangoHoras}</span>
                                 <span className="flex items-center gap-1.5"><Icon icon="lucide:door-open" width={12} />{seccion.horarios.nombreSala}</span>
                                 <span className="flex items-center gap-1.5"><Icon icon="lucide:users" width={12} />{seccion.cant_inscritos} alumnos</span>

@@ -14,7 +14,7 @@ import {
   IInventoryPageRequest,
   IInventoryPageItem,
   IInventoryPageResponse,
-  IProductoRecetaSelection
+  IProductoPedidoSemanaBodegaSelection
 } from '../../types/inventario/producto.types';
 
 // Importar el servicio real de inventario
@@ -31,7 +31,7 @@ import {
   transformarPageItemAProducto,
   softDeleteInventarioService as softDeleteInventarioBackend,
   validateStockBeforeUpdatingService as validateStockBeforeUpdatingBackend,
-  obtenerProductosParaRecetaService as obtenerProductosParaRecetaBackend
+  obtenerProductosParaPedidoSemanaBodegaService as obtenerProductosParaPedidoSemanaBodegaBackend
 } from './inventario-service';
 
 // Exportar la obtención de filtros
@@ -63,21 +63,21 @@ export const obtenerProductosService = async (): Promise<IProducto[]> => {
 };
 
 /**
- * Cache en memoria para los productos para receta.
+ * Cache en memoria para los productos para pedidoSemanaBodega.
  * Se llena una sola vez y se reutiliza en todo el ciclo de vida de la aplicación.
  */
-let cachedProductosParaReceta: IProductoRecetaSelection[] | null = null;
+let cachedProductosParaPedidoSemanaBodega: IProductoPedidoSemanaBodegaSelection[] | null = null;
 
 /**
- * Obtiene la lista de productos optimizada para selección en recetas.
+ * Obtiene la lista de productos optimizada para selección en pedidoSemanaBodegas.
  * Usa cache en memoria: la primera llamada consulta el backend, las siguientes retornan el cache.
  */
-export const obtenerProductosParaRecetaService = async (): Promise<IProductoRecetaSelection[]> => {
-  if (cachedProductosParaReceta) {
-    return cachedProductosParaReceta;
+export const obtenerProductosParaPedidoSemanaBodegaService = async (): Promise<IProductoPedidoSemanaBodegaSelection[]> => {
+  if (cachedProductosParaPedidoSemanaBodega) {
+    return cachedProductosParaPedidoSemanaBodega;
   }
-  const data = await obtenerProductosParaRecetaBackend();
-  cachedProductosParaReceta = data;
+  const data = await obtenerProductosParaPedidoSemanaBodegaBackend();
+  cachedProductosParaPedidoSemanaBodega = data;
   return data;
 };
 

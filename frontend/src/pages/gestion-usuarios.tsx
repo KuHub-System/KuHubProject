@@ -24,7 +24,7 @@ import {
 } from '../services/usuario/usuario-service';
 import { useAuth } from '../contexts/auth-context';
 import { useModulePermission, usePermission } from '../contexts/permission-context';
-import { useToast, useConfirm } from '../hooks/useToast';
+import { useToast, useConfirmDeactivate } from '../hooks/useToast';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { TableSkeleton, TableSkeletonColumn } from '../components/SkeletonLoader';
 import { logger } from '../utils/logger';
@@ -572,7 +572,7 @@ const USUARIOS_TABLE_COLS: TableSkeletonColumn[] = [
 
 const GestionUsuariosPage: React.FC = () => {
   const toast = useToast();
-  const confirm = useConfirm();
+  const confirmDeactivate = useConfirmDeactivate();
   const { user: usuarioActual } = useAuth();
   const { canCreate: usuPuedeCrear, canUpdate: usuPuedeEditar, canDelete: usuPuedeEliminar } = useModulePermission('GESTION_USUARIOS');
   const [usuarios, setUsuarios] = useState<IUsuario[]>([]);
@@ -889,17 +889,10 @@ const GestionUsuariosPage: React.FC = () => {
       return;
     }
 
-    const result = await confirm(
-      `Esta acción desactivará al usuario ${usuario.nombreCompleto}.`,
-      {
-        title: 'Desactivar usuario',
-        confirmText: 'Desactivar',
-        confirmColor: 'danger',
-        requireText: 'ELIMINAR',
-        requireTextLabel: 'Escribe "ELIMINAR" para confirmar',
-        requireTextHelper: 'Usa esta opción solo para depurar datos de prueba.',
-      }
-    );
+    const result = await confirmDeactivate({
+      title: 'Desactivar usuario',
+      itemDescription: `al usuario ${usuario.nombreCompleto}`,
+    });
     if (!result) {
       return;
     }

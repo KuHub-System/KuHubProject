@@ -80,7 +80,7 @@ const EntregaSalaCard: React.FC<{
                   </div>
                   <div className="flex items-center gap-3 mt-0.5 text-xs text-default-400 flex-wrap">
                     <span className="flex items-center gap-1">
-                      <Icon icon="lucide:book-open" width={11} />{sol.nombreReceta}
+                      <Icon icon="lucide:book-open" width={11} />{sol.nombrePedidoSemanaBodega}
                     </span>
                     <span className="flex items-center gap-1">
                       <Icon icon="lucide:users" width={11} />{sol.cantInscritos} alumnos

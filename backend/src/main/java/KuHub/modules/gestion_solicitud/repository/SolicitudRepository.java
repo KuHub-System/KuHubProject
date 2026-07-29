@@ -141,8 +141,8 @@ public interface SolicitudRepository extends JpaRepository<Solicitud, Integer> {
      * Si idAsignatura es null retorna todos; si tiene valor filtra por asignatura.*/
     @Query(value = """
             SELECT
-                r.id_pedido_semana_bodega AS idReceta,          -- [0]
-                r.nombre_pedido_semana_bodega AS nombreReceta,   -- [1]
+                r.id_pedido_semana_bodega AS idPedidoSemanaBodega,          -- [0]
+                r.nombre_pedido_semana_bodega AS nombrePedidoSemanaBodega,   -- [1]
                 COALESCE(
                     jsonb_agg(
                         jsonb_build_object(
@@ -186,7 +186,7 @@ public interface SolicitudRepository extends JpaRepository<Solicitud, Integer> {
     @Query(value = """
         SELECT
             so.fecha_solicitada,                                                       -- [0]
-            COALESCE(rc.nombre_pedido_semana_bodega, 'Sin receta') AS nombre_receta, -- [1]
+            COALESCE(rc.nombre_pedido_semana_bodega, 'Sin pedidoSemanaBodega') AS nombre_pedidoSemanaBodega, -- [1]
             so.id_solicitud,                                                           -- [2]
             so.id_pedido_semana_bodega,                                                -- [3]
             so.id_reserva_sala,                                           -- [4]
@@ -319,7 +319,7 @@ public interface SolicitudRepository extends JpaRepository<Solicitud, Integer> {
         SELECT 
             sol.id_solicitud,
             sol.fecha_solicitada,
-            COALESCE(rec.nombre_pedido_semana_bodega, 'Sin receta') AS nombre_receta,
+            COALESCE(rec.nombre_pedido_semana_bodega, 'Sin pedidoSemanaBodega') AS nombre_pedidoSemanaBodega,
             sol.observaciones, 
             JSON_BUILD_OBJECT(
                 'nombre_asignatura', asig.nombre_asignatura,

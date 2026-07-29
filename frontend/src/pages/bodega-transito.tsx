@@ -14,7 +14,7 @@ import { useHistory } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ISolicitud, IItemSolicitud } from '../types/solicitud/solicitud.types';
 import { actualizarEstadoBodegaService, obtenerEntregasDiariasService, prepararEntregaService, registrarDisponiblesService, IRegistrarDisponibleDTO, consultarDisponiblesPorProductoService, restarDisponiblesService, IRestarDisponibleDTO, IEntregaDiaria, ISalaEntrega, ISolicitudEntrega } from '../services/solicitud/solicitud-service';
-import { obtenerRecetaPorIdService } from '../services/pedido/pedido-semanal-bodega-service';
+import { obtenerPedidoSemanaBodegaPorIdService } from '../services/pedido/pedido-semanal-bodega-service';
 import { obtenerFiltrosInventarioService } from '../services/inventario/producto-service';
 import { buscarBodegaTransitoService, buscarBodegaTransitoPorCodigoService, obtenerBodegaPaginadaService, IBodegaTransitoItem, obtenerBulkBodegaListingService, bulkUpdateBodegaStockService, IBulkBodegaListing, IBulkWarehouseUpdateRequest, IBulkWarehouseProcessResult, inicializarDesdeAbastecimientoService, obtenerBodegaByInventarioIdsService } from '../services/inventario/bodega-transito-service';
 import { useToast } from '../hooks/useToast';
@@ -259,7 +259,7 @@ const BodegaTransitoPage: React.FC = () => {
   const { isOpen: isExtraOpen, onOpen: onExtraOpen, onOpenChange: onExtraOpenChange } = useDisclosure();
   const { isOpen: isDetailOpen, onOpen: onDetailOpen, onOpenChange: onDetailOpenChange } = useDisclosure();
   const [selectedSolicitud, setSelectedSolicitud] = React.useState<ISolicitud | null>(null);
-  const [recetaInstrucciones, setRecetaInstrucciones] = React.useState<string>('');
+  const [pedidoSemanaBodegaInstrucciones, setPedidoSemanaBodegaInstrucciones] = React.useState<string>('');
   const [extraNombre, setExtraNombre] = React.useState('');
   const [extraCantidad, setExtraCantidad] = React.useState('');
   const [extraUnidad, setExtraUnidad] = React.useState('');
@@ -694,12 +694,12 @@ const BodegaTransitoPage: React.FC = () => {
 
   const handleOpenDetail = async (solicitud: ISolicitud) => {
     setSelectedSolicitud(solicitud);
-    setRecetaInstrucciones('');
-    if (solicitud.recetaId) {
+    setPedidoSemanaBodegaInstrucciones('');
+    if (solicitud.pedidoSemanaBodegaId) {
       try {
-        const receta = await obtenerRecetaPorIdService(solicitud.recetaId);
-        setRecetaInstrucciones(receta.instrucciones);
-      } catch (e) { setRecetaInstrucciones('No se pudo cargar la receta.'); }
+        const pedidoSemanaBodega = await obtenerPedidoSemanaBodegaPorIdService(solicitud.pedidoSemanaBodegaId);
+        setPedidoSemanaBodegaInstrucciones(pedidoSemanaBodega.instrucciones);
+      } catch (e) { setPedidoSemanaBodegaInstrucciones('No se pudo cargar la pedidoSemanaBodega.'); }
     }
     onDetailOpen();
   };
@@ -1422,7 +1422,7 @@ const BodegaTransitoPage: React.FC = () => {
                       <thead><tr className="bg-default-50"><th>Producto</th><th className="text-right">Cant.</th><th>Unidad</th><th>Origen</th></tr></thead>
                       <tbody>
                         {selectedSolicitud.items.map((it, i) => (
-                          <tr key={i} className="border-b"><td className="py-2">{it.productoNombre}</td><td className="text-right">{fmtCL(it.cantidad)}</td><td>{it.unidadMedida}</td><td>{it.esAdicional ? 'Extra' : 'Receta'}</td></tr>
+                          <tr key={i} className="border-b"><td className="py-2">{it.productoNombre}</td><td className="text-right">{fmtCL(it.cantidad)}</td><td>{it.unidadMedida}</td><td>{it.esAdicional ? 'Extra' : 'PedidoSemanaBodega'}</td></tr>
                         ))}
                       </tbody>
                     </table>

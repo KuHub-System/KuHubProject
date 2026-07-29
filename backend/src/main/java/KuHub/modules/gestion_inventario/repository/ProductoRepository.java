@@ -18,7 +18,7 @@ import java.util.Optional;
 public interface ProductoRepository extends JpaRepository<Producto, Integer> {
     /**
      * Obtiene la lista de productos activos con su unidad de medida
-     * para ser seleccionados en el formulario de recetas.
+     * para ser seleccionados en el formulario de pedidoSemanaBodegas.
      */
     @Query(value = """
         SELECT 

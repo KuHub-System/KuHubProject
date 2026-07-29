@@ -194,37 +194,37 @@ public class DashboardServiceImpl implements DashboardService {
         );
     }
 
-    // ── RECETAS ────────────────────────────────────────────────────────────────
+    // ── PEDIDO_SEMANAL_BODEGAS ────────────────────────────────────────────────────────────────
 
     @Override
     @Transactional(readOnly = true)
-    public DashboardRecetasDTO getDashboardRecetas() {
-        log.info("[RECETAS] Iniciando getDashboardRecetas");
+    public DashboardPedidoSemanaBodegasDTO getDashboardPedidoSemanaBodegas() {
+        log.info("[PEDIDO_SEMANAL_BODEGAS] Iniciando getDashboardPedidoSemanaBodegas");
 
-        log.info("[RECETAS] Paso 1: getRecetasKpis");
-        Object[] kpis = dashboardRepository.getRecetasKpis();
-        long recetasActivas   = ((Number) kpis[0]).longValue();
-        long recetasInactivas = ((Number) kpis[1]).longValue();
-        long recetasTotal     = ((Number) kpis[2]).longValue();
-        log.info("[RECETAS] KPIs: activas={}, inactivas={}, total={}", recetasActivas, recetasInactivas, recetasTotal);
+        log.info("[PEDIDO_SEMANAL_BODEGAS] Paso 1: getPedidoSemanaBodegasKpis");
+        Object[] kpis = dashboardRepository.getPedidoSemanaBodegasKpis();
+        long pedidoSemanaBodegasActivas   = ((Number) kpis[0]).longValue();
+        long pedidoSemanaBodegasInactivas = ((Number) kpis[1]).longValue();
+        long pedidoSemanaBodegasTotal     = ((Number) kpis[2]).longValue();
+        log.info("[PEDIDO_SEMANAL_BODEGAS] KPIs: activas={}, inactivas={}, total={}", pedidoSemanaBodegasActivas, pedidoSemanaBodegasInactivas, pedidoSemanaBodegasTotal);
 
-        log.info("[RECETAS] Paso 2: getTopIngredientes");
+        log.info("[PEDIDO_SEMANAL_BODEGAS] Paso 2: getTopIngredientes");
         List<ChartPointDTO> topIngredientes = dashboardRepository.getTopIngredientes().stream()
             .map(r -> new ChartPointDTO((String) r[0], ((Number) r[1]).doubleValue()))
             .collect(Collectors.toList());
 
-        List<PieSliceDTO> recetasPorEstado = List.of(
-            new PieSliceDTO("Activas",   recetasActivas,   "#22C55E"),
-            new PieSliceDTO("Inactivas", recetasInactivas, "#9CA3AF")
+        List<PieSliceDTO> pedidoSemanaBodegasPorEstado = List.of(
+            new PieSliceDTO("Activas",   pedidoSemanaBodegasActivas,   "#22C55E"),
+            new PieSliceDTO("Inactivas", pedidoSemanaBodegasInactivas, "#9CA3AF")
         );
 
-        log.info("[RECETAS] OK");
-        return new DashboardRecetasDTO(
-            recetasActivas,
-            recetasInactivas,
-            recetasTotal,
+        log.info("[PEDIDO_SEMANAL_BODEGAS] OK");
+        return new DashboardPedidoSemanaBodegasDTO(
+            pedidoSemanaBodegasActivas,
+            pedidoSemanaBodegasInactivas,
+            pedidoSemanaBodegasTotal,
             topIngredientes,
-            recetasPorEstado
+            pedidoSemanaBodegasPorEstado
         );
     }
 }

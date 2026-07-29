@@ -46,7 +46,7 @@ public class ProductoServiceImpl implements ProductoService {
         );
     }
 
-    /** Usado en option para crear receta*/
+    /** Usado en option para crear pedidoSemanaBodega*/
     @Transactional(readOnly = true)
     @Override// ✅ En uso: Método invocado por el controlador.
     public List<ProductRecipeView> findAllActiveForRecipe(){

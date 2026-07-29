@@ -1042,7 +1042,8 @@ const SeccionSemanas: React.FC<SeccionSemanasProps> = ({ toast }) => {
 
     // Recargar el contexto global para que otras páginas vean los cambios sin necesidad de F5
     await recargarPeriodos();
-    await recargarSemanasGlobal();
+    const semestreReal = updatedSemanas.length > 0 ? updatedSemanas[0].semestre : undefined;
+    await recargarSemanasGlobal(parseInt(anioReal), semestreReal);
   };
 
   const handleGenerar = async () => {
@@ -1078,8 +1079,7 @@ const SeccionSemanas: React.FC<SeccionSemanasProps> = ({ toast }) => {
       setSemanas(data);
 
       await recargarPeriodos();
-      await recargarSemanasGlobal();
-      setTimeout(() => window.location.reload(), 800);
+      await recargarSemanasGlobal(anioGeneradoNum, semestre);
     } catch (error: any) {
       toast.error(error.message || 'Error al generar el calendario semestral');
     } finally {

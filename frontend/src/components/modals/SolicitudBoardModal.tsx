@@ -249,10 +249,10 @@ export const SolicitudBoardModal: React.FC<SolicitudBoardModalProps> = ({
                                                                                     <div className="font-bold text-small mb-1">{req.asignaturaNombre}</div>
                                                                                     <div className="text-tiny text-default-500 mb-2">{req.profesorNombre}</div>
 
-                                                                                    {req.recetaNombre && (
+                                                                                    {req.pedidoSemanaBodegaNombre && (
                                                                                         <div className="bg-default-100 p-2 rounded-medium mb-2">
-                                                                                            <div className="text-tiny font-semibold block mb-1">Receta:</div>
-                                                                                            <span className="text-tiny">{req.recetaNombre}</span>
+                                                                                            <div className="text-tiny font-semibold block mb-1">PedidoSemanaBodega:</div>
+                                                                                            <span className="text-tiny">{req.pedidoSemanaBodegaNombre}</span>
                                                                                         </div>
                                                                                     )}
 

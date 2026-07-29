@@ -7,22 +7,22 @@ import java.math.BigDecimal;
 import java.util.List;
 
 /**
- * DTO Maestro para la respuesta de recetas activas con detalles.
+ * DTO Maestro para la respuesta de pedidoSemanaBodegas activas con detalles.
  *
  * Reemplaza los archivos individuales:
  *   - RecipeSolicitationDTO
  *   - RecipeDetailsSolicitationDTO
  */
 public record RecipeSolicitation(
-        Integer idReceta,
-        String nombreReceta,
+        Integer idPedidoSemanaBodega,
+        String nombrePedidoSemanaBodega,
         Integer idSemana,
         Integer idAsignatura,
         List<RecipeDetailsDTO> detalles
 ) {
 
     // ============================================================================
-    // 1. DETALLE DE RECETA — parseado desde row[2] (JSONB)
+    // 1. DETALLE DE PEDIDO_SEMANAL_BODEGA — parseado desde row[2] (JSONB)
     //    Nombres en JSON (camelCase) ← Columnas BD (snake_case)
     //    - nombreProducto ← p.nombre_producto
     //    - cantProducto ← d.cant_producto

@@ -10,7 +10,7 @@ export interface IItemSolicitud {
   productoNombre: string;
   cantidad: number;
   unidadMedida: string;
-  esAdicional: boolean; // true si fue agregado manualmente, false si viene de receta
+  esAdicional: boolean; // true si fue agregado manualmente, false si viene de pedidoSemanaBodega
 }
 
 export interface ISolicitud {
@@ -23,11 +23,11 @@ export interface ISolicitud {
   fecha: string; // Fecha de la clase
   bloqueInicio: number; // 1-20
   bloqueFin: number; // 1-20
-  recetaId: string | null;
-  recetaNombre: string | null;
+  pedidoSemanaBodegaId: string | null;
+  pedidoSemanaBodegaNombre: string | null;
   items: IItemSolicitud[];
   observaciones: string;
-  esCustom: boolean; // true si tiene modificaciones sobre la receta base
+  esCustom: boolean; // true si tiene modificaciones sobre la pedidoSemanaBodega base
   estado: EstadoSolicitud;
   comentarioRechazo?: string; // Solo si estado es 'Rechazada'
   fechaCreacion: string;
@@ -48,8 +48,8 @@ export interface ISolicitudCreacion {
   fecha: string;
   bloqueInicio: number;
   bloqueFin: number;
-  recetaId: string | null;
-  recetaNombre: string | null;
+  pedidoSemanaBodegaId: string | null;
+  pedidoSemanaBodegaNombre: string | null;
   items: Omit<IItemSolicitud, 'id'>[];
   observaciones: string;
   esCustom: boolean;
@@ -62,8 +62,8 @@ export interface ISolicitudActualizacion {
   fecha?: string;
   bloqueInicio?: number;
   bloqueFin?: number;
-  recetaId?: string | null;
-  recetaNombre?: string | null;
+  pedidoSemanaBodegaId?: string | null;
+  pedidoSemanaBodegaNombre?: string | null;
   items?: IItemSolicitud[];
   observaciones?: string;
   esCustom?: boolean;

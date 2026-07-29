@@ -37,7 +37,7 @@ import static org.mockito.Mockito.*;
 @ExtendWith(MockitoExtension.class)
 class PedidoSemanaBodegaServiceImpTest {
 
-    @Mock private PedidoSemanaBodegaRepository recetaRepository;
+    @Mock private PedidoSemanaBodegaRepository pedidoSemanaBodegaRepository;
     @Mock private DetallePedidoSemanaBodegaRepository detallePedidoSemanaBodegaRepository;
     @Mock private ProductoRepository productoRepository;
     @Mock private AsignaturaRepository asignaturaRepository;
@@ -56,7 +56,7 @@ class PedidoSemanaBodegaServiceImpTest {
         PedidoSemanaBodega pedido = new PedidoSemanaBodega();
         pedido.setIdPedidoSemanaBodega(1);
         pedido.setNombrePedido("Pedido Test");
-        when(recetaRepository.findById(1)).thenReturn(Optional.of(pedido));
+        when(pedidoSemanaBodegaRepository.findById(1)).thenReturn(Optional.of(pedido));
 
         // Act
         PedidoSemanaBodega result = service.findById(1);
@@ -69,7 +69,7 @@ class PedidoSemanaBodegaServiceImpTest {
     @Test
     void test02FindByIdNotFound() {
         // Arrange
-        when(recetaRepository.findById(999)).thenReturn(Optional.empty());
+        when(pedidoSemanaBodegaRepository.findById(999)).thenReturn(Optional.empty());
 
         // Act & Assert
         assertThrows(PedidoSemanaBodegaException.class, () -> service.findById(999));
@@ -84,7 +84,7 @@ class PedidoSemanaBodegaServiceImpTest {
         when(view.getTotalPedidos()).thenReturn(10L);
         when(view.getTotal_activos()).thenReturn(7L);
         when(view.getTotal_inactivos()).thenReturn(3L);
-        when(recetaRepository.countRecipesAndStatus()).thenReturn(view);
+        when(pedidoSemanaBodegaRepository.countRecipesAndStatus()).thenReturn(view);
 
         // Act
         CountPedidoSemanaBodegaAndStatusView result = service.countRecipesAndStatus();
@@ -101,8 +101,8 @@ class PedidoSemanaBodegaServiceImpTest {
     @Test
     void test04FindAllRecipesPaginatedNoFilters() {
         // Arrange
-        when(recetaRepository.countByActivoTrue(isNull())).thenReturn(0L);
-        when(recetaRepository.findAllWithDetailsPaging(isNull(), anyInt(), anyInt())).thenReturn(List.of());
+        when(pedidoSemanaBodegaRepository.countByActivoTrue(isNull())).thenReturn(0L);
+        when(pedidoSemanaBodegaRepository.findAllWithDetailsPaging(isNull(), anyInt(), anyInt())).thenReturn(List.of());
 
         // Act
         PedidoSemanaBodegasPage result = service.findAllRecipesPaginated(1, null, null, null);
@@ -115,8 +115,8 @@ class PedidoSemanaBodegaServiceImpTest {
     @Test
     void test05FindAllRecipesPaginatedBySemana() {
         // Arrange
-        when(recetaRepository.countByActivoTrueAndIdSemana(eq(1), isNull())).thenReturn(0L);
-        when(recetaRepository.findAllWithDetailsPagingByIdSemana(eq(1), isNull(), anyInt(), anyInt())).thenReturn(List.of());
+        when(pedidoSemanaBodegaRepository.countByActivoTrueAndIdSemana(eq(1), isNull())).thenReturn(0L);
+        when(pedidoSemanaBodegaRepository.findAllWithDetailsPagingByIdSemana(eq(1), isNull(), anyInt(), anyInt())).thenReturn(List.of());
 
         // Act
         PedidoSemanaBodegasPage result = service.findAllRecipesPaginated(1, 1, null, null);
@@ -128,8 +128,8 @@ class PedidoSemanaBodegaServiceImpTest {
     @Test
     void test06FindAllRecipesPaginatedByAsignatura() {
         // Arrange
-        when(recetaRepository.countByActivoTrueAndIdAsignatura(eq(2), isNull())).thenReturn(0L);
-        when(recetaRepository.findAllWithDetailsPagingByIdAsignatura(eq(2), isNull(), anyInt(), anyInt())).thenReturn(List.of());
+        when(pedidoSemanaBodegaRepository.countByActivoTrueAndIdAsignatura(eq(2), isNull())).thenReturn(0L);
+        when(pedidoSemanaBodegaRepository.findAllWithDetailsPagingByIdAsignatura(eq(2), isNull(), anyInt(), anyInt())).thenReturn(List.of());
 
         // Act
         PedidoSemanaBodegasPage result = service.findAllRecipesPaginated(1, null, 2, null);
@@ -141,8 +141,8 @@ class PedidoSemanaBodegaServiceImpTest {
     @Test
     void test07FindAllRecipesPaginatedBySemanaAndAsignatura() {
         // Arrange
-        when(recetaRepository.countByActivoTrueAndIdSemanaAndIdAsignatura(eq(1), eq(2), isNull())).thenReturn(0L);
-        when(recetaRepository.findAllWithDetailsPagingByIdSemanaAndIdAsignatura(eq(1), eq(2), isNull(), anyInt(), anyInt())).thenReturn(List.of());
+        when(pedidoSemanaBodegaRepository.countByActivoTrueAndIdSemanaAndIdAsignatura(eq(1), eq(2), isNull())).thenReturn(0L);
+        when(pedidoSemanaBodegaRepository.findAllWithDetailsPagingByIdSemanaAndIdAsignatura(eq(1), eq(2), isNull(), anyInt(), anyInt())).thenReturn(List.of());
 
         // Act
         PedidoSemanaBodegasPage result = service.findAllRecipesPaginated(1, 1, 2, null);
@@ -159,8 +159,8 @@ class PedidoSemanaBodegaServiceImpTest {
         SearchPedidoSemanaBodegaDTO dto = new SearchPedidoSemanaBodegaDTO();
         dto.setTerm(null);
         dto.setPage(1);
-        when(recetaRepository.countWithSearch(eq(""), isNull())).thenReturn(0L);
-        when(recetaRepository.findAllWithDetailsAndSearch(eq(""), isNull(), anyInt(), anyInt())).thenReturn(List.of());
+        when(pedidoSemanaBodegaRepository.countWithSearch(eq(""), isNull())).thenReturn(0L);
+        when(pedidoSemanaBodegaRepository.findAllWithDetailsAndSearch(eq(""), isNull(), anyInt(), anyInt())).thenReturn(List.of());
 
         // Act
         PedidoSemanaBodegasPage result = service.findAllWithDetailsAndSearchPaging(dto);
@@ -176,8 +176,8 @@ class PedidoSemanaBodegaServiceImpTest {
         dto.setTerm("arroz");
         dto.setPage(1);
         dto.setIdSemana(3);
-        when(recetaRepository.countWithSearchAndIdSemana(eq("arroz"), eq(3), isNull())).thenReturn(0L);
-        when(recetaRepository.findAllWithDetailsAndSearchByIdSemana(eq("arroz"), eq(3), isNull(), anyInt(), anyInt())).thenReturn(List.of());
+        when(pedidoSemanaBodegaRepository.countWithSearchAndIdSemana(eq("arroz"), eq(3), isNull())).thenReturn(0L);
+        when(pedidoSemanaBodegaRepository.findAllWithDetailsAndSearchByIdSemana(eq("arroz"), eq(3), isNull(), anyInt(), anyInt())).thenReturn(List.of());
 
         // Act
         PedidoSemanaBodegasPage result = service.findAllWithDetailsAndSearchPaging(dto);
@@ -193,8 +193,8 @@ class PedidoSemanaBodegaServiceImpTest {
         dto.setTerm("");
         dto.setPage(1);
         dto.setIdAsignatura(5);
-        when(recetaRepository.countWithSearchAndIdAsignatura(eq(""), eq(5), isNull())).thenReturn(0L);
-        when(recetaRepository.findAllWithDetailsAndSearchByIdAsignatura(eq(""), eq(5), isNull(), anyInt(), anyInt())).thenReturn(List.of());
+        when(pedidoSemanaBodegaRepository.countWithSearchAndIdAsignatura(eq(""), eq(5), isNull())).thenReturn(0L);
+        when(pedidoSemanaBodegaRepository.findAllWithDetailsAndSearchByIdAsignatura(eq(""), eq(5), isNull(), anyInt(), anyInt())).thenReturn(List.of());
 
         // Act
         PedidoSemanaBodegasPage result = service.findAllWithDetailsAndSearchPaging(dto);
@@ -211,8 +211,8 @@ class PedidoSemanaBodegaServiceImpTest {
         dto.setPage(1);
         dto.setIdSemana(2);
         dto.setIdAsignatura(4);
-        when(recetaRepository.countWithSearchAndIdSemanaAndIdAsignatura(eq("pollo"), eq(2), eq(4), isNull())).thenReturn(0L);
-        when(recetaRepository.findAllWithDetailsAndSearchByIdSemanaAndIdAsignatura(eq("pollo"), eq(2), eq(4), isNull(), anyInt(), anyInt())).thenReturn(List.of());
+        when(pedidoSemanaBodegaRepository.countWithSearchAndIdSemanaAndIdAsignatura(eq("pollo"), eq(2), eq(4), isNull())).thenReturn(0L);
+        when(pedidoSemanaBodegaRepository.findAllWithDetailsAndSearchByIdSemanaAndIdAsignatura(eq("pollo"), eq(2), eq(4), isNull(), anyInt(), anyInt())).thenReturn(List.of());
 
         // Act
         PedidoSemanaBodegasPage result = service.findAllWithDetailsAndSearchPaging(dto);
@@ -231,11 +231,11 @@ class PedidoSemanaBodegaServiceImpTest {
                 "Pedido Semana", null, List.of(item), "ACTIVO", null, null
         );
 
-        when(recetaRepository.existsByNombrePedidoAndActivoTrue("Pedido Semana")).thenReturn(false);
+        when(pedidoSemanaBodegaRepository.existsByNombrePedidoAndActivoTrue("Pedido Semana")).thenReturn(false);
 
         PedidoSemanaBodega saved = new PedidoSemanaBodega();
         saved.setIdPedidoSemanaBodega(1);
-        when(recetaRepository.save(any())).thenReturn(saved);
+        when(pedidoSemanaBodegaRepository.save(any())).thenReturn(saved);
         when(detallePedidoSemanaBodegaRepository.save(any())).thenReturn(new DetallePedidoSemanaBodega());
 
         // Act
@@ -243,7 +243,7 @@ class PedidoSemanaBodegaServiceImpTest {
 
         // Assert
         assertTrue(result);
-        verify(recetaRepository).save(any(PedidoSemanaBodega.class));
+        verify(pedidoSemanaBodegaRepository).save(any(PedidoSemanaBodega.class));
         verify(detallePedidoSemanaBodegaRepository).save(any(DetallePedidoSemanaBodega.class));
     }
 
@@ -254,7 +254,7 @@ class PedidoSemanaBodegaServiceImpTest {
         PedidoSemanaBodegaWithDetailsCreateDTO dto = new PedidoSemanaBodegaWithDetailsCreateDTO(
                 "Pedido Existente", null, List.of(item), "ACTIVO", null, null
         );
-        when(recetaRepository.existsByNombrePedidoAndActivoTrue("Pedido Existente")).thenReturn(true);
+        when(pedidoSemanaBodegaRepository.existsByNombrePedidoAndActivoTrue("Pedido Existente")).thenReturn(true);
 
         // Act & Assert
         PedidoSemanaBodegaException ex = assertThrows(PedidoSemanaBodegaException.class,
@@ -269,7 +269,7 @@ class PedidoSemanaBodegaServiceImpTest {
         PedidoSemanaBodegaWithDetailsCreateDTO dto = new PedidoSemanaBodegaWithDetailsCreateDTO(
                 "Pedido Con Semana", null, List.of(item), "ACTIVO", 99, null
         );
-        when(recetaRepository.existsByNombrePedidoAndActivoTrue("Pedido Con Semana")).thenReturn(false);
+        when(pedidoSemanaBodegaRepository.existsByNombrePedidoAndActivoTrue("Pedido Con Semana")).thenReturn(false);
         when(semanaRepository.existsById(99)).thenReturn(false);
 
         // Act & Assert
@@ -285,7 +285,7 @@ class PedidoSemanaBodegaServiceImpTest {
         PedidoSemanaBodegaWithDetailsCreateDTO dto = new PedidoSemanaBodegaWithDetailsCreateDTO(
                 "Pedido Con Asignatura", null, List.of(item), "ACTIVO", null, 88
         );
-        when(recetaRepository.existsByNombrePedidoAndActivoTrue("Pedido Con Asignatura")).thenReturn(false);
+        when(pedidoSemanaBodegaRepository.existsByNombrePedidoAndActivoTrue("Pedido Con Asignatura")).thenReturn(false);
         when(asignaturaRepository.existsByIdAsignaturaAndActivoTrue(88)).thenReturn(false);
 
         // Act & Assert
@@ -302,10 +302,10 @@ class PedidoSemanaBodegaServiceImpTest {
         PedidoSemanaBodegaWithDetailsCreateDTO dto = new PedidoSemanaBodegaWithDetailsCreateDTO(
                 "Pedido Dup", null, List.of(item1, item2), "ACTIVO", null, null
         );
-        when(recetaRepository.existsByNombrePedidoAndActivoTrue("Pedido Dup")).thenReturn(false);
+        when(pedidoSemanaBodegaRepository.existsByNombrePedidoAndActivoTrue("Pedido Dup")).thenReturn(false);
         PedidoSemanaBodega saved = new PedidoSemanaBodega();
         saved.setIdPedidoSemanaBodega(2);
-        when(recetaRepository.save(any())).thenReturn(saved);
+        when(pedidoSemanaBodegaRepository.save(any())).thenReturn(saved);
         when(detallePedidoSemanaBodegaRepository.save(any())).thenReturn(new DetallePedidoSemanaBodega());
 
         // Act
@@ -321,7 +321,7 @@ class PedidoSemanaBodegaServiceImpTest {
     @Test
     void test17ChangeStatusSuccess() {
         // Arrange
-        when(recetaRepository.toggleRecipeStatus(1)).thenReturn(1);
+        when(pedidoSemanaBodegaRepository.toggleRecipeStatus(1)).thenReturn(1);
 
         // Act
         boolean result = service.changeStatus(1);
@@ -333,7 +333,7 @@ class PedidoSemanaBodegaServiceImpTest {
     @Test
     void test18ChangeStatusNotFound() {
         // Arrange
-        when(recetaRepository.toggleRecipeStatus(999)).thenReturn(0);
+        when(pedidoSemanaBodegaRepository.toggleRecipeStatus(999)).thenReturn(0);
 
         // Act & Assert
         PedidoSemanaBodegaException ex = assertThrows(PedidoSemanaBodegaException.class,
@@ -350,8 +350,8 @@ class PedidoSemanaBodegaServiceImpTest {
         oldRecipe.setIdPedidoSemanaBodega(1);
         oldRecipe.setNombrePedido("Pedido Test");
         oldRecipe.setEstadoPedido(PedidoSemanaBodega.EstadoPedidoSemana.ACTIVO);
-        when(recetaRepository.findById(1)).thenReturn(Optional.of(oldRecipe));
-        when(recetaRepository.save(any())).thenReturn(oldRecipe);
+        when(pedidoSemanaBodegaRepository.findById(1)).thenReturn(Optional.of(oldRecipe));
+        when(pedidoSemanaBodegaRepository.save(any())).thenReturn(oldRecipe);
 
         DetailsByUpdateView detailView = mock(DetailsByUpdateView.class);
         when(detailView.getIdDetalle()).thenReturn(10);
@@ -369,7 +369,7 @@ class PedidoSemanaBodegaServiceImpTest {
 
         // Assert
         assertTrue(result);
-        verify(recetaRepository).save(any(PedidoSemanaBodega.class));
+        verify(pedidoSemanaBodegaRepository).save(any(PedidoSemanaBodega.class));
     }
 
     @Test
@@ -379,8 +379,8 @@ class PedidoSemanaBodegaServiceImpTest {
         oldRecipe.setIdPedidoSemanaBodega(1);
         oldRecipe.setNombrePedido("Pedido Test");
         oldRecipe.setEstadoPedido(PedidoSemanaBodega.EstadoPedidoSemana.ACTIVO);
-        when(recetaRepository.findById(1)).thenReturn(Optional.of(oldRecipe));
-        when(recetaRepository.existsByNombrePedidoAndActivoTrue("Pedido Duplicado")).thenReturn(true);
+        when(pedidoSemanaBodegaRepository.findById(1)).thenReturn(Optional.of(oldRecipe));
+        when(pedidoSemanaBodegaRepository.existsByNombrePedidoAndActivoTrue("Pedido Duplicado")).thenReturn(true);
 
         PedidoSemanaBodegaWithDetailsUpdateDTO request = new PedidoSemanaBodegaWithDetailsUpdateDTO();
         request.setIdPedidoSemanaBodega(1);
@@ -401,7 +401,7 @@ class PedidoSemanaBodegaServiceImpTest {
         oldRecipe.setNombrePedido("Pedido Test");
         oldRecipe.setEstadoPedido(PedidoSemanaBodega.EstadoPedidoSemana.ACTIVO);
         oldRecipe.setIdSemana(null);
-        when(recetaRepository.findById(1)).thenReturn(Optional.of(oldRecipe));
+        when(pedidoSemanaBodegaRepository.findById(1)).thenReturn(Optional.of(oldRecipe));
         when(semanaRepository.existsById(77)).thenReturn(false);
 
         PedidoSemanaBodegaWithDetailsUpdateDTO request = new PedidoSemanaBodegaWithDetailsUpdateDTO();
@@ -421,7 +421,7 @@ class PedidoSemanaBodegaServiceImpTest {
     @Test
     void test22SoftDeleteSuccess() {
         // Arrange
-        when(recetaRepository.softDeleteRecipeById(1)).thenReturn(1);
+        when(pedidoSemanaBodegaRepository.softDeleteRecipeById(1)).thenReturn(1);
 
         // Act
         boolean result = service.softDeleteRecipeWithDetails(1);
@@ -433,7 +433,7 @@ class PedidoSemanaBodegaServiceImpTest {
     @Test
     void test23SoftDeleteNotFound() {
         // Arrange
-        when(recetaRepository.softDeleteRecipeById(999)).thenReturn(0);
+        when(pedidoSemanaBodegaRepository.softDeleteRecipeById(999)).thenReturn(0);
 
         // Act
         boolean result = service.softDeleteRecipeWithDetails(999);
@@ -450,7 +450,7 @@ class PedidoSemanaBodegaServiceImpTest {
         AsignaturaActivaView view = mock(AsignaturaActivaView.class);
         when(view.getIdAsignatura()).thenReturn(1);
         when(view.getNombreAsignatura()).thenReturn("Cocina Básica");
-        when(recetaRepository.findAllAsignaturasActivas()).thenReturn(List.of(view));
+        when(pedidoSemanaBodegaRepository.findAllAsignaturasActivas()).thenReturn(List.of(view));
 
         // Act
         List<AsignaturaActivaView> result = service.obtenerAsignaturasActivas();

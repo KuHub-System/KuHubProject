@@ -12,8 +12,8 @@ export interface ISolicitudGestion {
   id: number;
   idAsignatura: number;
   nombreAsignatura: string;
-  idReceta: number;
-  nombreReceta: string;
+  idPedidoSemanaBodega: number;
+  nombrePedidoSemanaBodega: string;
   idSeccion: number;
   nombreSeccion: string;
   nombreDocente: string;

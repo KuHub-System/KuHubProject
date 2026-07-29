@@ -76,8 +76,8 @@ const mapSolicitud = (r: ISolicitudPorSemanaResponse): ISolicitudGestion => {
     id:               r.idSolicitud,
     idAsignatura:     r.asignaturaDetalle.id_asignatura,
     nombreAsignatura: r.asignaturaDetalle.nombre_asignatura,
-    idReceta:         r.idReceta,
-    nombreReceta:     r.nombreReceta,
+    idPedidoSemanaBodega:         r.idPedidoSemanaBodega,
+    nombrePedidoSemanaBodega:     r.nombrePedidoSemanaBodega,
     idSeccion:        seccion.id_seccion,
     nombreSeccion:    seccion.nombre_seccion,
     nombreDocente:    seccion.nombre_docente,
@@ -280,7 +280,7 @@ const GestionSolicitudesPage: React.FC = () => {
       const q = busqueda.toLowerCase();
       list = list.filter(s =>
         s.nombreAsignatura.toLowerCase().includes(q) ||
-        s.nombreReceta.toLowerCase().includes(q) ||
+        s.nombrePedidoSemanaBodega.toLowerCase().includes(q) ||
         s.nombreDocente.toLowerCase().includes(q) ||
         s.nombreSeccion.toLowerCase().includes(q) ||
         s.nombreSala.toLowerCase().includes(q)
@@ -451,7 +451,7 @@ const GestionSolicitudesPage: React.FC = () => {
     <h2 style="text-align:center">Vista previa para Consolidado — Detalle Solicitud</h2>
     <p class="sub">${sol.nombreAsignatura} · §${sol.nombreSeccion} · ${cap(new Date(sol.fechaClase + 'T00:00:00').toLocaleDateString('es-CL', { weekday: 'long', day: 'numeric', month: 'long' }))}</p>
     <div class="grid">
-      <div class="field"><label>Receta</label><span>${sol.nombreReceta}</span></div>
+      <div class="field"><label>PedidoSemanaBodega</label><span>${sol.nombrePedidoSemanaBodega}</span></div>
       <div class="field"><label>Docente</label><span>${sol.nombreDocente}</span></div>
       <div class="field"><label>Horario</label><span>${sol.horaInicio} – ${sol.horaFin}</span></div>
       <div class="field"><label>Sala</label><span>${sol.nombreSala}</span></div>
@@ -633,7 +633,7 @@ const GestionSolicitudesPage: React.FC = () => {
     return gruposDia.map(g => ({
       ...g,
       solicitudes: g.solicitudes.filter(s =>
-        s.nombreReceta.toLowerCase().includes(q) ||
+        s.nombrePedidoSemanaBodega.toLowerCase().includes(q) ||
         (s.seccion.nombreDocente ?? '').toLowerCase().includes(q) ||
         (s.seccion.nombreSeccion ?? '').toLowerCase().includes(q) ||
         s.productosSolicitados.some(p => p.nombreProducto.toLowerCase().includes(q))
@@ -1405,7 +1405,7 @@ const GestionSolicitudesPage: React.FC = () => {
       {/* ── Contenido ── */}
       <Card className="shadow-sm">
         <CardHeader className="px-5 py-4 flex flex-col sm:flex-row gap-3 items-start sm:items-center">
-          <Input size="sm" variant="bordered" placeholder="Buscar asignatura, receta, docente..."
+          <Input size="sm" variant="bordered" placeholder="Buscar asignatura, pedidoSemanaBodega, docente..."
             value={busqueda} onValueChange={setBusqueda}
             startContent={<Icon icon="lucide:search" className="text-default-400" width={14} />}
             classNames={{ base: 'max-w-xs', inputWrapper: 'bg-default-50' }}
@@ -1569,7 +1569,7 @@ const GestionSolicitudesPage: React.FC = () => {
                               <span className="text-sm text-default-600">{sol.nombreDocente}</span>
                             </div>
                             <div className="flex items-center gap-5 mt-1.5 text-xs text-default-500 flex-wrap">
-                              <span className="flex items-center gap-1.5"><Icon icon="lucide:book-open" width={12} />{sol.nombreReceta}</span>
+                              <span className="flex items-center gap-1.5"><Icon icon="lucide:book-open" width={12} />{sol.nombrePedidoSemanaBodega}</span>
                               <span className="flex items-center gap-1.5"><Icon icon="lucide:clock" width={12} />{sol.horaInicio}–{sol.horaFin}</span>
                               <span className="flex items-center gap-1.5"><Icon icon="lucide:door-open" width={12} />{sol.nombreSala}</span>
                               <span className="flex items-center gap-1.5"><Icon icon="lucide:users" width={12} />{sol.cantInscritos} alumnos</span>
@@ -1896,7 +1896,7 @@ const GestionSolicitudesPage: React.FC = () => {
             />
           )}
           {vistaActiva === 'cronograma' && (
-            <Input size="sm" variant="bordered" placeholder="Buscar receta, docente, producto..."
+            <Input size="sm" variant="bordered" placeholder="Buscar pedidoSemanaBodega, docente, producto..."
               value={busquedaCrono} onValueChange={setBusquedaCrono}
               startContent={<Icon icon="lucide:search" className="text-default-400" width={14} />}
               classNames={{ base: 'max-w-xs', inputWrapper: 'bg-default-50' }}
@@ -2240,7 +2240,7 @@ const GestionSolicitudesPage: React.FC = () => {
                                   <div className="flex items-center gap-3 mt-0.5 flex-wrap text-xs text-default-400">
                                     <span className="flex items-center gap-1">
                                       <Icon icon="lucide:book-open" width={10} />
-                                      {sol.nombreReceta}
+                                      {sol.nombrePedidoSemanaBodega}
                                     </span>
                                     <span className="flex items-center gap-1">
                                       <Icon icon="lucide:door-open" width={10} />

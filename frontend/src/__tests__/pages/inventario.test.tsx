@@ -80,6 +80,7 @@ vi.mock('../../hooks/useToast', () => {
   return {
     useToast: () => toastInstance,
     useConfirm: () => vi.fn(),
+    useConfirmDelete: () => vi.fn(),
   };
 });
 

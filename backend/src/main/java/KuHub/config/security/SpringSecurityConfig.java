@@ -316,7 +316,7 @@ public class SpringSecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/v*/inventario/**").permitAll()
 
                         // 2a. POST de LECTURA (paginación/búsqueda): cualquier usuario autenticado puede consultar
-                        //     Necesario para roles que ven el inventario en otras páginas (ej: al crear recetas)
+                        //     Necesario para roles que ven el inventario en otras páginas (ej: al crear pedidoSemanaBodegas)
                         .requestMatchers(HttpMethod.POST,
                                 "/api/v*/inventario/paged-inventory",
                                 "/api/v*/inventario/search-inventory",
@@ -365,7 +365,7 @@ public class SpringSecurityConfig {
                         .authenticated() // dinámico (BODEGA_TRANSITO → delete) vía interceptor
 
                         // ========================================
-                        // ENDPOINTS DE PEDIDO SEMANA BODEGA (Antigua "Recetas")
+                        // ENDPOINTS DE PEDIDO SEMANA BODEGA (Antigua "PedidoSemanaBodegas")
                         // ========================================
 
                         // 0. Selector de asignaturas: cualquier autenticado (selector usado en múltiples páginas)

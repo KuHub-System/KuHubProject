@@ -56,7 +56,7 @@ import {
   IMotionAnswer,
   IMotionFilterRequest
 } from '../services/inventario/movimiento-service';
-import { useToast, useConfirm } from '../hooks/useToast';
+import { useToast, useConfirmDelete } from '../hooks/useToast';
 import { logger } from '../utils/logger';
 import { useAuth } from '../contexts/auth-context';
 import { useModulePermission } from '../contexts/permission-context';
@@ -220,7 +220,7 @@ const renderTipoMovimiento = (tipo: string) => {
  */
 const InventarioPage: React.FC = () => {
   const toast = useToast();
-  const confirm = useConfirm();
+  const confirmDelete = useConfirmDelete();
   const { user } = useAuth();
   const esAdministrador = user?.rol === 'Administrador';
   // ── Permisos granulares del módulo INVENTARIO ──
@@ -296,9 +296,6 @@ const InventarioPage: React.FC = () => {
   const [productoSeleccionado, setProductoSeleccionado] = React.useState<IProducto | null>(null);
   const [modalMode, setModalMode] = React.useState<'crear' | 'editar'>('crear');
   const [showStockWarning, setShowStockWarning] = React.useState(false);
-  const [showDeleteConfirm, setShowDeleteConfirm] = React.useState(false);
-  const [confirmText, setConfirmText] = React.useState('');
-  const [isDeleting, setIsDeleting] = React.useState(false);
   const [productoParaEliminar, setProductoParaEliminar] = React.useState<IProducto | null>(null);
   const scrollerRef = React.useRef<HTMLDivElement>(null);
   const isScrollingRef = React.useRef(false);
@@ -828,40 +825,29 @@ const InventarioPage: React.FC = () => {
       return;
     }
 
-    // Nueva validación: No se puede eliminar si hay stock
+    // No se puede eliminar si hay stock
     if (producto.stock > 0) {
       setProductoParaEliminar(producto);
       setShowStockWarning(true);
       return;
     }
 
-    // Si tiene stock 0, proceder con el nuevo modal de confirmación custom
-    setProductoParaEliminar(producto);
-    setConfirmText('');
-    setShowDeleteConfirm(true);
-  };
+    const confirmado = await confirmDelete({
+      title: 'Eliminar producto',
+      itemDescription: `el producto "${producto.nombre}"`,
+    });
+    if (!confirmado) return;
 
-  const handleConfirmarEliminacion = async () => {
-    if (!productoParaEliminar) return;
-
-    if (confirmText !== 'CONFIRMAR') {
-      toast.warning('Escribe CONFIRMAR para confirmar');
-      return;
-    }
-
-    const idInventario = (productoParaEliminar as any)._idInventario;
+    const idInventario = (producto as any)._idInventario;
     if (!idInventario) {
       toast.error('No se pudo encontrar el ID de inventario para este producto.');
       return;
     }
 
-    setIsDeleting(true);
     try {
       const exito = await softDeleteInventarioService(idInventario);
       if (exito) {
-        toast.success(`Producto "${productoParaEliminar.nombre}" eliminado correctamente.`);
-        setShowDeleteConfirm(false);
-        setProductoParaEliminar(null);
+        toast.success(`Producto "${producto.nombre}" eliminado correctamente.`);
         // Forzar recarga completa limpiando caché
         setCache({});
         cacheRef.current = {};
@@ -871,8 +857,6 @@ const InventarioPage: React.FC = () => {
       }
     } catch (error: any) {
       toast.error(error.message || 'Error al eliminar el producto.');
-    } finally {
-      setIsDeleting(false);
     }
   };
 
@@ -1927,50 +1911,6 @@ const InventarioPage: React.FC = () => {
           </ModalContent>
         </Modal>
 
-        <Modal isOpen={showDeleteConfirm} onOpenChange={setShowDeleteConfirm} backdrop="blur" hideCloseButton isDismissable={false}>
-          <ModalContent>
-            {(onClose) => (
-              <>
-                <ModalHeader className="flex flex-col gap-1 items-center pt-8">
-                  <div className="p-3 bg-danger-50 rounded-full text-danger-500 mb-2">
-                    <Icon icon="lucide:trash-2" width={40} />
-                  </div>
-                  <h2 className="text-xl font-bold text-danger">¿Estás seguro?</h2>
-                </ModalHeader>
-                <ModalBody className="px-8 pb-6">
-                  <div className="p-4 bg-danger-50/50 rounded-xl border border-danger-100 mb-4 text-center">
-                    <p className="text-danger-700 font-bold mb-1">Confirmar eliminación</p>
-                    <p className="text-sm text-danger-600/90 leading-relaxed text-justify">
-                      Eliminarás definitivamente el producto <strong>"{productoParaEliminar?.nombre}"</strong>. Esta acción no se puede deshacer.
-                    </p>
-                  </div>
-
-                  <div className="flex flex-col gap-3">
-                    <div className="flex items-center gap-2 text-default-600 mb-1">
-                      <Icon icon="lucide:pen-line" width={16} />
-                      <p className="text-sm font-semibold">
-                        Escribe <span className="text-danger-600">CONFIRMAR</span> para proceder:
-                      </p>
-                    </div>
-                    <Input
-                      placeholder="Escribe CONFIRMAR"
-                      value={confirmText}
-                      onValueChange={setConfirmText}
-                      variant="bordered"
-                      isInvalid={confirmText !== '' && confirmText !== 'CONFIRMAR'}
-                      classNames={{ inputWrapper: "border-2 group-data-[focus=true]:border-danger-500" }}
-                      autoFocus
-                    />
-                  </div>
-                </ModalBody>
-                <ModalFooter className="border-t border-default-100 py-4 px-6 gap-3">
-                  <Button variant="light" onPress={onClose} isDisabled={isDeleting} className="font-bold text-default-500">Cancelar</Button>
-                  <Button color="danger" onPress={handleConfirmarEliminacion} isLoading={isDeleting} isDisabled={confirmText !== 'CONFIRMAR'} className="font-bold px-8 shadow-lg shadow-danger-200">Eliminar</Button>
-                </ModalFooter>
-              </>
-            )}
-          </ModalContent>
-        </Modal>
 
         {/* Modal: Sincronizar Inventario con Excel */}
         <Modal

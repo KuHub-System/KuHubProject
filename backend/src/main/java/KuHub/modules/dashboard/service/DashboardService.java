@@ -6,5 +6,5 @@ public interface DashboardService {
     DashboardAdminDTO getDashboardAdmin();
     DashboardInventarioDTO getDashboardInventario();
     DashboardGestorDTO getDashboardGestor();
-    DashboardRecetasDTO getDashboardRecetas();
+    DashboardPedidoSemanaBodegasDTO getDashboardPedidoSemanaBodegas();
 }

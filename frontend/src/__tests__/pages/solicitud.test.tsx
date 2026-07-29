@@ -13,7 +13,7 @@ import * as permissionContext from '../../contexts/permission-context';
 
 const {
   mockToastSuccess, mockToastError, mockToastWarning,
-  mockObtenerCursos, mockObtenerRecetas, mockObtenerProductos,
+  mockObtenerCursos, mockObtenerPedidoSemanaBodegas, mockObtenerProductos,
   mockGenerarMasivas,
   mockObtenerPorSemana, mockCambiarEstadoMasivo, mockRechazarEnPedido,
   mockUsePeriodoSemana,
@@ -22,7 +22,7 @@ const {
   mockToastError:          vi.fn(),
   mockToastWarning:        vi.fn(),
   mockObtenerCursos:       vi.fn(),
-  mockObtenerRecetas:      vi.fn(),
+  mockObtenerPedidoSemanaBodegas:      vi.fn(),
   mockObtenerProductos:    vi.fn(),
   mockGenerarMasivas:      vi.fn(),
   mockObtenerPorSemana:    vi.fn(),
@@ -75,7 +75,7 @@ vi.mock('../../services/solicitud/solicitud-service', async (importOriginal) => 
   return {
     ...original,
     obtenerCursosParaSolicitudService:         mockObtenerCursos,
-    obtenerRecetasSolicitudService:            mockObtenerRecetas,
+    obtenerPedidoSemanaBodegasSolicitudService:            mockObtenerPedidoSemanaBodegas,
     obtenerProductosOpcionConCategoriaService: mockObtenerProductos,
     generarSolicitudesMasivasService:          mockGenerarMasivas,
     obtenerSolicitudesPorSemanaService:        mockObtenerPorSemana,
@@ -111,8 +111,8 @@ const semanaTest = { idSemana: 1, nombreSemana: 'Semana 1', fechaInicio: '2026-0
 const mkSolicitudRaw = (id: number, nombreAsig: string, idAsig: number, estado: string) => ({
   idSolicitud:    id,
   idReservaSala:  id * 10,
-  idReceta:       1,
-  nombreReceta:   'Pan Amasado',
+  idPedidoSemanaBodega:       1,
+  nombrePedidoSemanaBodega:   'Pan Amasado',
   fechaSolicitada: '2026-06-02',
   estadoSolicitud: estado,
   productos: [],
@@ -218,7 +218,7 @@ describe('SolicitudPage — Permisos y Carga', () => {
     mockSolicitudPerms(true);
     mockUsePeriodoSemana.mockReturnValue(periodoVacio);
     mockObtenerCursos.mockResolvedValue([asignaturaTest]);
-    mockObtenerRecetas.mockResolvedValue([]);
+    mockObtenerPedidoSemanaBodegas.mockResolvedValue([]);
     mockObtenerProductos.mockResolvedValue([]);
   });
   afterEach(cleanup);
@@ -242,7 +242,7 @@ describe('SolicitudPage — Permisos y Carga', () => {
 
     // Assert
     expect(mockObtenerCursos).toHaveBeenCalledTimes(1);
-    expect(mockObtenerRecetas).toHaveBeenCalledTimes(1);
+    expect(mockObtenerPedidoSemanaBodegas).toHaveBeenCalledTimes(1);
     expect(mockObtenerProductos).toHaveBeenCalledTimes(1);
   });
 
@@ -328,7 +328,7 @@ describe('GestionSolicitudesPage — Carga y Filtros', () => {
     expect(screen.getByText('§S2')).toBeInTheDocument();
 
     // Escribir en el buscador
-    const searchInput = screen.getByPlaceholderText('Buscar asignatura, receta, docente...');
+    const searchInput = screen.getByPlaceholderText('Buscar asignatura, pedidoSemanaBodega, docente...');
     fireEvent.change(searchInput, { target: { value: 'Gastro' } });
 
     // Assert — solo Gastronomía visible

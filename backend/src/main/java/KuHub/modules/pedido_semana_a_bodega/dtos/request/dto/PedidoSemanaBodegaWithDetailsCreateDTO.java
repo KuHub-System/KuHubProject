@@ -12,7 +12,7 @@ import java.util.List;
 @NoArgsConstructor
 public class PedidoSemanaBodegaWithDetailsCreateDTO {
 
-    @NotBlank(message = "El nombre de la receta es obligatorio")
+    @NotBlank(message = "El nombre de la pedidoSemanaBodega es obligatorio")
     private String nombrePedido;
     private String descripcionPedido;
     @Valid

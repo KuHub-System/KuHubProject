@@ -209,9 +209,9 @@ public class DashboardRepository {
         ).getResultList();
     }
 
-    // ── RECETAS ────────────────────────────────────────────────────────────────
+    // ── PEDIDO_SEMANAL_BODEGAS ────────────────────────────────────────────────────────────────
 
-    public Object[] getRecetasKpis() {
+    public Object[] getPedidoSemanaBodegasKpis() {
         return (Object[]) em.createNativeQuery(
             "SELECT " +
             "COUNT(*) FILTER (WHERE estado_pedido::text = 'ACTIVO'), " +

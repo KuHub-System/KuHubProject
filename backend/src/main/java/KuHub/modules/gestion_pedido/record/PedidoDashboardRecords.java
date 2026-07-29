@@ -130,7 +130,7 @@ public class PedidoDashboardRecords {
             @JsonProperty("unidadAbreviada") String unidadAbreviada,
             @JsonProperty("observacion") String observacion,
             @JsonProperty("alumnos") Integer alumnos,
-            @JsonProperty("nombreReceta") String nombreReceta,
+            @JsonProperty("nombrePedidoSemanaBodega") String nombrePedidoSemanaBodega,
             @JsonProperty("nombreSala") String nombreSala,
             @JsonProperty("rangoHoras") String rangoHoras
     ) {}
@@ -144,7 +144,7 @@ public class PedidoDashboardRecords {
             @JsonProperty("idSolicitud") Integer idSolicitud,
             @JsonProperty("fechaSolicitada") LocalDate fechaSolicitada,
             @JsonProperty("estadoSolicitud") String estadoSolicitud,
-            @JsonProperty("nombreReceta") String nombreReceta,
+            @JsonProperty("nombrePedidoSemanaBodega") String nombrePedidoSemanaBodega,
             @JsonProperty("observaciones") String observaciones,
             @JsonProperty("seccion") SeccionResumenJson seccion,
             @JsonProperty("cantProductos") Integer cantProductos,
@@ -246,7 +246,7 @@ public class PedidoDashboardRecords {
             @JsonProperty("nombreAsignatura") String     nombreAsignatura,
             @JsonProperty("nombreDocente")    String     nombreDocente,
             @JsonProperty("cantInscritos")    Integer    cantInscritos,
-            @JsonProperty("nombreReceta")     String     nombreReceta,
+            @JsonProperty("nombrePedidoSemanaBodega")     String     nombrePedidoSemanaBodega,
             @JsonProperty("observaciones")    String     observaciones,
             @JsonProperty("productos")        List<ProductoEntregaBodegaJson> productos
     ) {}

@@ -11,13 +11,13 @@ import * as permissionContext from '../../contexts/permission-context';
 const {
   mockObtenerAsignaturas, mockObtenerUsuarios,
   mockEliminarAsignatura, mockEliminarSeccion,
-  mockShowConfirm, mockToastSuccess, mockToastError,
+  mockConfirmDelete, mockToastSuccess, mockToastError,
 } = vi.hoisted(() => ({
   mockObtenerAsignaturas: vi.fn(),
   mockObtenerUsuarios:    vi.fn(),
   mockEliminarAsignatura: vi.fn(),
   mockEliminarSeccion:    vi.fn(),
-  mockShowConfirm:        vi.fn(),
+  mockConfirmDelete:      vi.fn().mockResolvedValue(true),
   mockToastSuccess:       vi.fn(),
   mockToastError:         vi.fn(),
 }));
@@ -44,12 +44,8 @@ vi.mock('../../hooks/useToast', () => {
     warning: vi.fn(),
     info:    vi.fn(),
   };
-  return { useToast: () => toastObj, useConfirm: () => vi.fn() };
+  return { useToast: () => toastObj, useConfirm: () => vi.fn(), useConfirmDelete: () => mockConfirmDelete };
 });
-
-vi.mock('../../utils/notifications', () => ({
-  useNotifications: () => ({ showConfirm: mockShowConfirm }),
-}));
 
 vi.mock('../../utils/logger', () => ({
   logger: { error: vi.fn(), warn: vi.fn(), info: vi.fn(), debug: vi.fn(), log: vi.fn() },
@@ -224,7 +220,7 @@ describe('GestionAsignaturasPage (GA)', () => {
   });
 
   // ── GA-07 ──────────────────────────────────────────────────────────────────
-  it('GA-07: eliminar asignatura llama showConfirm con requireText="ELIMINAR" y ejecuta el servicio', async () => {
+  it('GA-07: eliminar asignatura llama confirmDelete y ejecuta el servicio', async () => {
     mockPermisos({
       GESTION_ACADEMICA:       { canRead: true },
       GA_ELIMINAR_ASIGNATURA:  { canDelete: true },
@@ -236,16 +232,15 @@ describe('GestionAsignaturasPage (GA)', () => {
       .closest('[class*="cursor-pointer"]') as HTMLElement;
     const actionBtn = cardHeader.querySelector('.gap-2 button') as HTMLElement;
     fireEvent.click(actionBtn);
-    expect(mockShowConfirm).toHaveBeenCalledWith(
-      expect.objectContaining({ requireText: 'ELIMINAR', confirmColor: 'danger' })
-    );
-    await mockShowConfirm.mock.calls[0][0].onConfirm();
-    expect(mockEliminarAsignatura).toHaveBeenCalledWith('1');
+    await waitFor(() => expect(mockConfirmDelete).toHaveBeenCalledWith(
+      expect.objectContaining({ title: 'Eliminar Asignatura' })
+    ));
+    await waitFor(() => expect(mockEliminarAsignatura).toHaveBeenCalledWith('1'));
     expect(mockToastSuccess).toHaveBeenCalled();
   });
 
   // ── GA-08 ──────────────────────────────────────────────────────────────────
-  it('GA-08: eliminar sección llama showConfirm con requireText="ELIMINAR" y ejecuta el servicio', async () => {
+  it('GA-08: eliminar sección llama confirmDelete y ejecuta el servicio', async () => {
     mockPermisos({
       GESTION_ACADEMICA:  { canRead: true },
       GA_ELIMINAR_SECCION: { canDelete: true },
@@ -260,11 +255,10 @@ describe('GestionAsignaturasPage (GA)', () => {
     const seccionBtns = container.querySelectorAll('.gap-1 button');
     expect(seccionBtns.length).toBeGreaterThan(0);
     fireEvent.click(seccionBtns[0] as HTMLElement);
-    expect(mockShowConfirm).toHaveBeenCalledWith(
-      expect.objectContaining({ requireText: 'ELIMINAR', confirmColor: 'danger' })
-    );
-    await mockShowConfirm.mock.calls[0][0].onConfirm();
-    expect(mockEliminarSeccion).toHaveBeenCalled();
+    await waitFor(() => expect(mockConfirmDelete).toHaveBeenCalledWith(
+      expect.objectContaining({ title: 'Eliminar Sección' })
+    ));
+    await waitFor(() => expect(mockEliminarSeccion).toHaveBeenCalled());
     expect(mockToastSuccess).toHaveBeenCalled();
   });
 

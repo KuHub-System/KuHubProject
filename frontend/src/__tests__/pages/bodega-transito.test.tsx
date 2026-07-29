@@ -92,7 +92,7 @@ vi.mock('../../services/solicitud/solicitud-service', () => ({
 }));
 
 vi.mock('../../services/pedido/pedido-semanal-bodega-service', () => ({
-  obtenerRecetaPorIdService: vi.fn().mockResolvedValue({}),
+  obtenerPedidoSemanaBodegaPorIdService: vi.fn().mockResolvedValue({}),
 }));
 
 vi.mock('../../services/inventario/producto-service', () => ({
@@ -193,7 +193,7 @@ const entregaPreparable = () => ({
         {
           idSolicitud: 10, estadoSolicitud: 'ACEPTADA', horaInicio: '10:00',
           rangoHoras: '10:00 - 11:20', nombreSeccion: '001D', nombreAsignatura: 'Cocina',
-          nombreDocente: 'Chef Test', cantInscritos: 20, nombreReceta: 'Pan Amasado',
+          nombreDocente: 'Chef Test', cantInscritos: 20, nombrePedidoSemanaBodega: 'Pan Amasado',
           observaciones: null,
           productos: [
             { idProducto: 1, nombreProducto: 'Harina', cantidad: 5, unidadAbreviada: 'kg', esFraccionario: false, observacion: null, stockTransito: 10, diferencia: 5 },
@@ -340,7 +340,7 @@ describe('BodegaTransitoPage', () => {
             {
               idSolicitud: 10, estadoSolicitud: 'ACEPTADA', horaInicio: '10:00',
               rangoHoras: '10:00 - 11:20', nombreSeccion: '001D', nombreAsignatura: 'Cocina',
-              nombreDocente: 'Chef Test', cantInscritos: 20, nombreReceta: 'Pan Amasado',
+              nombreDocente: 'Chef Test', cantInscritos: 20, nombrePedidoSemanaBodega: 'Pan Amasado',
               observaciones: null,
               productos: [
                 { idProducto: 1, nombreProducto: 'Harina', cantidad: 5, unidadAbreviada: 'kg', esFraccionario: true, observacion: null, stockTransito: 10, diferencia: 5 },

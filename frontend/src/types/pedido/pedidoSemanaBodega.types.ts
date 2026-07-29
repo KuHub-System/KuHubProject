@@ -1,7 +1,7 @@
 /**
  * TIPOS PARA PEDIDOS SEMANALES A BODEGA
  *
- * Ubicación: src/types/receta.types.ts
+ * Ubicación: src/types/pedidoSemanaBodega.types.ts
  */
 
 /**
@@ -53,7 +53,7 @@ export interface IActualizarPedidoSemanaBodega {
 }
 
 /**
- * Interfaz para un item de solicitud (puede venir de receta o ser adicional).
+ * Interfaz para un item de solicitud (puede venir de pedidoSemanaBodega o ser adicional).
  */
 export interface IItemSolicitud {
   id: string;
@@ -61,7 +61,7 @@ export interface IItemSolicitud {
   productoNombre: string;
   cantidad: number;
   unidadMedida: string;
-  esAdicional: boolean; // true si fue agregado manualmente, false si viene de la receta
+  esAdicional: boolean; // true si fue agregado manualmente, false si viene de la pedidoSemanaBodega
 }
 
 /**
@@ -72,11 +72,11 @@ export interface ISolicitud {
   asignaturaId: string;
   asignaturaNombre: string;
   fecha: string; // Fecha de la clase
-  recetaId?: string | null; // null si es una solicitud custom sin receta base
-  recetaNombre?: string | null;
+  pedidoSemanaBodegaId?: string | null; // null si es una solicitud custom sin pedidoSemanaBodega base
+  pedidoSemanaBodegaNombre?: string | null;
   items: IItemSolicitud[];
   observaciones: string;
-  esCustom: boolean; // true si tiene modificaciones a la receta base
+  esCustom: boolean; // true si tiene modificaciones a la pedidoSemanaBodega base
   estado: 'Pendiente' | 'Aprobada' | 'Rechazada' | 'Completada';
   usuarioId: string; // ID del usuario que creó la solicitud
   usuarioNombre: string; // Nombre del usuario que creó la solicitud
@@ -92,8 +92,8 @@ export interface ICrearSolicitud {
   asignaturaId: string;
   asignaturaNombre: string;
   fecha: string;
-  recetaId?: string | null;
-  recetaNombre?: string | null;
+  pedidoSemanaBodegaId?: string | null;
+  pedidoSemanaBodegaNombre?: string | null;
   items: Omit<IItemSolicitud, 'id'>[];
   observaciones: string;
   esCustom: boolean;

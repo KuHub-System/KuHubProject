@@ -21,7 +21,7 @@ public record MassiveSolicitation(
         @NotNull(message = "El idSemana es obligatorio")
         Integer idSemana,
 
-        Integer idReceta,
+        Integer idPedidoSemanaBodega,
 
         @Size(max = 600, message = "La observación no puede superar los 600 caracteres")
         String observacion,
@@ -84,8 +84,8 @@ public record MassiveSolicitation(
     // ============================================================================
 
     public record ModifiedDetailSolicitationDTO(
-            @NotNull(message = "El idDetalleReceta es obligatorio para modificar")
-            Integer idDetalleReceta,
+            @NotNull(message = "El idDetallePedidoSemana es obligatorio para modificar")
+            Integer idDetallePedidoSemana,
 
             @NotNull(message = "La cantidad del producto a modificar es obligatoria")
             BigDecimal cantProducto,

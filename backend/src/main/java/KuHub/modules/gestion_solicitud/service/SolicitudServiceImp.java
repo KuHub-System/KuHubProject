@@ -168,11 +168,11 @@ public class SolicitudServiceImp implements SolicitudService {
                         new TypeReference<List<RecipeSolicitation.RecipeDetailsDTO>>() {}
                 );
             } catch (Exception e) {
-                throw new RuntimeException("Error al mapear JSONB de receta detalles: " + detallesJsonb, e);
+                throw new RuntimeException("Error al mapear JSONB de pedidoSemanaBodega detalles: " + detallesJsonb, e);
             }
             responseList.add(new RecipeSolicitation(
-                    ((Number) row[0]).intValue(),                                // idReceta       [0]
-                    (String) row[1],                                             // nombreReceta   [1]
+                    ((Number) row[0]).intValue(),                                // idPedidoSemanaBodega       [0]
+                    (String) row[1],                                             // nombrePedidoSemanaBodega   [1]
                     row[3] != null ? ((Number) row[3]).intValue() : null,        // idSemana       [3]
                     row[4] != null ? ((Number) row[4]).intValue() : null,        // idAsignatura   [4]
                     detalles
@@ -225,9 +225,9 @@ public class SolicitudServiceImp implements SolicitudService {
             }
             responseList.add(new SolicitationManagement(
                     ((java.sql.Date) row[0]).toLocalDate(),              // fechaSolicitada
-                    (String) row[1],                                      // nombreReceta
+                    (String) row[1],                                      // nombrePedidoSemanaBodega
                     (Integer) row[2],                                     // idSolicitud
-                    row[3] != null ? ((Number) row[3]).intValue() : null, // idReceta
+                    row[3] != null ? ((Number) row[3]).intValue() : null, // idPedidoSemanaBodega
                     row[4] != null ? ((Number) row[4]).intValue() : null, // idReservaSala
                     row[5].toString(),                                    // estadoSolicitud
                     row[6] != null ? row[6].toString() : "",             // observaciones
@@ -258,7 +258,7 @@ public class SolicitudServiceImp implements SolicitudService {
      * </ul>
      *
      * @param payloadList Lista de DTOs ({@link }) que contiene la estructura
-     * jerárquica de asignaturas, secciones, horarios, recetas y deltas a procesar.
+     * jerárquica de asignaturas, secciones, horarios, pedidoSemanaBodegas y deltas a procesar.
      * @return {@link ResultsMassSolicitationView} Proyección con las métricas finales del proceso
      * (total de solicitudes creadas y total de detalles procesados).
      * @throws RuntimeException Si ocurre un error de serialización (Jackson) al intentar convertir
@@ -464,7 +464,7 @@ public class SolicitudServiceImp implements SolicitudService {
                 listaSolicitudes.add(new DashboardConsolidado.SolicitudDashboardDTO(
                         ((Number) row[0]).intValue(),                 // idSolicitud
                         ((java.sql.Date) row[1]).toLocalDate(),       // fechaSolicitada
-                        (String) row[2],                              // nombreReceta
+                        (String) row[2],                              // nombrePedidoSemanaBodega
                         (String) row[3],                              // observaciones
                         asignaturaDetalle                             // JSON Parseado correctamente
                 ));

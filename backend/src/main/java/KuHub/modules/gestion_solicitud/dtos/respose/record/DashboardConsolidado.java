@@ -29,7 +29,7 @@ public record DashboardConsolidado(
     public record SolicitudDashboardDTO(
             Integer idSolicitud,
             LocalDate fechaSolicitada,
-            String nombreReceta,
+            String nombrePedidoSemanaBodega,
             String observaciones,
             AsignaturaDetalleDTO asignaturaDetalle
     ) {}
