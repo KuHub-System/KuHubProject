@@ -1470,7 +1470,7 @@ export const FormularioPedidoSemanaBodega = React.forwardRef<any, FormularioPedi
           if (ing.productoId) {
             const existing = currentIngsMap.get(ing.productoId);
             if (existing) {
-              existing.cantidad += ing.cantidad;
+              existing.cantidad = Math.round((existing.cantidad + ing.cantidad) * 1000) / 1000;
             } else {
               currentIngsMap.set(ing.productoId, {
                 cantidad: ing.cantidad,
@@ -1576,7 +1576,9 @@ export const FormularioPedidoSemanaBodega = React.forwardRef<any, FormularioPedi
         ingredientes.forEach(ing => {
           if (seenProductsMap.has(ing.productoId)) {
             const index = seenProductsMap.get(ing.productoId)!;
-            ingredientesConsolidados[index].cantidad += ing.cantidad;
+            // Redondeo a 3 decimales tras sumar: evita que errores de coma flotante de JS
+            // (ej. 0.1 + 0.24 = 0.33999999999999997) violen el @Digits(integer=7, fraction=3) del backend
+            ingredientesConsolidados[index].cantidad = Math.round((ingredientesConsolidados[index].cantidad + ing.cantidad) * 1000) / 1000;
           } else {
             seenProductsMap.set(ing.productoId, ingredientesConsolidados.length);
             ingredientesConsolidados.push({ ...ing });
