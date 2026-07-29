@@ -235,7 +235,7 @@ const App: React.FC = () => {
                   {/* "Conglomerado de Pedidos" se fusionó como pestaña de /gestion-solicitudes --
                       esta ruta queda solo por compatibilidad con enlaces/bookmarks antiguos y
                       renderiza la misma GestionSolicitudesPage, que abre directo en la
-                      pestaña "Consolidar pedido". */}
+                      pestaña "Conglomerado de pedidos". */}
                   <ProtectedRoute path="/conglomerado-pedidos" pageId="gestion-solicitudes">
                     <MainLayout>
                       <GestionSolicitudesPage />

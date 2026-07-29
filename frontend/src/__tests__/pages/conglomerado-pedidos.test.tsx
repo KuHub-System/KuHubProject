@@ -178,7 +178,7 @@ const emptyConsolidate = {
 
 // "Gestión de Solicitudes" se fusionó con "Conglomerado de Pedidos" en pestañas dentro de
 // GestionSolicitudesPage. Entrar por /conglomerado-pedidos abre directo en la pestaña
-// "Consolidar pedido", igual que hacía la página standalone que este archivo probaba antes.
+// "Conglomerado de pedidos", igual que hacía la página standalone que este archivo probaba antes.
 const renderWithProviders = (ui: React.ReactElement) =>
   render(
     <MemoryRouter initialEntries={['/conglomerado-pedidos']}>

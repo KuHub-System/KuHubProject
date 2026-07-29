@@ -1,7 +1,7 @@
 /**
  * SOLICITUDES + CONGLOMERADO DE PEDIDOS
  * Fusión de gestion-solicitudes.tsx y conglomerado-pedidos.tsx en pestañas:
- * "Revisar solicitudes" (aceptar/rechazar por semana) y "Consolidar pedido"
+ * "Revisar solicitudes" (aceptar/rechazar por semana) y "Conglomerado de pedidos"
  * (seguimiento del pedido consolidado). Comparten el mismo selector de
  * período/semana vía usePeriodoSemana(), así que cambiar de pestaña no
  * pierde el contexto de qué semana se está viendo.
@@ -132,7 +132,7 @@ const MotivoTexto: React.FC<{ texto: string }> = ({ texto }) => {
 };
 
 // ═══════════════════════════════════════════════════════════════════════════
-// TIPOS Y HELPERS — pestaña "Consolidar pedido" (de conglomerado-pedidos.tsx)
+// TIPOS Y HELPERS — pestaña "Conglomerado de pedidos" (de conglomerado-pedidos.tsx)
 // ═══════════════════════════════════════════════════════════════════════════
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -215,7 +215,7 @@ const GestionSolicitudesPage: React.FC = () => {
   const semanaActual = semanas.find(s => String(s.idSemana) === semanaId) ?? null;
   const sinPeriodos = periodos.length === 0 && !isLoadingSem;
 
-  // ── Tab activa (Revisar solicitudes / Consolidar pedido) ──
+  // ── Tab activa (Revisar solicitudes / Conglomerado de pedidos) ──
   const location = useLocation();
   const [activeTab, setActiveTab] = React.useState<'solicitudes' | 'pedido'>(
     location.pathname.startsWith('/conglomerado-pedidos') ? 'pedido' : 'solicitudes'
@@ -535,7 +535,7 @@ const GestionSolicitudesPage: React.FC = () => {
 
 
   // ═══════════════════════════════════════════════════════════════════════
-  // Estado y lógica de "Consolidar pedido" (de conglomerado-pedidos.tsx)
+  // Estado y lógica de "Conglomerado de pedidos" (de conglomerado-pedidos.tsx)
   // ═══════════════════════════════════════════════════════════════════════
   const { canUpdate: permAprobar }  = useModulePermission('CONG_APROBAR_PEDIDO');
   const { canUpdate: permRechazar } = useModulePermission('CONG_RECHAZAR_PEDIDO');
@@ -1317,7 +1317,7 @@ const GestionSolicitudesPage: React.FC = () => {
           classNames={{ tabList: 'gap-6' }}
         >
           <Tab key="solicitudes" title="Revisar solicitudes" />
-          <Tab key="pedido" title="Consolidar pedido" />
+          <Tab key="pedido" title="Conglomerado de pedidos" />
         </Tabs>
       </div>
 
