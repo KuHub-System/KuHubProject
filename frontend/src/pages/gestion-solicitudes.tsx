@@ -181,6 +181,8 @@ const fmtFechaCortaCong = (iso: string) =>
 
 const isHoy = (iso: string) => iso === new Date().toISOString().slice(0, 10);
 
+const isPasado = (iso: string) => iso < new Date().toISOString().slice(0, 10);
+
 const getDiaSemana = (iso: string) => new Date(iso + 'T00:00:00').getDay();
 
 /** Parses "08:01-09:20" or "08:01 - 09:20" → { inicio, fin } */
@@ -2184,6 +2186,7 @@ const GestionSolicitudesPage: React.FC = () => {
               ) : gruposDiaFiltrados.map(grupo => {
                 const cfg = DIA_CONFIG[grupo.diaSemana] ?? DIA_CONFIG[1];
                 const hoy = isHoy(grupo.fecha);
+                const pasado = isPasado(grupo.fecha);
                 const productosDelDia = new Set<string>();
                 grupo.solicitudes.forEach(s => s.productosSolicitados.forEach(p => productosDelDia.add(p.nombreProducto)));
 
@@ -2229,6 +2232,11 @@ const GestionSolicitudesPage: React.FC = () => {
                       {hoy && (
                         <Chip size="sm" color="warning" variant="solid" className="shrink-0">
                           Hoy · En curso
+                        </Chip>
+                      )}
+                      {pasado && (
+                        <Chip size="sm" color="default" variant="flat" className="shrink-0" startContent={<Icon icon="lucide:check-circle-2" width={12} className="ml-1" />}>
+                          Finalizado
                         </Chip>
                       )}
                     </div>
