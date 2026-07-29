@@ -123,8 +123,9 @@ class SolicitudServiceImplTest {
     void test5FindSolicitationsPerWeekRaw() throws Exception {
         // row: [0]=fechaSolicitada, [1]=nombrePedidoSemanaBodega, [2]=idSolicitud, [3]=idPedidoSemanaBodega,
         //      [4]=idReservaSala, [5]=estadoSolicitud, [6]=observaciones,
-        //      [7]=productos_solicitados (json), [8]=asignatura_detalle (json), [9]=motivoRechazo
-        Object[] row = new Object[10];
+        //      [7]=productos_solicitados (json), [8]=asignatura_detalle (json), [9]=motivoRechazo,
+        //      [10]=idPedido, [11]=tieneOrdenPedidoActiva
+        Object[] row = new Object[12];
         row[0] = java.sql.Date.valueOf(LocalDate.of(2026, 5, 13));
         row[1] = "Pasta";
         row[2] = 1;
@@ -135,6 +136,8 @@ class SolicitudServiceImplTest {
         row[7] = "[]";
         row[8] = "{}";
         row[9] = null;
+        row[10] = null;
+        row[11] = false;
 
         DateRangeDTO dto = new DateRangeDTO();
         dto.setFechaInicio(LocalDate.of(2026, 5, 1));
