@@ -552,7 +552,7 @@ const PedidoSemanalABodegaPage: React.FC = () => {
                       variant="bordered"
                       size="sm"
                       className="w-48"
-                      classNames={{ trigger: "bg-default-50", base: "max-w-xs" }}
+                      classNames={{ trigger: "bg-default-50 cursor-pointer", base: "max-w-xs" }}
                     >
                       {periodos?.flatMap(p =>
                         p.semestres.map((s: number) => (
@@ -586,7 +586,7 @@ const PedidoSemanalABodegaPage: React.FC = () => {
                         variant="bordered"
                         size="sm"
                         className="w-96"
-                        classNames={{ trigger: "bg-default-50", base: "max-w-96" }}
+                        classNames={{ trigger: "bg-default-50 cursor-pointer", base: "max-w-96" }}
                       >
                         <SelectItem key="todas" textValue="Todas">
                           Todas
@@ -625,7 +625,7 @@ const PedidoSemanalABodegaPage: React.FC = () => {
                     variant="bordered"
                     size="sm"
                     className="w-56"
-                    classNames={{ trigger: "bg-default-50", base: "max-w-xs" }}
+                    classNames={{ trigger: "bg-default-50 cursor-pointer", base: "max-w-xs" }}
                     startContent={<Icon icon="lucide:book-open" width={14} className="text-default-400 shrink-0" />}
                   >
                     <SelectItem key="todas" textValue="Todas">
@@ -1850,7 +1850,7 @@ export const FormularioPedidoSemanaBodega = React.forwardRef<any, FormularioPedi
                             setIdSemana(v || 'ninguno');
                           }}
                           placeholder="Seleccione una semana"
-                          classNames={{ trigger: "bg-default-50", base: "max-w-xs" }}
+                          classNames={{ trigger: "bg-default-50 cursor-pointer", base: "max-w-xs" }}
                           startContent={<Icon icon="lucide:calendar" width={14} className="text-default-400 shrink-0" />}
                         >
                           <SelectItem key="ninguno" textValue="Ninguno">
@@ -1891,7 +1891,7 @@ export const FormularioPedidoSemanaBodega = React.forwardRef<any, FormularioPedi
                     onSelectionChange={(keys) => setIdAsignaturaSeleccionada(Array.from(keys as Set<string>)[0] || '')}
                     classNames={{
                       label: 'text-sm font-medium text-default-700',
-                      trigger: 'bg-white dark:bg-default-100/50',
+                      trigger: 'bg-white dark:bg-default-100/50 cursor-pointer',
                     }}
                     startContent={<Icon icon="lucide:book-open" width={14} className="text-default-400 shrink-0" />}
                   >
@@ -2268,7 +2268,7 @@ export const FormularioPedidoSemanaBodega = React.forwardRef<any, FormularioPedi
                 onSelectionChange={(keys) => setEstado(Array.from(keys)[0] as 'Activo' | 'Inactivo')}
                 variant="bordered"
                 isRequired
-                classNames={{ trigger: "bg-white dark:bg-default-100/50" }}
+                classNames={{ trigger: "bg-white dark:bg-default-100/50 cursor-pointer" }}
                 description="Esto permite la disponibilidad de la pedido semanal para solicitudes"
               >
                 <SelectItem key="Activo" startContent={<Icon icon="lucide:check-circle" className="text-success" width={16} />}>Activo</SelectItem>
