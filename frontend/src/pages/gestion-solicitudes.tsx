@@ -352,6 +352,7 @@ const GestionSolicitudesPage: React.FC = () => {
       setSeleccionados(prev => { const n = new Set(prev); n.delete(sol.id); return n; });
       toast.success(`Solicitud §${sol.nombreSeccion} aceptada`);
       recargarSolicitudes();
+      recargarDatos();
     } catch { toast.error('Error al aceptar la solicitud'); }
     setIsSaving(false);
   };
@@ -386,6 +387,7 @@ const GestionSolicitudesPage: React.FC = () => {
       toast.warning(`Solicitud §${selSol.nombreSeccion} rechazada y restada del pedido`);
       rechazarPedido.onClose();
       recargarSolicitudes();
+      recargarDatos();
     } catch (e: any) {
       toast.error(e?.response?.data ?? 'No se pudo rechazar: el pedido ya tiene una Orden de Pedido vigente.');
     }
@@ -404,6 +406,7 @@ const GestionSolicitudesPage: React.FC = () => {
       setSeleccionados(new Set());
       toast.success(`${ids.length} solicitud${ids.length > 1 ? 'es' : ''} aceptada${ids.length > 1 ? 's' : ''}`);
       recargarSolicitudes();
+      recargarDatos();
     } catch { toast.error('Error al aceptar las solicitudes'); }
     setIsSaving(false);
   };
@@ -420,6 +423,7 @@ const GestionSolicitudesPage: React.FC = () => {
       setSeleccionados(new Set());
       toast.success(`${pend.length} solicitud${pend.length > 1 ? 'es' : ''} aceptada${pend.length > 1 ? 's' : ''}`);
       recargarSolicitudes();
+      recargarDatos();
     } catch { toast.error('Error al aceptar las solicitudes'); }
     setIsSaving(false);
   };
@@ -485,6 +489,7 @@ const GestionSolicitudesPage: React.FC = () => {
       setSolicitudes(prev => prev.map(s => s.id === selSol.id ? { ...s, estado: 'Aceptada', motivoRechazo: undefined } : s));
       toast.success(`Solicitud §${selSol.nombreSeccion} aceptada`);
       revertir.onClose();
+      recargarDatos();
     } catch { toast.error('Error al cambiar el estado de la solicitud'); }
     setIsSaving(false);
   };
@@ -509,6 +514,7 @@ const GestionSolicitudesPage: React.FC = () => {
       await cambiarEstadoMasivoService({ estadosSolicitudes: [{ idSolicitud: sol.id, estado: 'PENDIENTE' }] });
       setSolicitudes(prev => prev.map(s => s.id === sol.id ? { ...s, estado: 'Pendiente', motivoRechazo: undefined } : s));
       toast.warning(`Solicitud §${sol.nombreSeccion} revertida a Pendiente`);
+      recargarDatos();
     } catch { toast.error('Error al cambiar el estado de la solicitud'); }
     setIsSaving(false);
   };
@@ -527,6 +533,7 @@ const GestionSolicitudesPage: React.FC = () => {
       await cambiarEstadoMasivoService({ estadosSolicitudes: [{ idSolicitud: sol.id, estado: 'RECHAZADA', motivo }] });
       setSolicitudes(prev => prev.map(s => s.id === sol.id ? { ...s, estado: 'Rechazada', motivoRechazo: motivo } : s));
       toast.warning(`Solicitud §${sol.nombreSeccion} rechazada`);
+      recargarDatos();
     } catch { toast.error('Error al rechazar la solicitud'); }
     setIsSaving(false);
   };
@@ -1552,6 +1559,7 @@ const GestionSolicitudesPage: React.FC = () => {
                               setSolicitudes(prev => prev.map(s => ids.has(s.id) ? { ...s, estado: 'Aceptada' } : s));
                               setSeleccionados(prev => { const n = new Set(prev); ids.forEach(id => n.delete(id)); return n; });
                               toast.success(`${pendGrupo.length} solicitud${pendGrupo.length > 1 ? 'es' : ''} aceptada${pendGrupo.length > 1 ? 's' : ''}`);
+                              recargarDatos();
                             } catch { toast.error('Error al aceptar'); }
                             setIsSaving(false);
                           }}
