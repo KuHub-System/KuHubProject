@@ -718,39 +718,39 @@ const PedidoMasivoModal: React.FC<PedidoMasivoModalProps> = ({ onClose, onNuevoP
   return (
     <>
       <ModalHeader className="flex flex-col gap-3 border-b border-default-100 dark:border-default-50 bg-white dark:bg-content2 px-6 py-4">
-        <div className="flex items-center justify-between">
-          <div className="flex-1">
-            <h2 className="text-xl font-bold text-secondary dark:text-foreground">Control de Stock Masivo</h2>
-            <p className="text-sm font-medium text-default-500 mt-1">
-              Registre entradas, salidas, mermas, ajustes o traslados de múltiples productos de forma estructurada.
-            </p>
-          </div>
-          <div className="flex items-center gap-1 shrink-0">
-            <Tooltip content={puedeAccederAbastBodega ? "Abastecimiento de Bodega (solicitudes EN_PEDIDO)" : "Sin permisos"} color="foreground" className="text-xs">
-              <Button
-                isIconOnly
-                variant="light"
-                color="primary"
-                size="lg"
-                onPress={onBodegaOpen}
-                isDisabled={!puedeAccederAbastBodega}
-              >
-                <Icon icon="lucide:warehouse" width={22} />
-              </Button>
-            </Tooltip>
-            <Tooltip content={puedeAccederAbastProv ? "Abastecimiento de proveedores (OPs confirmadas)" : "Sin permisos"} color="foreground" className="text-xs">
-              <Button
-                isIconOnly
-                variant="light"
-                color="secondary"
-                size="lg"
-                onPress={() => { onAbastecimientoOpen(); cargarAbastecimiento('semana'); }}
-                isDisabled={!puedeAccederAbastProv}
-              >
-                <Icon icon="lucide:truck" width={22} />
-              </Button>
-            </Tooltip>
-          </div>
+        <div className="flex-1">
+          <h2 className="text-xl font-bold text-secondary dark:text-foreground">Control de Stock Masivo</h2>
+          <p className="text-sm font-medium text-default-500 mt-1">
+            Registre entradas, salidas, mermas, ajustes o traslados de múltiples productos de forma estructurada.
+          </p>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <Tooltip content={puedeAccederAbastBodega ? "Ver solicitudes EN_PEDIDO de bodega" : "Sin permisos"} color="foreground" className="text-xs">
+            <Button
+              variant="flat"
+              color="primary"
+              size="md"
+              className="font-semibold"
+              startContent={<Icon icon="lucide:warehouse" width={18} />}
+              onPress={onBodegaOpen}
+              isDisabled={!puedeAccederAbastBodega}
+            >
+              Abastecimiento de Bodega
+            </Button>
+          </Tooltip>
+          <Tooltip content={puedeAccederAbastProv ? "Ver OPs confirmadas de proveedores" : "Sin permisos"} color="foreground" className="text-xs">
+            <Button
+              variant="flat"
+              color="secondary"
+              size="md"
+              className="font-semibold"
+              startContent={<Icon icon="lucide:truck" width={18} />}
+              onPress={() => { onAbastecimientoOpen(); cargarAbastecimiento('semana'); }}
+              isDisabled={!puedeAccederAbastProv}
+            >
+              Abastecimiento de Proveedores
+            </Button>
+          </Tooltip>
         </div>
       </ModalHeader>
       <ModalBody className="px-4 py-3 space-y-3 overflow-y-scroll custom-scrollbar max-h-[calc(75vh-150px)]">

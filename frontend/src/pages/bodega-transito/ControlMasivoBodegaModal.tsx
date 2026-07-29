@@ -705,29 +705,28 @@ const ControlMasivoBodegaModal: React.FC<ControlMasivoBodegaModalProps> = ({ onC
     <>
       <div className="flex flex-col w-full overflow-hidden rounded-2xl">
       <ModalHeader className="flex flex-col gap-3 border-b border-default-100 dark:border-default-50 bg-white dark:bg-content2 px-6 py-4">
-        <div className="flex items-center justify-between">
-          <div className="flex-1">
-            <h2 className="text-xl font-bold text-secondary dark:text-foreground">Control de Stock Masivo</h2>
-            <p className="text-sm font-medium text-default-500 mt-1">
-              Registre entradas, salidas, mermas y ajustes en la bodega de tránsito.
-            </p>
-          </div>
-          {puedeAccederAbastecimiento && (
-          <div className="flex items-center gap-1 shrink-0">
-            <Tooltip content="Abastecimiento de proveedores (OPs confirmadas)" color="foreground" className="text-xs">
-              <Button
-                isIconOnly
-                variant="light"
-                color="secondary"
-                size="lg"
-                onPress={() => { onAbastecimientoOpen(); cargarAbastecimiento('semana'); }}
-              >
-                <Icon icon="lucide:truck" width={22} />
-              </Button>
-            </Tooltip>
-          </div>
-          )}
+        <div className="flex-1">
+          <h2 className="text-xl font-bold text-secondary dark:text-foreground">Control de Stock Masivo</h2>
+          <p className="text-sm font-medium text-default-500 mt-1">
+            Registre entradas, salidas, mermas y ajustes en la bodega de tránsito.
+          </p>
         </div>
+        {puedeAccederAbastecimiento && (
+        <div className="flex flex-wrap items-center gap-2">
+          <Tooltip content="Ver OPs confirmadas de proveedores" color="foreground" className="text-xs">
+            <Button
+              variant="flat"
+              color="secondary"
+              size="md"
+              className="font-semibold"
+              startContent={<Icon icon="lucide:truck" width={18} />}
+              onPress={() => { onAbastecimientoOpen(); cargarAbastecimiento('semana'); }}
+            >
+              Abastecimiento de Proveedores
+            </Button>
+          </Tooltip>
+        </div>
+        )}
       </ModalHeader>
 
       <ModalBody className="px-4 py-3 space-y-3">
