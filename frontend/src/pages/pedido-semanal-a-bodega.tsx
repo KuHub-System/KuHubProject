@@ -380,7 +380,11 @@ const PedidoSemanalABodegaPage: React.FC = () => {
       }
       await cargarDatosIniciales();
     } catch (error: any) {
-      toast.error(error.message || 'Error al guardar la pedidoSemanaBodega');
+      const mensajeBase = error.message || 'Error al guardar la pedidoSemanaBodega';
+      const mensajeFinal = mensajeBase.includes('Ya existe una pedidoSemanaBodega')
+        ? `${mensajeBase}. Selecciona los campos del periodo académico (semestre, año y semana) o cambia el nombre.`
+        : mensajeBase;
+      toast.error(mensajeFinal);
       throw error;
     }
   };

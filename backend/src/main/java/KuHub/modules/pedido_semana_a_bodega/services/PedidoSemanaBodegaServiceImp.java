@@ -1,5 +1,6 @@
 package KuHub.modules.pedido_semana_a_bodega.services;
 
+import KuHub.modules.gestion_academica.entity.Semana;
 import KuHub.modules.gestion_academica.repository.AsignaturaRepository;
 import KuHub.modules.gestion_academica.repository.SemanaRepository;
 import KuHub.modules.pedido_semana_a_bodega.dtos.request.SearchPedidoSemanaBodegaDTO;
@@ -165,7 +166,22 @@ public class PedidoSemanaBodegaServiceImp implements PedidoSemanaBodegaService{
     @Transactional
     @Override
     public boolean saveRecipeWithDetails(PedidoSemanaBodegaWithDetailsCreateDTO request) {
-        String nombrePedidoSemanaBodega = StringUtils.capitalizarPalabras(request.getNombrePedido());
+        String nombreBase = StringUtils.capitalizarPalabras(request.getNombrePedido());
+
+        // Si viene idSemana, se valida su existencia y se usa para construir un sufijo de periodo
+        // académico (semestre-año-semana) que evita choques de nombre entre distintas semanas.
+        Semana semana = null;
+        if (request.getIdSemana() != null) {
+            semana = semanaRepository.findById(request.getIdSemana()).orElseThrow(
+                    () -> new PedidoSemanaBodegaException(
+                            "La semana con ID " + request.getIdSemana() + " no existe",
+                            HttpStatus.UNPROCESSABLE_ENTITY
+                    ));
+        }
+
+        String nombrePedidoSemanaBodega = (semana != null)
+                ? nombreBase + construirSufijoPeriodo(semana)
+                : nombreBase;
 
         if (pedidoSemanaBodegaRepository.existsByNombrePedidoAndActivoTrue(nombrePedidoSemanaBodega)) {
             throw new PedidoSemanaBodegaException("Ya existe una pedidoSemanaBodega activa con el nombre: " + nombrePedidoSemanaBodega,
@@ -180,17 +196,6 @@ public class PedidoSemanaBodegaServiceImp implements PedidoSemanaBodegaService{
 
         newPedidoSemanaBodega.setDescripcionPedido((request.getDescripcionPedido() == null || request.getDescripcionPedido().isBlank())
                 ? null : StringUtils.normalizeSpaces(request.getDescripcionPedido()));
-
-        // Validar que si viene idSemana, existe en la BD
-        if (request.getIdSemana() != null) {
-            boolean semanaExists = semanaRepository.existsById(request.getIdSemana());
-            if (!semanaExists) {
-                throw new PedidoSemanaBodegaException(
-                        "La semana con ID " + request.getIdSemana() + " no existe",
-                        HttpStatus.UNPROCESSABLE_ENTITY
-                );
-            }
-        }
 
         newPedidoSemanaBodega.setIdSemana(request.getIdSemana());
 
@@ -643,6 +648,13 @@ public class PedidoSemanaBodegaServiceImp implements PedidoSemanaBodegaService{
         }
 
         return 0;
+    }
+
+    /** Construye el sufijo "-S{semestre}-{anio}-S{numeroSemana}" a partir de una Semana, para evitar nombres duplicados entre distintos periodos. */
+    private String construirSufijoPeriodo(Semana semana) {
+        java.util.regex.Matcher matcher = java.util.regex.Pattern.compile("\\d+").matcher(semana.getNombreSemana());
+        String numeroSemana = matcher.find() ? matcher.group() : "0";
+        return "-S" + semana.getSemestre() + "-" + semana.getAnio() + "-S" + numeroSemana;
     }
 
     /** Retorna el texto de una celda como String, usando DataFormatter para manejar tipos numéricos y fórmulas. */
