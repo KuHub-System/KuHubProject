@@ -41,6 +41,7 @@ import {
 import { useModulePermission, usePermission } from '../contexts/permission-context';
 import { usePeriodoSemana } from '../contexts/periodo-semana-context';
 import { useHistory, useLocation } from 'react-router-dom';
+import { obtenerResumenNotificaciones, INotificacionSemana } from '../services/notificacion/notification-service';
 
 // ═══════════════════════════════════════════════════════════════════════════
 // TIPOS Y HELPERS — pestaña "Revisar solicitudes" (de gestion-solicitudes.tsx)
@@ -217,6 +218,35 @@ const GestionSolicitudesPage: React.FC = () => {
   const semanaActual = semanas.find(s => String(s.idSemana) === semanaId) ?? null;
   const sinPeriodos = periodos.length === 0 && !isLoadingSem;
 
+  // Navega al período/semana de una notificación (idSemana + anio + semestre), cambiando
+  // primero de período si la semana destino no pertenece al que está cargado actualmente.
+  const irASemanaNotificacion = React.useCallback(async (objetivo: INotificacionSemana) => {
+    const yaEstaCargada = semanas.some(s => s.idSemana === objetivo.idSemana);
+    if (!yaEstaCargada) {
+      await seleccionarPeriodo(objetivo.anio, objetivo.semestre);
+    }
+    seleccionarSemana(String(objetivo.idSemana));
+  }, [semanas, seleccionarPeriodo, seleccionarSemana]);
+
+  // Busca en la lista de notificaciones por semana la más relevante con pendientes y navega
+  // a ella. Prioriza la próxima desde hoy hacia adelante; si no hay futuras, salta a la
+  // atrasada más reciente. Mismo criterio que irAProximaPendiente en bodega-transito.tsx.
+  const buscarYNavegarAPendiente = React.useCallback(async (
+    lista: INotificacionSemana[],
+    sinPendientesMsg: string,
+    sinFuturasMsg: string,
+  ) => {
+    if (lista.length === 0) { toast.info(sinPendientesMsg); return; }
+    const hoyStr = new Date().toISOString().slice(0, 10);
+    const ordenadas = [...lista].sort((a, b) => a.fechaInicio.localeCompare(b.fechaInicio));
+    const futura   = ordenadas.find(s => s.fechaInicio >= hoyStr);
+    const atrasada = [...ordenadas].reverse().find(s => s.fechaInicio < hoyStr);
+    const objetivo = futura ?? atrasada;
+    if (!objetivo) { toast.info(sinPendientesMsg); return; }
+    await irASemanaNotificacion(objetivo);
+    if (!futura && atrasada) toast.warning(sinFuturasMsg);
+  }, [toast, irASemanaNotificacion]);
+
   // ── Tab activa (Revisar solicitudes / Conglomerado de pedidos) ──
   const location = useLocation();
   const [activeTab, setActiveTab] = React.useState<'solicitudes' | 'pedido'>(
@@ -262,6 +292,24 @@ const GestionSolicitudesPage: React.FC = () => {
       .catch(() => toast.error('Error al cargar las solicitudes de la semana'))
       .finally(() => setIsLoadingSol(false));
   }, [semanaId, semanas]);
+
+  // ── Próxima semana con solicitudes pendientes ──
+  const [buscandoPendienteSol, setBuscandoPendienteSol] = React.useState(false);
+  const irAProximaPendienteSolicitudes = React.useCallback(async () => {
+    setBuscandoPendienteSol(true);
+    try {
+      const resumen = await obtenerResumenNotificaciones();
+      await buscarYNavegarAPendiente(
+        resumen.solicitudesPendientes,
+        'No hay solicitudes pendientes en el sistema.',
+        'No hay solicitudes pendientes futuras. Te llevamos a la semana atrasada más reciente.',
+      );
+    } catch {
+      toast.error('No se pudo buscar la próxima semana con solicitudes pendientes.');
+    } finally {
+      setBuscandoPendienteSol(false);
+    }
+  }, [toast, buscarYNavegarAPendiente]);
 
   // ── Contadores ──
   const contadores = React.useMemo(() => ({
@@ -881,6 +929,24 @@ const GestionSolicitudesPage: React.FC = () => {
     finally { setIsLoadingDatos(false); }
   }, [semanaId, semanas]);
 
+  // ── Próxima semana con pedidos pendientes (aún no aprobados) ──
+  const [buscandoPendienteCong, setBuscandoPendienteCong] = React.useState(false);
+  const irAProximaPendienteCong = React.useCallback(async () => {
+    setBuscandoPendienteCong(true);
+    try {
+      const resumen = await obtenerResumenNotificaciones();
+      await buscarYNavegarAPendiente(
+        resumen.pedidosPendientes,
+        'No hay pedidos pendientes en el sistema.',
+        'No hay pedidos pendientes futuros. Te llevamos a la semana atrasada más reciente.',
+      );
+    } catch {
+      toast.error('No se pudo buscar la próxima semana con pedidos pendientes.');
+    } finally {
+      setBuscandoPendienteCong(false);
+    }
+  }, [toast, buscarYNavegarAPendiente]);
+
   // Ejecuta la aprobación de un pedido, reservando antes su disponible si el usuario lo pidió.
   const ejecutarAprobacion = async (idPedido: number, reservar: boolean) => {
     setIsAprobando(true);
@@ -1375,36 +1441,49 @@ const GestionSolicitudesPage: React.FC = () => {
 
             <Divider orientation="vertical" className="hidden sm:block h-6" />
 
-            <div className="flex-1 min-w-0">
-              {isLoadingSem ? (
-                <div className="flex items-center gap-2 text-sm text-default-400"><Spinner size="sm" /> Cargando semanas...</div>
-              ) : semanas.length === 0 ? (
-                <p className="text-sm text-default-400">Sin semanas disponibles para este período.</p>
-              ) : (
-                <Select size="sm" variant="bordered"
-                  selectedKeys={semanaId ? new Set([semanaId]) : new Set()}
-                  onSelectionChange={keys => { const v = Array.from(keys as Set<string>)[0]; if (v) seleccionarSemana(v); }}
-                  placeholder="Seleccione una semana"
-                  classNames={{ trigger: 'bg-default-50 cursor-pointer', base: 'max-w-xs' }}
-                  startContent={<Icon icon="lucide:calendar" width={14} className="text-default-400 shrink-0" />}
-                >
-                  {semanas.map(s => (
-                    <SelectItem key={String(s.idSemana)} textValue={s.nombreSemana}>
-                      <div className="flex items-center w-full gap-2">
-                        <span className="font-semibold">{s.nombreSemana}</span>
-                        <span className="text-default-400 text-xs">
-                          {new Date(s.fechaInicio + 'T00:00:00').toLocaleDateString('es-CL', { day: 'numeric', month: 'short' })}
-                          {' – '}
-                          {new Date(s.fechaFin + 'T00:00:00').toLocaleDateString('es-CL', { day: 'numeric', month: 'short' })}
-                        </span>
-                        {String(s.idSemana) === defaultSemanaId && defaultSemanaId && (
-                          <Chip size="sm" color="success" variant="flat" className="ml-auto shrink-0">Actual</Chip>
-                        )}
-                      </div>
-                    </SelectItem>
-                  ))}
-                </Select>
-              )}
+            <div className="flex-1 min-w-0 flex items-center gap-2">
+              <div className="w-full max-w-xs shrink-0">
+                {isLoadingSem ? (
+                  <div className="flex items-center gap-2 text-sm text-default-400"><Spinner size="sm" /> Cargando semanas...</div>
+                ) : semanas.length === 0 ? (
+                  <p className="text-sm text-default-400">Sin semanas disponibles para este período.</p>
+                ) : (
+                  <Select size="sm" variant="bordered"
+                    selectedKeys={semanaId ? new Set([semanaId]) : new Set()}
+                    onSelectionChange={keys => { const v = Array.from(keys as Set<string>)[0]; if (v) seleccionarSemana(v); }}
+                    placeholder="Seleccione una semana"
+                    classNames={{ trigger: 'bg-default-50 cursor-pointer', base: 'max-w-xs' }}
+                    startContent={<Icon icon="lucide:calendar" width={14} className="text-default-400 shrink-0" />}
+                  >
+                    {semanas.map(s => (
+                      <SelectItem key={String(s.idSemana)} textValue={s.nombreSemana}>
+                        <div className="flex items-center w-full gap-2">
+                          <span className="font-semibold">{s.nombreSemana}</span>
+                          <span className="text-default-400 text-xs">
+                            {new Date(s.fechaInicio + 'T00:00:00').toLocaleDateString('es-CL', { day: 'numeric', month: 'short' })}
+                            {' – '}
+                            {new Date(s.fechaFin + 'T00:00:00').toLocaleDateString('es-CL', { day: 'numeric', month: 'short' })}
+                          </span>
+                          {String(s.idSemana) === defaultSemanaId && defaultSemanaId && (
+                            <Chip size="sm" color="success" variant="flat" className="ml-auto shrink-0">Actual</Chip>
+                          )}
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </Select>
+                )}
+              </div>
+
+              <Button
+                size="sm"
+                variant="light"
+                isLoading={buscandoPendienteSol}
+                onPress={irAProximaPendienteSolicitudes}
+                startContent={!buscandoPendienteSol ? <Icon icon="lucide:zap" width={14} /> : undefined}
+                className="shrink-0 text-default-500 hover:text-primary font-medium"
+              >
+                Buscar pendientes
+              </Button>
             </div>
 
             {semanaActual && (
@@ -1790,34 +1869,47 @@ const GestionSolicitudesPage: React.FC = () => {
 
             <Divider orientation="vertical" className="hidden sm:block h-6" />
 
-            <div className="flex-1 min-w-0">
-              {isLoadingSem ? (
-                <div className="flex items-center gap-2 text-sm text-default-400"><Spinner size="sm" /> Cargando semanas...</div>
-              ) : semanas.length === 0 ? (
-                <p className="text-sm text-default-400">Sin semanas disponibles.</p>
-              ) : (
-                <Select size="sm" variant="bordered"
-                  selectedKeys={semanaId ? new Set([semanaId]) : new Set()}
-                  onSelectionChange={keys => { const v = Array.from(keys as Set<string>)[0]; if (v) seleccionarSemana(v); }}
-                  placeholder="Seleccione una semana"
-                  classNames={{ trigger: 'bg-default-50 cursor-pointer', base: 'max-w-xs' }}
-                  startContent={<Icon icon="lucide:calendar" width={14} className="text-default-400 shrink-0" />}
-                >
-                  {semanas.map(s => (
-                    <SelectItem key={String(s.idSemana)} textValue={s.nombreSemana}>
-                      <span className="font-semibold">{s.nombreSemana}</span>
-                      <span className="text-default-400 ml-2 text-xs">
-                        {new Date(s.fechaInicio + 'T00:00:00').toLocaleDateString('es-CL', { day: 'numeric', month: 'short' })}
-                        {' – '}
-                        {new Date(s.fechaFin + 'T00:00:00').toLocaleDateString('es-CL', { day: 'numeric', month: 'short' })}
-                      </span>
-                      {String(s.idSemana) === defaultSemanaId && defaultSemanaId && (
-                        <Chip size="sm" color="success" variant="flat" className="ml-auto shrink-0">Actual</Chip>
-                      )}
-                    </SelectItem>
-                  ))}
-                </Select>
-              )}
+            <div className="flex-1 min-w-0 flex items-center gap-2">
+              <div className="w-full max-w-xs shrink-0">
+                {isLoadingSem ? (
+                  <div className="flex items-center gap-2 text-sm text-default-400"><Spinner size="sm" /> Cargando semanas...</div>
+                ) : semanas.length === 0 ? (
+                  <p className="text-sm text-default-400">Sin semanas disponibles.</p>
+                ) : (
+                  <Select size="sm" variant="bordered"
+                    selectedKeys={semanaId ? new Set([semanaId]) : new Set()}
+                    onSelectionChange={keys => { const v = Array.from(keys as Set<string>)[0]; if (v) seleccionarSemana(v); }}
+                    placeholder="Seleccione una semana"
+                    classNames={{ trigger: 'bg-default-50 cursor-pointer', base: 'max-w-xs' }}
+                    startContent={<Icon icon="lucide:calendar" width={14} className="text-default-400 shrink-0" />}
+                  >
+                    {semanas.map(s => (
+                      <SelectItem key={String(s.idSemana)} textValue={s.nombreSemana}>
+                        <span className="font-semibold">{s.nombreSemana}</span>
+                        <span className="text-default-400 ml-2 text-xs">
+                          {new Date(s.fechaInicio + 'T00:00:00').toLocaleDateString('es-CL', { day: 'numeric', month: 'short' })}
+                          {' – '}
+                          {new Date(s.fechaFin + 'T00:00:00').toLocaleDateString('es-CL', { day: 'numeric', month: 'short' })}
+                        </span>
+                        {String(s.idSemana) === defaultSemanaId && defaultSemanaId && (
+                          <Chip size="sm" color="success" variant="flat" className="ml-auto shrink-0">Actual</Chip>
+                        )}
+                      </SelectItem>
+                    ))}
+                  </Select>
+                )}
+              </div>
+
+              <Button
+                size="sm"
+                variant="light"
+                isLoading={buscandoPendienteCong}
+                onPress={irAProximaPendienteCong}
+                startContent={!buscandoPendienteCong ? <Icon icon="lucide:zap" width={14} /> : undefined}
+                className="shrink-0 text-default-500 hover:text-primary font-medium"
+              >
+                Buscar pendientes
+              </Button>
             </div>
 
             {semanaActual && (
