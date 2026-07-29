@@ -13,6 +13,7 @@ import {
   ModalFooter,
   Button,
   Input,
+  Textarea,
 } from '@heroui/react';
 import { Icon } from '@iconify/react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -39,12 +40,19 @@ interface ConfirmOptions {
   headerVariant?: 'danger' | 'warning' | 'default';
   alertTitle?: string;
   alertMessage?: string;
-  onConfirm: () => void;
+  onConfirm: (motivo?: string) => void;
   onCancel?: () => void;
   requireText?: string;
   requireTextLabel?: string;
   requireTextPlaceholder?: string;
   requireTextHelper?: string;
+  /** Campo de texto libre (ej. "motivo de rechazo") a capturar junto con la confirmación. */
+  motivoField?: {
+    label?: string;
+    placeholder?: string;
+    helperText?: string;
+    maxLength?: number;
+  };
 }
 
 interface NotificationContextType {
@@ -97,9 +105,12 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
         return;
       }
     }
+    if (confirm?.motivoField && !confirmInputValue.trim()) {
+      return;
+    }
 
     if (confirm) {
-      confirm.onConfirm();
+      confirm.onConfirm(confirmInputValue.trim() || undefined);
     }
     if (confirmResolve) {
       confirmResolve(true);
@@ -245,7 +256,9 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
           {() => {
             if (!confirm) return null;
             const requireText = confirm.requireText;
-            const confirmDisabled = !!requireText && confirmInputValue.trim() !== requireText;
+            const confirmDisabled =
+              (!!requireText && confirmInputValue.trim() !== requireText) ||
+              (!!confirm.motivoField && !confirmInputValue.trim());
             const variant = confirm.headerVariant || 'default';
 
             const headerStyles = {
@@ -347,6 +360,26 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
                         {confirm.requireTextHelper ||
                           `Esta acción es irreversible. Escribe ${confirm.requireText} para confirmar.`}
                       </p>
+                    </div>
+                  )}
+                  {confirm.motivoField && (
+                    <div className="mt-3">
+                      <Textarea
+                        label={confirm.motivoField.label || 'Motivo'}
+                        placeholder={confirm.motivoField.placeholder}
+                        value={confirmInputValue}
+                        onValueChange={setConfirmInputValue}
+                        minRows={2}
+                        maxRows={4}
+                        maxLength={confirm.motivoField.maxLength ?? 500}
+                        isRequired
+                        variant="bordered"
+                        autoFocus
+                        description={
+                          confirm.motivoField.helperText ||
+                          `${confirmInputValue.length}/${confirm.motivoField.maxLength ?? 500} caracteres`
+                        }
+                      />
                     </div>
                   )}
                 </ModalBody>

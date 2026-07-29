@@ -13,14 +13,16 @@ interface DetalleSolicitudModalProps {
   aceptar: (sol: ISolicitudGestion) => Promise<void>;
   abrirRechazar: (sol: ISolicitudGestion) => void;
   abrirRechazarPedido: (sol: ISolicitudGestion) => void;
-  abrirRevertir: (sol: ISolicitudGestion, accion: 'pendiente' | 'rechazar' | 'aceptar', desde: 'Aceptada' | 'Rechazada') => void;
+  abrirRevertir: (sol: ISolicitudGestion) => void;
+  revertirAPendiente: (sol: ISolicitudGestion) => void;
+  rechazarAceptada: (sol: ISolicitudGestion) => void;
   handleImprimir: (sol: ISolicitudGestion) => void;
 }
 
 const DetalleSolicitudModal: React.FC<DetalleSolicitudModalProps> = ({
   isOpen, onOpenChange, selSol,
   sol_Rechazar, sol_Gestionar,
-  aceptar, abrirRechazar, abrirRechazarPedido, abrirRevertir, handleImprimir,
+  aceptar, abrirRechazar, abrirRechazarPedido, abrirRevertir, revertirAPendiente, rechazarAceptada, handleImprimir,
 }) => {
   return (
     <Modal
@@ -199,14 +201,14 @@ const DetalleSolicitudModal: React.FC<DetalleSolicitudModalProps> = ({
                 <>
                   {sol_Gestionar && (
                     <Button color="warning" variant="flat"
-                      onPress={() => { onClose(); abrirRevertir(selSol, 'pendiente', 'Aceptada'); }}
+                      onPress={() => { onClose(); revertirAPendiente(selSol); }}
                       startContent={<Icon icon="lucide:undo-2" width={14} />}>
                       Revertir a Pendiente
                     </Button>
                   )}
                   {sol_Rechazar && (
                     <Button color="danger" variant="flat"
-                      onPress={() => { onClose(); abrirRevertir(selSol, 'rechazar', 'Aceptada'); }}
+                      onPress={() => { onClose(); rechazarAceptada(selSol); }}
                       startContent={<Icon icon="lucide:x" width={14} />}>
                       Rechazar
                     </Button>
@@ -216,12 +218,12 @@ const DetalleSolicitudModal: React.FC<DetalleSolicitudModalProps> = ({
               {selSol.estado === 'Rechazada' && !selSol.motivoRechazo?.includes('automáticamente') && sol_Gestionar && (
                 <>
                 <Button color="success" variant="flat"
-                  onPress={() => { onClose(); abrirRevertir(selSol, 'aceptar', 'Rechazada'); }}
+                  onPress={() => { onClose(); abrirRevertir(selSol); }}
                   startContent={<Icon icon="lucide:check-circle" width={14} />}>
                   Aceptar
                 </Button>
                 <Button color="warning" variant="flat"
-                  onPress={() => { onClose(); abrirRevertir(selSol, 'pendiente', 'Rechazada'); }}
+                  onPress={() => { onClose(); revertirAPendiente(selSol); }}
                   startContent={<Icon icon="lucide:undo-2" width={14} />}>
                   Revertir a Pendiente
                 </Button>

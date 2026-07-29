@@ -56,6 +56,7 @@ vi.mock('../../hooks/useToast', () => ({
     info:    vi.fn(),
   }),
   useConfirm: () => vi.fn().mockResolvedValue(true),
+  useConfirmReject: () => vi.fn().mockResolvedValue({ confirmado: true, motivo: 'Motivo de prueba' }),
 }));
 
 // ============================================

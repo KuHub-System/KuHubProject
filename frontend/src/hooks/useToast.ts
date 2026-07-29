@@ -171,3 +171,48 @@ export const useConfirmDeactivate = () => {
   return confirmDeactivate;
 };
 
+/**
+ * Hook para confirmar un rechazo capturando el motivo en el mismo modal reutilizable
+ * (estilo "danger" de un solo click, igual que useConfirmDelete — sin exigir escribir
+ * una palabra de confirmación). Devuelve tanto si el usuario confirmó como el motivo
+ * capturado, para no depender de un textarea/estado aparte en la página que lo use.
+ */
+export const useConfirmReject = () => {
+  const { showConfirm } = useNotifications();
+
+  const confirmReject = (options: {
+    /** Texto del ModalHeader, ej: "Rechazar solicitud" */
+    title: string;
+    /** Frase ya armada con género/artículo correctos, ej: `la solicitud de "Juan Pérez"` */
+    itemDescription: string;
+    /** Texto del botón de confirmación. Default: "Rechazar" */
+    confirmText?: string;
+    motivoLabel?: string;
+    motivoPlaceholder?: string;
+  }): Promise<{ confirmado: boolean; motivo: string }> => {
+    return new Promise((resolve) => {
+      let motivoCapturado = '';
+      showConfirm({
+        message: '',
+        title: options.title,
+        subtitle: 'Esta acción es irreversible',
+        headerVariant: 'danger',
+        alertTitle: 'Atención',
+        alertMessage: `Rechazarás ${options.itemDescription}. Esta acción no se puede deshacer.`,
+        confirmText: options.confirmText || 'Rechazar',
+        confirmColor: 'danger',
+        motivoField: {
+          label: options.motivoLabel || 'Motivo del rechazo',
+          placeholder: options.motivoPlaceholder || 'Indique el motivo para informar al docente...',
+        },
+        onConfirm: (motivo) => { motivoCapturado = motivo ?? ''; },
+        onCancel: () => resolve({ confirmado: false, motivo: '' }),
+      }).then((confirmado) => {
+        resolve({ confirmado, motivo: motivoCapturado });
+      });
+    });
+  };
+
+  return confirmReject;
+};
+

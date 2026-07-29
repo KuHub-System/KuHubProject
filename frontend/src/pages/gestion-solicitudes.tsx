@@ -21,7 +21,7 @@ import {
 } from '@heroui/react';
 import { Icon } from '@iconify/react';
 import { usePageTitle } from '../hooks/usePageTitle';
-import { useToast } from '../hooks/useToast';
+import { useToast, useConfirm, useConfirmReject } from '../hooks/useToast';
 import { CardSkeleton, TableSkeleton } from '../components/SkeletonLoader';
 import {
   obtenerSolicitudesPorSemanaService,
@@ -207,6 +207,8 @@ const fmtCant = (n: number): string => {
 
 const GestionSolicitudesPage: React.FC = () => {
   const toast = useToast();
+  const confirm = useConfirm();
+  const confirmReject = useConfirmReject();
   const { isAdmin } = usePermission();
   const history = useHistory();
   const { periodos, semanas, semanaId, defaultSemanaId, isLoading: isLoadingSem, seleccionarPeriodo, seleccionarSemana } = usePeriodoSemana();
@@ -245,10 +247,7 @@ const GestionSolicitudesPage: React.FC = () => {
   const [selSol,            setSelSol]            = React.useState<ISolicitudGestion | null>(null);
   const [motivoRechazo,     setMotivoRechazo]     = React.useState('');
   const [motivoRechazoPedido, setMotivoRechazoPedido] = React.useState('');
-  const [revertirAccion,    setRevertirAccion]     = React.useState<'pendiente' | 'rechazar' | 'aceptar'>('pendiente');
-  const [revertirDesde,     setRevertirDesde]      = React.useState<'Aceptada' | 'Rechazada'>('Aceptada');
   const [revertirConfirm,   setRevertirConfirm]   = React.useState('');
-  const [revertirMotivo,    setRevertirMotivo]     = React.useState('');
   const [isSaving,          setIsSaving]           = React.useState(false);
 
   React.useEffect(() => {
@@ -472,31 +471,63 @@ const GestionSolicitudesPage: React.FC = () => {
     w.print();
   };
 
-  const abrirRevertir = (sol: ISolicitudGestion, accion: 'pendiente' | 'rechazar' | 'aceptar', desde: 'Aceptada' | 'Rechazada' = 'Aceptada') => {
-    setSelSol(sol); setRevertirAccion(accion); setRevertirDesde(desde); setRevertirConfirm(''); setRevertirMotivo('');
+  // ── Aceptar solicitud Rechazada (única acción que sigue en el modal "Revertir" con CONFIRMAR) ──
+  const abrirRevertir = (sol: ISolicitudGestion) => {
+    setSelSol(sol); setRevertirConfirm('');
     revertir.onOpen();
   };
 
   const confirmarRevertir = async () => {
     if (!selSol || revertirConfirm.trim().toUpperCase() !== 'CONFIRMAR') return;
-    if (revertirAccion === 'rechazar' && !revertirMotivo.trim()) return;
     setIsSaving(true);
     try {
-      const nuevoEstado = revertirAccion === 'pendiente' ? 'PENDIENTE' : revertirAccion === 'aceptar' ? 'ACEPTADA' : 'RECHAZADA';
-      const motivoPayload = revertirAccion === 'rechazar' ? revertirMotivo.trim() : undefined;
-      await cambiarEstadoMasivoService({ estadosSolicitudes: [{ idSolicitud: selSol.id, estado: nuevoEstado, motivo: motivoPayload }] });
-      if (revertirAccion === 'pendiente') {
-        setSolicitudes(prev => prev.map(s => s.id === selSol.id ? { ...s, estado: 'Pendiente', motivoRechazo: undefined } : s));
-        toast.warning(`Solicitud §${selSol.nombreSeccion} revertida a Pendiente`);
-      } else if (revertirAccion === 'aceptar') {
-        setSolicitudes(prev => prev.map(s => s.id === selSol.id ? { ...s, estado: 'Aceptada', motivoRechazo: undefined } : s));
-        toast.success(`Solicitud §${selSol.nombreSeccion} aceptada`);
-      } else {
-        setSolicitudes(prev => prev.map(s => s.id === selSol.id ? { ...s, estado: 'Rechazada', motivoRechazo: revertirMotivo.trim() } : s));
-        toast.warning(`Solicitud §${selSol.nombreSeccion} rechazada`);
-      }
+      await cambiarEstadoMasivoService({ estadosSolicitudes: [{ idSolicitud: selSol.id, estado: 'ACEPTADA' }] });
+      setSolicitudes(prev => prev.map(s => s.id === selSol.id ? { ...s, estado: 'Aceptada', motivoRechazo: undefined } : s));
+      toast.success(`Solicitud §${selSol.nombreSeccion} aceptada`);
       revertir.onClose();
     } catch { toast.error('Error al cambiar el estado de la solicitud'); }
+    setIsSaving(false);
+  };
+
+  // ── Revertir a Pendiente — modal reutilizable de confirmación (mismo componente que
+  // useConfirmDelete/useConfirmReject), sin exigir escribir "CONFIRMAR": un solo click. ──
+  const revertirAPendiente = async (sol: ISolicitudGestion) => {
+    const confirmado = await confirm('', {
+      title: 'Revertir a Pendiente',
+      subtitle: 'La solicitud volverá a quedar en revisión',
+      headerVariant: 'warning',
+      alertTitle: 'Confirmar reversión',
+      alertMessage: sol.estado === 'Aceptada'
+        ? 'Esta solicitud está marcada como Aceptada y podría estar incluida en el pedido consolidado. Al revertirla a Pendiente, dejará de considerarse en el pedido.'
+        : `La solicitud "${sol.nombreAsignatura} §${sol.nombreSeccion}" volverá al estado Pendiente. El docente podrá ver que su solicitud vuelve a estar en revisión.`,
+      confirmText: 'Revertir a Pendiente',
+      confirmColor: 'warning',
+    });
+    if (!confirmado) return;
+    setIsSaving(true);
+    try {
+      await cambiarEstadoMasivoService({ estadosSolicitudes: [{ idSolicitud: sol.id, estado: 'PENDIENTE' }] });
+      setSolicitudes(prev => prev.map(s => s.id === sol.id ? { ...s, estado: 'Pendiente', motivoRechazo: undefined } : s));
+      toast.warning(`Solicitud §${sol.nombreSeccion} revertida a Pendiente`);
+    } catch { toast.error('Error al cambiar el estado de la solicitud'); }
+    setIsSaving(false);
+  };
+
+  // ── Rechazo de solicitud Aceptada — modal reutilizable de confirmación (mismo patrón
+  // que useConfirmDelete en el ícono de basurero de Pedido Semanal a Bodega), sin exigir
+  // escribir "CONFIRMAR": un solo click + motivo obligatorio capturado en el propio modal. ──
+  const rechazarAceptada = async (sol: ISolicitudGestion) => {
+    const { confirmado, motivo } = await confirmReject({
+      title: 'Rechazar solicitud',
+      itemDescription: `la solicitud de "${sol.nombreAsignatura} §${sol.nombreSeccion}"`,
+    });
+    if (!confirmado) return;
+    setIsSaving(true);
+    try {
+      await cambiarEstadoMasivoService({ estadosSolicitudes: [{ idSolicitud: sol.id, estado: 'RECHAZADA', motivo }] });
+      setSolicitudes(prev => prev.map(s => s.id === sol.id ? { ...s, estado: 'Rechazada', motivoRechazo: motivo } : s));
+      toast.warning(`Solicitud §${sol.nombreSeccion} rechazada`);
+    } catch { toast.error('Error al rechazar la solicitud'); }
     setIsSaving(false);
   };
 
@@ -1618,7 +1649,7 @@ const GestionSolicitudesPage: React.FC = () => {
                             {sol_Gestionar && sol.estado === 'Aceptada' && (
                               <Tooltip content="Revertir a Pendiente">
                                 <Button isIconOnly size="sm" color="warning" variant="flat"
-                                  onPress={() => abrirRevertir(sol, 'pendiente', 'Aceptada')}>
+                                  onPress={() => revertirAPendiente(sol)}>
                                   <Icon icon="lucide:undo-2" width={15} />
                                 </Button>
                               </Tooltip>
@@ -1626,7 +1657,7 @@ const GestionSolicitudesPage: React.FC = () => {
                             {sol_Rechazar && sol.estado === 'Aceptada' && (
                               <Tooltip content="Rechazar">
                                 <Button isIconOnly size="sm" color="danger" variant="flat"
-                                  onPress={() => abrirRevertir(sol, 'rechazar', 'Aceptada')}>
+                                  onPress={() => rechazarAceptada(sol)}>
                                   <Icon icon="lucide:x" width={15} />
                                 </Button>
                               </Tooltip>
@@ -1636,13 +1667,13 @@ const GestionSolicitudesPage: React.FC = () => {
                               <>
                               <Tooltip content="Aceptar solicitud">
                                 <Button isIconOnly size="sm" color="success" variant="flat"
-                                  onPress={() => abrirRevertir(sol, 'aceptar', 'Rechazada')}>
+                                  onPress={() => abrirRevertir(sol)}>
                                   <Icon icon="lucide:check" width={15} />
                                 </Button>
                               </Tooltip>
                               <Tooltip content="Revertir a Pendiente">
                                 <Button isIconOnly size="sm" color="warning" variant="flat"
-                                  onPress={() => abrirRevertir(sol, 'pendiente', 'Rechazada')}>
+                                  onPress={() => revertirAPendiente(sol)}>
                                   <Icon icon="lucide:undo-2" width={15} />
                                 </Button>
                               </Tooltip>
@@ -1671,6 +1702,8 @@ const GestionSolicitudesPage: React.FC = () => {
         abrirRechazar={abrirRechazar}
         abrirRechazarPedido={abrirRechazarPedido}
         abrirRevertir={abrirRevertir}
+        revertirAPendiente={revertirAPendiente}
+        rechazarAceptada={rechazarAceptada}
         handleImprimir={handleImprimir}
       />
       <RechazarSolicitudModal
@@ -1695,10 +1728,6 @@ const GestionSolicitudesPage: React.FC = () => {
         isOpen={revertir.isOpen}
         onOpenChange={revertir.onOpenChange}
         selSol={selSol}
-        revertirAccion={revertirAccion}
-        revertirDesde={revertirDesde}
-        revertirMotivo={revertirMotivo}
-        setRevertirMotivo={setRevertirMotivo}
         revertirConfirm={revertirConfirm}
         setRevertirConfirm={setRevertirConfirm}
         isSaving={isSaving}
