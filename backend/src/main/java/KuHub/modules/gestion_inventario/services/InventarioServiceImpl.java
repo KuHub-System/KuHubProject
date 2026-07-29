@@ -215,7 +215,11 @@ public class InventarioServiceImpl implements InventarioService {
     }
 
     /**
-     * Crea un producto con su inventario asociado. Si el stock inicial es mayor a 0,
+     * Crea un producto con su inventario asociado. Si ya existe un producto INACTIVO (eliminado
+     * lógicamente) con el mismo nombre, lo reactiva junto con su inventario en vez de fallar por
+     * duplicado: nombre_producto es UNIQUE en BD y todo producto tiene un único inventario
+     * (relación OneToOne con UNIQUE(id_producto)), así que ese registro sigue "ocupando" el
+     * nombre y el id_producto aunque esté desactivado. Si el stock inicial es mayor a 0,
      * registra automáticamente un movimiento de entrada inicial.
      */
     @Transactional
@@ -223,43 +227,61 @@ public class InventarioServiceImpl implements InventarioService {
     public boolean saveInventoryWithProduct (InventoryWithProductCreateDTO request){
         String nombreProducto = StringUtils.capitalizarPalabras(request.getNombreProducto());
         String codigoProducto = StringUtils.normalizeSpaces(request.getCodigoProducto());
-        // 1. Validaciones de negocio
-        if (productoRepository.existsByNombreProducto(nombreProducto)){
-            throw new GestionInventarioException("El producto ya existe", HttpStatus.CONFLICT);
-        }
-        if (codigoProducto != null && !codigoProducto.isBlank()) {
-            if (productoRepository.existsBycodProductoAndActivo(codigoProducto, true)) {
-                throw new GestionInventarioException("El código '" + codigoProducto + "' ya está asignado a otro producto activo", HttpStatus.CONFLICT);
-            }
-        }
+
         Categoria categoria = categoriaService.findById(request.getIdCategoria());
         UnidadMedida unidadMedida = unidadMedidaService.findById(request.getIdUnidadMedida());
 
-        //Crear Producto
-        Producto newProducto = new Producto();
-        newProducto.setNombreProducto(nombreProducto);
-        newProducto.setCodProducto(codigoProducto);
-        newProducto.setDescripcionProducto(request.getDescripcionProducto());
-        newProducto.setCategoria(categoria);
-        newProducto.setUnidadMedida(unidadMedida);
-        productoRepository.save(newProducto);
+        Optional<Producto> productoExistente = productoRepository.findByNombreProducto(nombreProducto);
 
-        //Crear y guardar el Inventario
-        Inventario newInventario = new Inventario();
-        newInventario.setStockLimit(request.getStockLimit());
-        newInventario.setStock(request.getStock());
-        newInventario.setProducto(newProducto);
-        newInventario = inventarioRepository.save(newInventario);
+        // 1. Validaciones de negocio
+        if (productoExistente.isPresent() && productoExistente.get().getActivo()) {
+            throw new GestionInventarioException("El producto ya existe", HttpStatus.CONFLICT);
+        }
+        if (codigoProducto != null && !codigoProducto.isBlank()) {
+            boolean codigoCambio = productoExistente.isEmpty()
+                    || !codigoProducto.equals(productoExistente.get().getCodProducto());
+            if (codigoCambio && productoRepository.existsBycodProductoAndActivo(codigoProducto, true)) {
+                throw new GestionInventarioException("El código '" + codigoProducto + "' ya está asignado a otro producto activo", HttpStatus.CONFLICT);
+            }
+        }
+
+        // 2. Buscar o instanciar el Producto (reactivar si existía inactivo)
+        Producto producto;
+        if (productoExistente.isEmpty()) {
+            producto = new Producto();
+        } else {
+            producto = productoExistente.get();
+            log.info("Reactivando producto inactivo '{}' (id={}) en vez de crear uno nuevo", nombreProducto, producto.getIdProducto());
+        }
+        producto.setNombreProducto(nombreProducto);
+        producto.setCodProducto(codigoProducto);
+        producto.setDescripcionProducto(request.getDescripcionProducto());
+        producto.setCategoria(categoria);
+        producto.setUnidadMedida(unidadMedida);
+        producto.setActivo(true);
+        producto = productoRepository.save(producto);
+
+        // 3. Buscar o instanciar el Inventario asociado (reutilizar el existente por el UNIQUE(id_producto))
+        Optional<Inventario> inventarioExistente = productoExistente.isEmpty()
+                ? Optional.empty()
+                : inventarioRepository.findByProducto_IdProducto(producto.getIdProducto());
+
+        Inventario inventario = inventarioExistente.orElseGet(Inventario::new);
+        inventario.setProducto(producto);
+        inventario.setStockLimit(request.getStockLimit());
+        inventario.setStock(request.getStock());
+        inventario.setActivo(true);
+        inventario = inventarioRepository.save(inventario);
 
         // CREAR MOVIMIENTO DE ENTRADA INICIAL
         // Solo creamos el movimiento si el stock inicial es mayor a 0
-        if (newInventario.getStock().compareTo(BigDecimal.ZERO) > 0) {
+        if (inventario.getStock().compareTo(BigDecimal.ZERO) > 0) {
             Movimiento motion = new Movimiento();
             motion.setUsuario(usuarioService.findUserByToken());
-            motion.setInventario(newInventario);
-            motion.setStockMovimiento(newInventario.getStock());
+            motion.setInventario(inventario);
+            motion.setStockMovimiento(inventario.getStock());
             motion.setTipoMovimiento(Movimiento.TipoMovimiento.ENTRADA_INVENTARIO);
-            motion.setObservacion("ENTRADA INICIAL DE PRODUCTO: " + newProducto.getNombreProducto());
+            motion.setObservacion("ENTRADA INICIAL DE PRODUCTO: " + producto.getNombreProducto());
             movimientoService.save(motion);
         }
         return true;

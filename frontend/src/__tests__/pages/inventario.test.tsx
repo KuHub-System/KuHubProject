@@ -433,4 +433,72 @@ describe('InventarioPage', () => {
     expect(screen.getByText('Harina de Trigo')).toBeInTheDocument();
   });
 
+  // ============================================
+  // TEST 14: Crear producto llama al servicio con los datos del formulario
+  // ============================================
+  it('INV-14: crear un producto nuevo llama a crearProductoService con los datos del formulario', async () => {
+    // ARRANGE
+    mockCrearProducto.mockResolvedValue(true);
+
+    const { container } = renderWithProviders(
+      <FormularioProducto
+        producto={null}
+        onClose={vi.fn()}
+        mode="crear"
+        categorias={categoriasMock}
+        unidades={unidadesMock}
+      />
+    );
+
+    // ACT — completar nombre y seleccionar categoría/unidad vía el <select> nativo oculto de HeroUI
+    fireEvent.change(screen.getByPlaceholderText('Nombre del producto'), { target: { value: 'Tomate' } });
+
+    const selects = container.querySelectorAll('[data-testid="hidden-select-container"] select');
+    fireEvent.change(selects[0], { target: { value: '1' } }); // Categoría
+    fireEvent.change(selects[1], { target: { value: '1' } }); // Unidad de Medida
+
+    fireEvent.click(screen.getByRole('button', { name: /Crear Inventario/i }));
+
+    // ASSERT
+    await waitFor(() => expect(mockCrearProducto).toHaveBeenCalledWith(
+      expect.objectContaining({ nombre: 'Tomate', idCategoria: 1, idUnidadMedida: 1 })
+    ));
+    expect(mockToastSuccess).toHaveBeenCalledWith('Producto creado exitosamente');
+  });
+
+  // ============================================
+  // TEST 15: Conflicto real al crear (nombre ya usado por un producto ACTIVO)
+  // muestra el error del backend sin romper el formulario
+  // ============================================
+  it('INV-15: si crearProductoService rechaza por conflicto, muestra el toast de error y no cierra el formulario', async () => {
+    // ARRANGE — simula el 409 "El producto ya existe" que retorna el backend
+    // cuando el nombre pertenece a un producto activo (ver saveInventoryWithProduct)
+    mockCrearProducto.mockRejectedValue(new Error('El producto ya existe'));
+    const onCloseMock = vi.fn();
+
+    const { container } = renderWithProviders(
+      <FormularioProducto
+        producto={null}
+        onClose={onCloseMock}
+        mode="crear"
+        categorias={categoriasMock}
+        unidades={unidadesMock}
+      />
+    );
+
+    fireEvent.change(screen.getByPlaceholderText('Nombre del producto'), { target: { value: 'Tomate' } });
+
+    const selects = container.querySelectorAll('[data-testid="hidden-select-container"] select');
+    fireEvent.change(selects[0], { target: { value: '1' } });
+    fireEvent.change(selects[1], { target: { value: '1' } });
+
+    // ACT
+    fireEvent.click(screen.getByRole('button', { name: /Crear Inventario/i }));
+
+    // ASSERT
+    await waitFor(() => expect(mockCrearProducto).toHaveBeenCalled());
+    await waitFor(() => expect(mockToastError).toHaveBeenCalledWith('El producto ya existe'));
+    expect(onCloseMock).not.toHaveBeenCalled();
+  });
+
 });

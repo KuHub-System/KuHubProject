@@ -143,8 +143,8 @@ class InventarioServiceImplTest {
         dto.setIdCategoria((short) 1);
         dto.setIdUnidadMedida((short) 1);
 
-        // capitalizarPalabras("Testprod") → "Testprod"
-        when(productoRepository.existsByNombreProducto("Testprod")).thenReturn(false);
+        // capitalizarPalabras("Testprod") → "Testprod"; no existe ningún producto (activo o no) con ese nombre
+        when(productoRepository.findByNombreProducto("Testprod")).thenReturn(Optional.empty());
         when(productoRepository.existsBycodProductoAndActivo("TP001", true)).thenReturn(false);
         when(categoriaService.findById((short) 1)).thenReturn(new Categoria());
         when(unidadMedidaService.findById((short) 1)).thenReturn(new UnidadMedida());
@@ -164,7 +164,74 @@ class InventarioServiceImplTest {
     }
 
     @Test
-    void test9UpdateProduct() {
+    void test9SaveProductReactivatesInactiveProductAndInventory() {
+        // Producto y su inventario fueron eliminados lógicamente (activo=false) y comparten el mismo nombre
+        var dto = new KuHub.modules.gestion_inventario.dtos.request.InventoryWithProductCreateDTO();
+        dto.setNombreProducto("Testprod");
+        dto.setCodigoProducto("TP001");
+        dto.setStock(BigDecimal.valueOf(30));
+        dto.setStockLimit(BigDecimal.valueOf(5));
+        dto.setIdCategoria((short) 1);
+        dto.setIdUnidadMedida((short) 1);
+
+        Producto productoInactivo = new Producto();
+        productoInactivo.setIdProducto(7);
+        productoInactivo.setNombreProducto("Testprod");
+        productoInactivo.setCodProducto("TP001");
+        productoInactivo.setActivo(false);
+
+        Inventario inventarioInactivo = new Inventario();
+        inventarioInactivo.setIdInventario(3);
+        inventarioInactivo.setProducto(productoInactivo);
+        inventarioInactivo.setStock(BigDecimal.ZERO);
+        inventarioInactivo.setActivo(false);
+
+        when(categoriaService.findById((short) 1)).thenReturn(new Categoria());
+        when(unidadMedidaService.findById((short) 1)).thenReturn(new UnidadMedida());
+        when(productoRepository.findByNombreProducto("Testprod")).thenReturn(Optional.of(productoInactivo));
+        // Mismo código que ya tenía → no dispara la validación de código duplicado
+        when(productoRepository.save(org.mockito.ArgumentMatchers.any())).thenAnswer(inv -> inv.getArgument(0));
+        when(inventarioRepository.findByProducto_IdProducto(7)).thenReturn(Optional.of(inventarioInactivo));
+        when(inventarioRepository.save(org.mockito.ArgumentMatchers.any())).thenAnswer(inv -> inv.getArgument(0));
+        when(usuarioService.findUserByToken()).thenReturn(new KuHub.modules.gestion_usuario.entity.Usuario());
+
+        boolean result = inventarioService.saveInventoryWithProduct(dto);
+
+        assertTrue(result);
+        // Se reactivó el producto y el inventario existentes en vez de crear registros nuevos
+        assertTrue(productoInactivo.getActivo());
+        assertTrue(inventarioInactivo.getActivo());
+        assertEquals(0, inventarioInactivo.getStock().compareTo(BigDecimal.valueOf(30)));
+        verify(inventarioRepository, org.mockito.Mockito.never()).save(org.mockito.ArgumentMatchers.argThat(
+                i -> i != inventarioInactivo));
+    }
+
+    @Test
+    void test10SaveProductConflictWhenActiveProductExists() {
+        // Ya existe un producto ACTIVO con el mismo nombre → debe seguir siendo un conflicto real
+        var dto = new KuHub.modules.gestion_inventario.dtos.request.InventoryWithProductCreateDTO();
+        dto.setNombreProducto("Testprod");
+        dto.setCodigoProducto("TP001");
+        dto.setStock(BigDecimal.valueOf(10));
+        dto.setStockLimit(BigDecimal.valueOf(5));
+        dto.setIdCategoria((short) 1);
+        dto.setIdUnidadMedida((short) 1);
+
+        Producto productoActivo = new Producto();
+        productoActivo.setIdProducto(9);
+        productoActivo.setNombreProducto("Testprod");
+        productoActivo.setActivo(true);
+
+        when(categoriaService.findById((short) 1)).thenReturn(new Categoria());
+        when(unidadMedidaService.findById((short) 1)).thenReturn(new UnidadMedida());
+        when(productoRepository.findByNombreProducto("Testprod")).thenReturn(Optional.of(productoActivo));
+
+        assertThrows(GestionInventarioException.class,
+                () -> inventarioService.saveInventoryWithProduct(dto));
+    }
+
+    @Test
+    void test11UpdateProduct() {
         // Categoria y UnidadMedida con IDs iguales a los del DTO para evitar cambios innecesarios
         Categoria cat = new Categoria();
         cat.setIdCategoria((short) 1);
@@ -222,7 +289,7 @@ class InventarioServiceImplTest {
     }
 
     @Test
-    void test10BulkProcess() {
+    void test12BulkProcess() {
         Inventario inv = new Inventario();
         inv.setIdInventario(1);
         inv.setStock(BigDecimal.valueOf(100));
@@ -260,7 +327,7 @@ class InventarioServiceImplTest {
     }
 
     @Test
-    void test11SoftDelete() {
+    void test13SoftDelete() {
         Inventario inv = new Inventario();
         inv.setIdInventario(1);
         inv.setStock(BigDecimal.ZERO);
@@ -278,7 +345,7 @@ class InventarioServiceImplTest {
     }
 
     @Test
-    void test12SoftDeleteFail() {
+    void test14SoftDeleteFail() {
         Inventario inv = new Inventario();
         inv.setIdInventario(1);
         inv.setStock(BigDecimal.valueOf(50));
