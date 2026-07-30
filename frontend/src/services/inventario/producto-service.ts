@@ -31,7 +31,9 @@ import {
   transformarPageItemAProducto,
   softDeleteInventarioService as softDeleteInventarioBackend,
   validateStockBeforeUpdatingService as validateStockBeforeUpdatingBackend,
-  obtenerProductosParaPedidoSemanaBodegaService as obtenerProductosParaPedidoSemanaBodegaBackend
+  obtenerProductosParaPedidoSemanaBodegaService as obtenerProductosParaPedidoSemanaBodegaBackend,
+  IStockSyncWarning,
+  IStockInsuficiente
 } from './inventario-service';
 
 // Exportar la obtención de filtros
@@ -96,9 +98,15 @@ export const crearProductoService = async (productoData: ICrearProducto): Promis
 };
 
 /**
- * Actualiza un producto existente en el BACKEND REAL
+ * Actualiza un producto existente en el BACKEND REAL.
+ * Retorna IInventoryPageItem en éxito limpio, o IStockSyncWarning/IStockInsuficiente
+ * cuando el backend detecta stock desincronizado o insuficiente (409/422) -- el
+ * llamador debe angostar con 'desync'/'insuficiente' in resultado antes de tratarlo
+ * como IProducto (ver FormularioProducto.tsx).
  */
-export const actualizarProductoService = async (productoData: IActualizarProducto): Promise<IProducto> => {
+export const actualizarProductoService = async (
+  productoData: IActualizarProducto
+): Promise<IInventoryPageItem | IStockSyncWarning | IStockInsuficiente> => {
   return await actualizarProductoBackend(productoData);
 };
 

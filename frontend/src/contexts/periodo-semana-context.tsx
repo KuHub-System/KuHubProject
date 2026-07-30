@@ -1,10 +1,11 @@
 import React from 'react';
-import { ISemana, IPeriodoAcademico } from '../types/academica/semana.types';
+import { ISemana } from '../types/academica/semana.types';
 import {
   obtenerPeriodosAcademicosService,
   obtenerSemanasPorPeriodoService,
   detectarPeriodoActual,
   encontrarSemanaActual,
+  IPeriodoAcademico,
 } from '../services/academica/semana-service';
 import { useAuth } from './auth-context';
 

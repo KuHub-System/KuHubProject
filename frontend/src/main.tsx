@@ -27,7 +27,7 @@ if (!localStorage.getItem('heroui-theme') && !localStorage.getItem('theme')) {
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
-    <HeroUIProvider defaultTheme="light">
+    <HeroUIProvider>
       <ToastProvider />
       <Router>
         <App />

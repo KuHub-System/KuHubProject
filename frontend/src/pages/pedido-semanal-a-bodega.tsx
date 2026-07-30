@@ -38,7 +38,7 @@ import { usePeriodoSemana } from '../contexts/periodo-semana-context';
 import BookPageLoader from '../components/BookPageLoader';
 
 // IMPORTAR TIPOS Y SERVICIOS
-import { IPedidoSemanaBodega, IIngrediente, IPedidoSemanaBodegaWithDetailsUpdateDTO, IResultadoItemExcel, IImportarExcelResultado, IAsignatura } from '../types/pedido/pedidoSemanaBodega.types';
+import { IPedidoSemanaBodega, IIngrediente, IPedidoSemanaBodegaWithDetailsCreateDTO, IPedidoSemanaBodegaWithDetailsUpdateDTO, IResultadoItemExcel, IImportarExcelResultado, IAsignatura } from '../types/pedido/pedidoSemanaBodega.types';
 import { parallelWithLimit } from '../utils/request-throttle';
 import {
   obtenerPedidoSemanaBodegasPaginadasService,
@@ -339,7 +339,7 @@ const PedidoSemanalABodegaPage: React.FC = () => {
   const handleGuardarPedidoSemanaBodega = async (pedidoSemanaBodega: any, updatePayload?: IPedidoSemanaBodegaWithDetailsUpdateDTO) => {
     try {
       if (modalMode === 'crear') {
-        const createPayload = {
+        const createPayload: IPedidoSemanaBodegaWithDetailsCreateDTO = {
           nombrePedido: pedidoSemanaBodega.nombre,
           descripcionPedido: pedidoSemanaBodega.descripcion,
           listaItems: (pedidoSemanaBodega.ingredientes || []).map((ing: IIngrediente & { observacion?: string }) => ({

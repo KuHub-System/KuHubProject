@@ -36,12 +36,18 @@ export const sequentialWithDelay = async <T>(
 /**
  * Ejecuta múltiples promises pero con control de concurrencia
  * Por defecto permite 2 solicitudes simultáneas
+ *
+ * Tipado como tupla heterogénea (cada función puede retornar un tipo distinto,
+ * preservado por posición vía `Awaited<ReturnType<T[K]>>`) en vez de un array
+ * homogéneo `Array<() => Promise<T>>`, porque los llamadores reales combinan
+ * funciones con retornos distintos en el mismo arreglo (ver cargarDatosIniciales
+ * en pedido-semanal-a-bodega.tsx).
  */
-export const parallelWithLimit = async <T>(
-  promises: Array<() => Promise<T>>,
+export const parallelWithLimit = async <T extends readonly (() => Promise<any>)[]>(
+  promises: T,
   concurrencyLimit: number = 2
-): Promise<T[]> => {
-  const results: T[] = [];
+): Promise<{ [K in keyof T]: Awaited<ReturnType<T[K]>> }> => {
+  const results: any[] = [];
   const executing = new Set<Promise<void>>();
 
   for (let i = 0; i < promises.length; i++) {
@@ -60,5 +66,5 @@ export const parallelWithLimit = async <T>(
   }
 
   await Promise.all(executing);
-  return results;
+  return results as { [K in keyof T]: Awaited<ReturnType<T[K]>> };
 };

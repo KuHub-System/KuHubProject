@@ -41,7 +41,7 @@ export const SolicitudBoardModal: React.FC<SolicitudBoardModalProps> = ({
 
     React.useEffect(() => {
         if (isOpen) {
-            obtenerAsignaturasService().then(data => setAsignaturas(data)).catch(console.error);
+            obtenerAsignaturasService().then(data => setAsignaturas(data.asignaturas)).catch(console.error);
         }
     }, [isOpen]);
 
