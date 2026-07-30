@@ -402,7 +402,7 @@ const GestionSolicitudesPage: React.FC = () => {
       setSeleccionados(prev => { const n = new Set(prev); n.delete(sol.id); return n; });
       toast.success(`Solicitud §${sol.nombreSeccion} aceptada`);
       recargarSolicitudes();
-      recargarDatos();
+      invalidarCacheDatos();
     } catch { toast.error('Error al aceptar la solicitud'); }
     setIsSaving(false);
   };
@@ -437,7 +437,7 @@ const GestionSolicitudesPage: React.FC = () => {
       toast.warning(`Solicitud §${selSol.nombreSeccion} rechazada y restada del pedido`);
       rechazarPedido.onClose();
       recargarSolicitudes();
-      recargarDatos();
+      invalidarCacheDatos();
     } catch (e: any) {
       toast.error(e?.response?.data ?? 'No se pudo rechazar: el pedido ya tiene una Orden de Pedido vigente.');
     }
@@ -456,7 +456,7 @@ const GestionSolicitudesPage: React.FC = () => {
       setSeleccionados(new Set());
       toast.success(`${ids.length} solicitud${ids.length > 1 ? 'es' : ''} aceptada${ids.length > 1 ? 's' : ''}`);
       recargarSolicitudes();
-      recargarDatos();
+      invalidarCacheDatos();
     } catch { toast.error('Error al aceptar las solicitudes'); }
     setIsSaving(false);
   };
@@ -473,7 +473,7 @@ const GestionSolicitudesPage: React.FC = () => {
       setSeleccionados(new Set());
       toast.success(`${pend.length} solicitud${pend.length > 1 ? 'es' : ''} aceptada${pend.length > 1 ? 's' : ''}`);
       recargarSolicitudes();
-      recargarDatos();
+      invalidarCacheDatos();
     } catch { toast.error('Error al aceptar las solicitudes'); }
     setIsSaving(false);
   };
@@ -539,7 +539,7 @@ const GestionSolicitudesPage: React.FC = () => {
       setSolicitudes(prev => prev.map(s => s.id === selSol.id ? { ...s, estado: 'Aceptada', motivoRechazo: undefined } : s));
       toast.success(`Solicitud §${selSol.nombreSeccion} aceptada`);
       revertir.onClose();
-      recargarDatos();
+      invalidarCacheDatos();
     } catch { toast.error('Error al cambiar el estado de la solicitud'); }
     setIsSaving(false);
   };
@@ -564,7 +564,7 @@ const GestionSolicitudesPage: React.FC = () => {
       await cambiarEstadoMasivoService({ estadosSolicitudes: [{ idSolicitud: sol.id, estado: 'PENDIENTE' }] });
       setSolicitudes(prev => prev.map(s => s.id === sol.id ? { ...s, estado: 'Pendiente', motivoRechazo: undefined } : s));
       toast.warning(`Solicitud §${sol.nombreSeccion} revertida a Pendiente`);
-      recargarDatos();
+      invalidarCacheDatos();
     } catch { toast.error('Error al cambiar el estado de la solicitud'); }
     setIsSaving(false);
   };
@@ -583,7 +583,7 @@ const GestionSolicitudesPage: React.FC = () => {
       await cambiarEstadoMasivoService({ estadosSolicitudes: [{ idSolicitud: sol.id, estado: 'RECHAZADA', motivo }] });
       setSolicitudes(prev => prev.map(s => s.id === sol.id ? { ...s, estado: 'Rechazada', motivoRechazo: motivo } : s));
       toast.warning(`Solicitud §${sol.nombreSeccion} rechazada`);
-      recargarDatos();
+      invalidarCacheDatos();
     } catch { toast.error('Error al rechazar la solicitud'); }
     setIsSaving(false);
   };
@@ -640,8 +640,12 @@ const GestionSolicitudesPage: React.FC = () => {
   const [diaCategoria,  setDiaCategoria]  = React.useState<number | 'completa'>(1);
   const [conColores,    setConColores]    = React.useState(true);
 
-  // ── Carga de datos al cambiar semana (con cache) ──
+  // ── Carga de datos al cambiar semana o al activar la pestaña (con cache) ──
+  // activeTab en las dependencias: cuando "Revisar solicitudes" invalida el cache tras una
+  // acción (ver invalidarCacheDatos), este efecto no refetchea hasta que el usuario realmente
+  // active la pestaña "Conglomerado de pedidos" — lazy load en vez de petición inmediata.
   React.useEffect(() => {
+    if (activeTab !== 'pedido') return;
     if (!semanaId) { setConsolidateData(null); return; }
 
     if (cache.current.has(semanaId)) {
@@ -667,7 +671,7 @@ const GestionSolicitudesPage: React.FC = () => {
       })
       .catch(() => toast.error('Error al cargar el conglomerado de pedidos'))
       .finally(() => setIsLoadingDatos(false));
-  }, [semanaId, semanas]);
+  }, [semanaId, semanas, activeTab]);
 
   // ── Derivados ──
   const todasSolicitudes = React.useMemo(
@@ -928,6 +932,17 @@ const GestionSolicitudesPage: React.FC = () => {
     } catch { toast.error('Error al recargar datos'); }
     finally { setIsLoadingDatos(false); }
   }, [semanaId, semanas]);
+
+  // ── Invalida el cache del conglomerado tras una acción en "Revisar solicitudes" (aceptar,
+  // rechazar, revertir), sin refetchear de inmediato: la pestaña "Conglomerado de pedidos" ya
+  // recarga sola al activarse (ver activeTab en las dependencias del efecto de carga más abajo).
+  // Evita una petición HTTP innecesaria mientras el usuario sigue en "Revisar solicitudes" y una
+  // llamada fire-and-forget a consolidatePedidoQueryService que en los tests (que no la mockean)
+  // corría fuera del ciclo de vida del test.
+  const invalidarCacheDatos = React.useCallback(() => {
+    if (!semanaId) return;
+    cache.current.delete(semanaId);
+  }, [semanaId]);
 
   // ── Próxima semana con pedidos pendientes (aún no aprobados) ──
   const [buscandoPendienteCong, setBuscandoPendienteCong] = React.useState(false);
@@ -1640,7 +1655,7 @@ const GestionSolicitudesPage: React.FC = () => {
                               setSolicitudes(prev => prev.map(s => ids.has(s.id) ? { ...s, estado: 'Aceptada' } : s));
                               setSeleccionados(prev => { const n = new Set(prev); ids.forEach(id => n.delete(id)); return n; });
                               toast.success(`${pendGrupo.length} solicitud${pendGrupo.length > 1 ? 'es' : ''} aceptada${pendGrupo.length > 1 ? 's' : ''}`);
-                              recargarDatos();
+                              invalidarCacheDatos();
                             } catch { toast.error('Error al aceptar'); }
                             setIsSaving(false);
                           }}
