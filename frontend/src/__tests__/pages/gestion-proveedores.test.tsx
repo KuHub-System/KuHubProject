@@ -37,6 +37,14 @@ vi.mock('../../services/proveedor/proveedor-service', () => ({
 
 vi.mock('../../hooks/usePageTitle', () => ({ usePageTitle: vi.fn() }));
 
+// BookPageLoader (LoadingBookAnimation) usa un setInterval con un setTimeout anidado que
+// clearInterval no cancela -- mismo patron de timer fantasma que @iconify/react (ver
+// src/test/setup.ts). Se mockea aca por el mismo motivo que ya se mockeaba en
+// conglomerado-pedidos.test.tsx y pedido-semanal-a-bodega.test.tsx.
+vi.mock('../../components/BookPageLoader', () => ({
+  default: ({ message }: { message: string }) => <div>{message}</div>,
+}));
+
 vi.mock('../../hooks/useToast', () => ({
   useToast: () => ({
     success: vi.fn(),

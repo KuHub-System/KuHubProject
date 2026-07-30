@@ -20,7 +20,6 @@ const BookPageLoader: React.FC<BookPageLoaderProps> = ({
       subMessage={subMessage}
       pageCount={4}
       pageChangeInterval={800}
-      transitionDuration={0.5}
       size="small"
       showPageIndicators={true}
     />

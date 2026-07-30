@@ -1,7 +1,7 @@
 import React from 'react';
 import { Button, Checkbox, Chip, Modal, ModalBody, ModalContent, ModalFooter, ModalHeader, Select, SelectItem } from '@heroui/react';
 import { Icon } from '@iconify/react';
-import { TableSkeleton, CardSkeleton } from '../../components/SkeletonLoader';
+import BookPageLoader from '../../components/BookPageLoader';
 import type { ISemana } from '../../types/academica/semana.types';
 import { IPedidoSemanaResumen, ICotizacionConsolidadaResponse, EstadoProveedor, IProveedorGrupoConsolidado } from '../../types/proveedor/proveedor.types';
 import { IDisponibleReal } from '../../services/proveedor/proveedor-service';
@@ -269,14 +269,14 @@ const OrdenPedidoModal: React.FC<OrdenPedidoModalProps> = ({
                     </div>
                   )}
 
+                  {/* BookPageLoader mientras se cargan los pedidos */}
                   {loadingPedidos && (
-                    <TableSkeleton rows={5} columns={[
-                      { width: 'w-12', shape: 'text' },
-                      { width: 'w-16', shape: 'text' },
-                      { width: 'flex-1', shape: 'text' },
-                      { width: 'w-24', shape: 'chip' },
-                      { width: 'w-24', shape: 'text' },
-                    ]} />
+                    <div className="flex justify-center items-center py-6 min-h-[220px]">
+                      <BookPageLoader
+                        message="Cargando pedidos"
+                        subMessage="Obteniendo pedidos APROBADO de la semana..."
+                      />
+                    </div>
                   )}
 
                   {/* Tabla de pedidos */}
@@ -403,13 +403,11 @@ const OrdenPedidoModal: React.FC<OrdenPedidoModalProps> = ({
                   )}
 
                   {loadingCotizacion && (
-                    <div className="space-y-4">
-                      {Array.from({ length: 3 }).map((_, i) => (
-                        <div key={i} className="space-y-2">
-                          <CardSkeleton lines={0} hasBadge />
-                          <TableSkeleton rows={3} columns={5} />
-                        </div>
-                      ))}
+                    <div className="flex justify-center items-center py-6 min-h-[220px]">
+                      <BookPageLoader
+                        message="Consolidando cotización"
+                        subMessage="Calculando menor precio y distribución por día..."
+                      />
                     </div>
                   )}
 

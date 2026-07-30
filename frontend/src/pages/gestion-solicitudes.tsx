@@ -22,7 +22,8 @@ import {
 import { Icon } from '@iconify/react';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { useToast, useConfirm, useConfirmReject } from '../hooks/useToast';
-import { CardSkeleton, TableSkeleton } from '../components/SkeletonLoader';
+import { CardSkeleton } from '../components/SkeletonLoader';
+import BookPageLoader from '../components/BookPageLoader';
 import {
   obtenerSolicitudesPorSemanaService,
   ISolicitudPorSemanaResponse,
@@ -2061,11 +2062,9 @@ const GestionSolicitudesPage: React.FC = () => {
 
         <CardBody className="p-4">
           {isLoadingDatos ? (
-            <TableSkeleton rows={8} columns={[
-              { width: 'w-[24%]', shape: 'text' },
-              ...Array.from({ length: 7 }, () => ({ width: 'flex-1', shape: 'text' as const })),
-              { width: 'w-16', shape: 'text' },
-            ]} />
+            <div className="py-16 flex items-center justify-center">
+              <BookPageLoader message="Cargando pedidos" subMessage="Consolidando datos..." />
+            </div>
           ) : !semanaId ? (
             <div className="py-16 flex flex-col items-center gap-3 text-default-400">
               <Icon icon="lucide:calendar-search" width={48} className="opacity-40" />

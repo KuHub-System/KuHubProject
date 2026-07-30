@@ -35,7 +35,8 @@ import { usePageTitle } from '../hooks/usePageTitle';
 import { useModulePermission, usePermission } from '../contexts/permission-context';
 import { usePeriodoSemana } from '../contexts/periodo-semana-context';
 import { obtenerSemanasPorPeriodoService } from '../services/academica/semana-service';
-import { CardSkeleton, TableSkeleton } from '../components/SkeletonLoader';
+import { CardSkeleton } from '../components/SkeletonLoader';
+import BookPageLoader from '../components/BookPageLoader';
 import RielNavegacion from '../components/RielNavegacion';
 import type { ISemana } from '../types/academica/semana.types';
 import {
@@ -455,12 +456,20 @@ const GestionProveedoresPage: React.FC = () => {
 
     // PASO 1: expandir + marcar loading INMEDIATAMENTE.
     // Ambos updates en el mismo tick para que el render que abre la fila
-    // ya tenga el flag de loading → el skeleton aparece desde el primer frame.
+    // ya tenga el flag de loading → el BookPageLoader aparece desde el primer frame.
     setExpandedRows(prev => new Set(prev).add(idProveedor));
     setLoadingDetalle(prev => new Set(prev).add(idProveedor));
 
     try {
-      const detalle = await obtenerProveedorDetalleService(idProveedor);
+      // PASO 2: garantizar mínimo 2000 ms de animación visible.
+      // El BookPageLoader configura `pageChangeInterval=800ms` y cada flip dura 750ms,
+      // o sea: el PRIMER page-flip empieza recién a los 800ms tras el mount.
+      // Con un mínimo de 2 segundos se ven 1–2 flips completos → la animación se nota.
+      // Si el fetch es más lento, el mínimo no agrega delay extra (Promise.all espera al más lento).
+      const [detalle] = await Promise.all([
+        obtenerProveedorDetalleService(idProveedor),
+        new Promise<void>(resolve => setTimeout(resolve, 2000)),
+      ]);
       setDetalleCache(prev => ({ ...prev, [idProveedor]: detalle }));
     } catch (err: any) {
       showToast(err.message || 'Error al cargar productos del proveedor', 'error');
@@ -471,7 +480,7 @@ const GestionProveedoresPage: React.FC = () => {
         return next;
       });
     } finally {
-      // PASO 3: limpiar el flag de loading → el render cambia del libro a la tabla.
+      // PASO 3: limpiar el flag de loading → el render cambia del BookPageLoader a la tabla.
       setLoadingDetalle(prev => {
         const s = new Set(prev);
         s.delete(idProveedor);
@@ -1152,7 +1161,7 @@ const GestionProveedoresPage: React.FC = () => {
     return () => { cancelado = true; };
   }, [isOrdenPedidoModal, ocPeriodo]);
 
-  /** Cuando se elige una semana: carga pedidos APROBADO. */
+  /** Cuando se elige una semana: carga pedidos APROBADO + 2000ms de BookPageLoader. */
   React.useEffect(() => {
     if (!isOrdenPedidoModal || !ocSemana) {
       setOcPedidos([]);
@@ -1166,7 +1175,10 @@ const GestionProveedoresPage: React.FC = () => {
     setOcSeleccionados(new Set());
     (async () => {
       try {
-        const data = await obtenerPedidosSemanaService(ocSemana.fechaInicio, ocSemana.fechaFin);
+        const [data] = await Promise.all([
+          obtenerPedidosSemanaService(ocSemana.fechaInicio, ocSemana.fechaFin),
+          new Promise<void>(r => setTimeout(r, 2000)),
+        ]);
         if (!cancelado) setOcPedidos(data);
       } catch (err: any) {
         if (!cancelado) setOcErrorPedidos(err.message || 'Error al cargar pedidos');
@@ -1470,7 +1482,7 @@ const GestionProveedoresPage: React.FC = () => {
     }
   };
 
-  /** Avanza al Paso 2: carga cotización consolidada. */
+  /** Avanza al Paso 2: carga cotización consolidada + 2000ms de BookPageLoader. */
   const handleGenerarOrdenPedido = async () => {
     if (ocSeleccionados.size === 0 || !ocSemana || !ocFechaEntrega) return;
     setOcPaso(2);
@@ -1489,9 +1501,12 @@ const GestionProveedoresPage: React.FC = () => {
     setOcEsDeCanceladas(esDeCanceladas);
 
     try {
-      const data = esDeCanceladas
-        ? await obtenerCotizacionDeCanceladasService(idsPedidoArr)
-        : await obtenerCotizacionConsolidadaService(idsPedidoArr);
+      const [data] = await Promise.all([
+        esDeCanceladas
+          ? obtenerCotizacionDeCanceladasService(idsPedidoArr)
+          : obtenerCotizacionConsolidadaService(idsPedidoArr),
+        new Promise<void>(r => setTimeout(r, 2000)),
+      ]);
       setOcCotizacion(data);
       const cantInicial = construirCantidades(data);
       setOcCantidades(cantInicial);
@@ -2417,17 +2432,16 @@ const GestionProveedoresPage: React.FC = () => {
                             className="overflow-hidden"
                           >
                             <div className="px-4 pb-4 pt-1 bg-default-50 dark:bg-default-100/20 border-t border-default-100">
+                              {/* loadingDetalle es la única fuente de verdad para mostrar el loader.
+                                  toggleRowExpansion garantiza un mínimo de 600ms con el flag activo
+                                  → la animación siempre se muestra al expandir la fila. */}
                               {loadingDetalle.has(proveedor.idProveedor) ? (
-                                <TableSkeleton rows={5} columns={[
-                                  { width: 'flex-1', shape: 'text' },
-                                  { width: 'w-14', shape: 'text' },
-                                  { width: 'w-20', shape: 'text' },
-                                  { width: 'w-20', shape: 'text' },
-                                  { width: 'w-24', shape: 'text' },
-                                  { width: 'w-24', shape: 'text' },
-                                  { width: 'w-16', shape: 'chip' },
-                                  { width: 'w-16', shape: 'icons' },
-                                ]} />
+                                <div className="flex justify-center items-center py-6 min-h-[220px]">
+                                  <BookPageLoader
+                                    message="Cargando catálogo"
+                                    subMessage="Obteniendo productos del proveedor..."
+                                  />
+                                </div>
                               ) : detalleCache[proveedor.idProveedor] ? (
                                 <ProductosProveedor
                                   detalle={detalleCache[proveedor.idProveedor]}

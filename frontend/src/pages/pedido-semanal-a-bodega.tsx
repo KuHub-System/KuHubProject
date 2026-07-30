@@ -35,7 +35,7 @@ import { useToast, useConfirmDelete } from '../hooks/useToast';
 import { useAuth } from '../contexts/auth-context';
 import { usePermission } from '../contexts/permission-context';
 import { usePeriodoSemana } from '../contexts/periodo-semana-context';
-import { TableSkeleton } from '../components/SkeletonLoader';
+import BookPageLoader from '../components/BookPageLoader';
 
 // IMPORTAR TIPOS Y SERVICIOS
 import { IPedidoSemanaBodega, IIngrediente, IPedidoSemanaBodegaWithDetailsUpdateDTO, IResultadoItemExcel, IImportarExcelResultado, IAsignatura } from '../types/pedido/pedidoSemanaBodega.types';
@@ -418,8 +418,8 @@ const PedidoSemanalABodegaPage: React.FC = () => {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-default-50/50 dark:bg-background p-6">
-        <TableSkeleton rows={8} columns={5} />
+      <div className="flex items-center justify-center min-h-screen bg-default-50/50 dark:bg-background">
+        <BookPageLoader message="Cargando pedidos semanales" subMessage="Organizando tus pedidos semanales..." />
       </div>
     );
   }

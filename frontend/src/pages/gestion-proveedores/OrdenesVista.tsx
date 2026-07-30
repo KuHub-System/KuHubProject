@@ -2,7 +2,7 @@ import React from 'react';
 import { Card, CardBody, Button, Chip, Select, SelectItem, Checkbox, Tooltip, Spinner } from '@heroui/react';
 import { Icon } from '@iconify/react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { TableSkeleton } from '../../components/SkeletonLoader';
+import BookPageLoader from '../../components/BookPageLoader';
 import type { EstadoOrdenPedido, IOrdenPedidoListItem, IOrdenPedidoConDetalles, IEntregaReal } from '../../types/proveedor/proveedor.types';
 import { fmtN } from './constants';
 import OrdenDetalleTabla from './OrdenDetalleTabla';
@@ -563,13 +563,11 @@ const OrdenesVista: React.FC<OrdenesVistaProps> = ({
   );
 
   if (cargando) {
-    return <TableSkeleton rows={8} columns={[
-      { width: 'w-16', shape: 'text' },
-      { width: 'flex-1', shape: 'avatar-text' },
-      { width: 'w-32', shape: 'text' },
-      { width: 'w-24', shape: 'chip' },
-      { width: 'w-20', shape: 'icons' },
-    ]} />;
+    return (
+      <div className="flex justify-center items-center py-20">
+        <BookPageLoader message="Cargando órdenes" subMessage="Obteniendo todas las órdenes de pedido..." />
+      </div>
+    );
   }
 
   if (error) {
