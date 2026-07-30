@@ -167,7 +167,9 @@ sudo certbot certonly --standalone -d web-kuhub.questweb.cl -d www.web-kuhub.que
 docker start kuhub-frontend
 ```
 
-**3. Actualizar `nginx.conf` del frontend en el repo:**
+**3. Actualizar `nginx.prod.conf` del frontend en el repo** (usado solo por `frontend/Dockerfile.prod`
+en el build de Producción — el `nginx.conf` por defecto sigue siendo HTTP plano para el Entorno de
+Pruebas, que no tiene el certificado montado):
 ```nginx
 server {
     listen 80;

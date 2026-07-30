@@ -72,6 +72,14 @@ jobs:
         uses: docker/build-push-action@v5
         with:
           context: ./frontend
+          # Dockerfile.prod copia nginx.prod.conf (HTTPS auto-terminado con certs de
+          # Let's Encrypt montados por docker-compose.prod.yml). El Dockerfile default
+          # (usado por deploy.yml / Entorno de Pruebas) copia nginx.conf, HTTP plano sin
+          # SSL -- el nginx del host de Pruebas es quien termina TLS ahi. Antes ambos
+          # entornos compartian el mismo nginx.conf ya con el bloque SSL de produccion,
+          # lo que dejaba el contenedor de Pruebas en crash-loop (sin el certificado
+          # montado) desde el commit 2b26995c del 28-jun-2026 hasta el deploy K1.0.31.
+          file: ./frontend/Dockerfile.prod
           push: true
           tags: ${{ secrets.DOCKER_AWS_AC_USERNAME }}/kuhub-app:frontend-${{ steps.vars.outputs.tag }}
           cache-from: type=registry,ref=${{ secrets.DOCKER_AWS_AC_USERNAME }}/kuhub-app:frontend-prod-cache
