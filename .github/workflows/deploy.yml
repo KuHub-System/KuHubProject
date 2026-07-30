@@ -36,7 +36,22 @@ jobs:
 
       - name: Run frontend tests
         working-directory: ./frontend
-        run: npx vitest run
+        # El reporter github-actions emite ::error:: por cada test fallido, lo que
+        # los convierte en anotaciones del check run: quedan visibles en la UI y
+        # son legibles sin permisos de admin (el endpoint de logs pide admin).
+        # El bloque de respaldo cubre el caso de que vitest muera antes de reportar
+        # (error de import, OOM, crash del entorno), donde no habria anotaciones.
+        run: |
+          set -o pipefail
+          npx vitest run --reporter=default --reporter=github-actions 2>&1 | tee vitest-output.log
+          code=$?
+          if [ $code -ne 0 ]; then
+            echo "::group::Resumen del fallo"
+            grep -aE "FAIL|AssertionError|Error:|Unhandled|Cannot find|SyntaxError|heap out of memory|expected .* to" vitest-output.log \
+              | head -40 | while IFS= read -r l; do echo "::error::$l"; done
+            echo "::endgroup::"
+          fi
+          exit $code
 
   build-and-deploy:
     needs: test
