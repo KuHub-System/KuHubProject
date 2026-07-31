@@ -6,11 +6,10 @@ import {
   Input, ScrollShadow, Accordion, AccordionItem,
   Table, TableHeader, TableColumn, TableBody, TableRow, TableCell,
   Tooltip, Dropdown, DropdownTrigger, DropdownMenu, DropdownItem, Checkbox,
-  Select, SelectItem
+  Select, SelectItem, Tabs, Tab
 } from '@heroui/react';
 import { Icon } from '@iconify/react';
 import { usePageTitle } from '../hooks/usePageTitle';
-import { useHistory } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ISolicitud, IItemSolicitud } from '../types/solicitud/solicitud.types';
 import { actualizarEstadoBodegaService, obtenerEntregasDiariasService, prepararEntregaService, registrarDisponiblesService, IRegistrarDisponibleDTO, consultarDisponiblesPorProductoService, restarDisponiblesService, IRestarDisponibleDTO, IEntregaDiaria, ISalaEntrega, ISolicitudEntrega } from '../services/solicitud/solicitud-service';
@@ -30,6 +29,7 @@ import StockDisponiblesModal from '../components/modals/StockDisponiblesModal';
 import ConfirmarDisponibleBodegaModal, { ConfirmarDisponibleBodegaItem } from '../components/modals/ConfirmarDisponibleBodegaModal';
 import ConfirmarSalidaDisponibleModal, { ConfirmarSalidaDisponibleItem } from '../components/modals/ConfirmarSalidaDisponibleModal';
 import RielNavegacion from '../components/RielNavegacion';
+import MovimientosHistorial from '../components/MovimientosHistorial';
 import { TableSkeleton, CardSkeleton, TableSkeletonColumn } from '../components/SkeletonLoader';
 import { obtenerAbastecimientoConfirmadoService, marcarEntregadosMasivoService } from '../services/proveedor/proveedor-service';
 import { IOrdenAbastecimiento, ICategoriaEntregaAbastecimiento } from '../types/proveedor/proveedor.types';
@@ -79,10 +79,15 @@ const BodegaTransitoPage: React.FC = () => {
   const { canCreate: bodEditarProducto } = useModulePermission('BOD_EDITAR_PRODUCTO');
 
   const toast = useToast();
-  const history = useHistory();
   const [solicitudes, setSolicitudes] = React.useState<ISolicitud[]>([]);
   const [selectedDate, setSelectedDate] = React.useState<Date>(() => { const d = new Date(); d.setHours(12, 0, 0, 0); return d; });
   const [currentView, setCurrentView] = React.useState<'inventario' | 'pedidos'>('inventario');
+  // ── Tab "Stock / Movimientos" dentro de la vista "Bodega de Tránsito" (mismo patrón que inventario.tsx) ──
+  const [bodegaSubTab, setBodegaSubTab] = React.useState<'stock' | 'movimientos'>('stock');
+  // Nombre de producto para el tab "Movimientos": se actualiza al usar "Ver Movimiento"
+  // desde una fila del stock -- MovimientosHistorial se desmonta/remonta al cambiar de
+  // tab, así que el valor pasado como prop en el momento del montaje es suficiente.
+  const [movNombreFiltro, setMovNombreFiltro] = React.useState('');
 
   // Si el usuario solo tiene GESTION_PEDIDOS_DIARIOS (sin BODEGA_TRANSITO), forzar vista pedidos.
   React.useEffect(() => {
@@ -552,8 +557,11 @@ const BodegaTransitoPage: React.FC = () => {
     };
   }, [cargarProductosPaginados, currentPage]);
 
+  // Cambia al tab "Movimientos" filtrado por el producto, sin navegar a /movimientos
+  // (esa ruta exige el permiso de página "inventario", que Asistente de Bodega no tiene).
   const verMovimientos = (id: string, nombre: string) => {
-    history.push(`/movimientos?productoId=${id}&nombre=${encodeURIComponent(nombre)}`);
+    setMovNombreFiltro(nombre);
+    setBodegaSubTab('movimientos');
   };
 
   const handlePrevDay = () => { const d = new Date(selectedDate); d.setDate(d.getDate() - 1); d.setHours(12, 0, 0, 0); setSelectedDate(d); };
@@ -811,6 +819,21 @@ const BodegaTransitoPage: React.FC = () => {
               transition={{ duration: 0.3 }}
               className="space-y-6 pt-6 pb-10"
             >
+              <div className="px-4">
+                <Tabs
+                  selectedKey={bodegaSubTab}
+                  onSelectionChange={(key) => setBodegaSubTab(key as 'stock' | 'movimientos')}
+                  variant="underlined"
+                  color="primary"
+                  classNames={{ tabList: 'gap-6' }}
+                >
+                  <Tab key="stock" title="Stock" />
+                  {historialPuedeLeer && <Tab key="movimientos" title="Movimientos" />}
+                </Tabs>
+              </div>
+
+              {bodegaSubTab === 'stock' && (
+              <>
               {(bodControlMasivo || bodNuevo || catPuedeLeer || uniPuedeLeer || invAbastecimiento || invStockDisponible) && (
                 <div className="flex flex-wrap items-center gap-3 px-4 mb-2 mt-2">
                   {bodControlMasivo && (
@@ -1214,6 +1237,12 @@ const BodegaTransitoPage: React.FC = () => {
                   </div>
                 </CardBody>
               </Card>
+              </>
+              )}
+
+              {bodegaSubTab === 'movimientos' && historialPuedeLeer && (
+                <MovimientosHistorial active={bodegaSubTab === 'movimientos'} initialNombreProducto={movNombreFiltro} />
+              )}
             </motion.div>
           ) : !ped_Leer ? (
             <motion.div key="sin-acceso-pedidos" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex flex-col items-center justify-center h-full py-24 gap-4 text-center">
