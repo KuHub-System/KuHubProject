@@ -47,6 +47,8 @@ application-mat.properties
 /informe_ep1/08_conceptualizacion.md
 **/CLAUDE.md
 .aider*
+free-port-8080.ps1
+desocupar_puerto_8080.txt
 
 ### Secrets & Credentials ###
 secrets.md
