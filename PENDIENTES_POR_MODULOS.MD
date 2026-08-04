@@ -133,20 +133,29 @@ Para retomar: comparar el listado completo de `ModuleKey` (`permissions.types.ts
 con que el `INSERT` exista en `ConexionXD_v2.sql`/`ConexionXD_v3.sql` — hay que confirmar que ese
 bloque específico ya se ejecutó contra el entorno; ver conversación 2026-08-04 sobre `kuhub_devs`
 donde varios `INSERT INTO modulo ... ON CONFLICT DO NOTHING` quedaron en el script sin correr
-todavía). Empezar por la familia `GPRV_*` de Gestión de Proveedores, que a la fecha de esta
-revisión seguía sin confirmar en la BD real. Escribir los `INSERT INTO modulo` + `INSERT INTO
-permiso_rol` faltantes (o simplemente ejecutar el bloque ya escrito en el script) siguiendo el
-mismo patrón ya usado para agregar `GESTION_CATEGORIAS`/`GESTION_UNIDADES`
-(`ConexionXD_v2.sql:1128-1183`) y `HISTORIAL_MOVIMIENTOS` (`ConexionXD_v2.sql:1187-1231`): un
-`INSERT INTO modulo ... ON CONFLICT (codigo_modulo) DO NOTHING`, seguido de un `INSERT INTO
-permiso_rol` por rol con `ON CONFLICT (id_rol, id_modulo) DO UPDATE` definiendo el CRUD default de
-cada rol para ese permiso granular.
+todavía). De la familia `GPRV_*` de Gestión de Proveedores, ya se confirmó en la matriz de
+Gestión de Roles contra la BD real (`kuhub_devs`) que `GPRV_ORDENES`, `GPRV_PENDIENTE_ENVIADA`,
+`GPRV_CONFIRMADA`, `GPRV_CANCELAR_OP` y `GPRV_EXPORT_OP` existen como fila en `modulo` y se pueden
+leer/editar por rol (ver bug relacionado resuelto 2026-08-04 en `OrdenesVista.tsx` — visibilidad de
+pestañas de estado de Órdenes de Pedido). **Sigue faltando confirmar** el resto de la familia:
+`GPRV_DATOS_PROV`, `GPRV_NUEVO_PROV`, `GPRV_SYNC_EXCEL`, `GPRV_GENERAR_ORDEN`, `GPRV_COTIZACION`,
+`GPRV_CAMBIAR_ESTADO_PROV`, `GPRV_EDITAR_PROV`, `GPRV_ASIGNAR_PROD`, `GPRV_ELIMINAR_PROV`,
+`GPRV_EXPORT_DATOS` — y el resto de familias (`GA_*`, `INV_*`, `BOD_*`, etc.) listadas arriba.
+Escribir los `INSERT INTO modulo` + `INSERT INTO permiso_rol` faltantes (o simplemente ejecutar el
+bloque ya escrito en el script) siguiendo el mismo patrón ya usado para agregar
+`GESTION_CATEGORIAS`/`GESTION_UNIDADES` (`ConexionXD_v2.sql:1128-1183`) y `HISTORIAL_MOVIMIENTOS`
+(`ConexionXD_v2.sql:1187-1231`): un `INSERT INTO modulo ... ON CONFLICT (codigo_modulo) DO
+NOTHING`, seguido de un `INSERT INTO permiso_rol` por rol con `ON CONFLICT (id_rol, id_modulo) DO
+UPDATE` definiendo el CRUD default de cada rol para ese permiso granular.
 
 **✅ Verificado funcionando en BD real:** `GEST_SOL_VISTA` y `CONG_VISTA_PEDIDO` (2026-08-04, ver
-`ConexionXD_v3.sql`) — confirmado por consulta directa a `kuhub_devs`. Las vistas **Pedido Semanal
-a Bodega** (`PEDIDO_SEMANAL_BODEGA`) y **Solicitud** (`SOLICITUD`) también tienen sus permisos
-funcionando perfectamente — son módulos de página simple, ya sembrados en `modulo`, sin permisos
-granulares adicionales pendientes de insertar.
+`ConexionXD_v3.sql`) — confirmado por consulta directa a `kuhub_devs`. `GPRV_ORDENES`,
+`GPRV_PENDIENTE_ENVIADA`, `GPRV_CONFIRMADA`, `GPRV_CANCELAR_OP` y `GPRV_EXPORT_OP` (2026-08-04,
+confirmado visualmente en la matriz de Gestión de Roles con datos reales de `kuhub_devs`, rol
+Asistente de Bodega). Las vistas **Pedido Semanal a Bodega** (`PEDIDO_SEMANAL_BODEGA`) y
+**Solicitud** (`SOLICITUD`) también tienen sus permisos funcionando perfectamente — son módulos de
+página simple, ya sembrados en `modulo`, sin permisos granulares adicionales pendientes de
+insertar.
 
 **Persona asignada:** Matheus.
 
