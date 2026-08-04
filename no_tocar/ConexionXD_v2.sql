@@ -995,8 +995,7 @@ VALUES
     ('INVENTARIO',           'Inventario',                   'Gestión de productos e inventario del sistema',       'lucide:package',          2),
     ('SOLICITUD',            'Solicitudes',                  'Creación y seguimiento de solicitudes de insumos',    'lucide:file-text',        3),
     ('GESTION_PEDIDOS',      'Gestión de Pedidos',           'Administración y seguimiento de pedidos',             'lucide:shopping-cart',    4),
-    ('GESTION_SOLICITUDES',  'Gestión de Solicitudes',       'Administración de solicitudes del sistema',           'lucide:clipboard-list',   5),
-    ('CONGLOMERADO_PEDIDOS', 'Conglomerado de Pedidos',      'Agrupación y consolidación de pedidos masivos',       'lucide:layers',           6),
+    ('GESTION_SOLICITUDES_CONGLOMERADO', 'Gestión Solicitudes y Conglomerado', 'Administración de solicitudes del sistema y del pedido consolidado semanal', 'lucide:clipboard-list', 5),
     ('GESTION_PROVEEDORES',  'Gestión de Proveedores',       'Administración de proveedores del sistema',           'lucide:truck',            7),
     ('BODEGA_TRANSITO',      'Bodega de Tránsito',           'Control de productos en tránsito y despacho',        'lucide:warehouse',        8),
     ('PEDIDO_SEMANAL_BODEGA','Pedido Semanal a Bodega',      'Diseño y carga del pedido semanal a bodega (antiguas recetas)','lucide:package-open', 9),
@@ -1058,9 +1057,9 @@ INSERT INTO permiso_rol (id_rol, id_modulo, puede_leer, puede_crear, puede_actua
 SELECT
     (SELECT id_rol FROM rol WHERE nombre_rol = 'GESTOR_PEDIDOS' LIMIT 1),
     m.id_modulo,
-    CASE WHEN m.codigo_modulo IN ('DASHBOARD','GESTION_PEDIDOS','GESTION_SOLICITUDES','CONGLOMERADO_PEDIDOS') THEN TRUE ELSE FALSE END,
-    CASE WHEN m.codigo_modulo IN ('GESTION_PEDIDOS','GESTION_SOLICITUDES','CONGLOMERADO_PEDIDOS') THEN TRUE ELSE FALSE END,
-    CASE WHEN m.codigo_modulo IN ('GESTION_PEDIDOS','GESTION_SOLICITUDES','CONGLOMERADO_PEDIDOS') THEN TRUE ELSE FALSE END,
+    CASE WHEN m.codigo_modulo IN ('DASHBOARD','GESTION_PEDIDOS','GESTION_SOLICITUDES_CONGLOMERADO') THEN TRUE ELSE FALSE END,
+    CASE WHEN m.codigo_modulo IN ('GESTION_PEDIDOS','GESTION_SOLICITUDES_CONGLOMERADO') THEN TRUE ELSE FALSE END,
+    CASE WHEN m.codigo_modulo IN ('GESTION_PEDIDOS','GESTION_SOLICITUDES_CONGLOMERADO') THEN TRUE ELSE FALSE END,
     FALSE
 FROM modulo m WHERE m.enabled = TRUE
 ON CONFLICT (id_rol, id_modulo) DO UPDATE SET
@@ -1352,7 +1351,7 @@ ON CONFLICT (id_rol, id_modulo) DO UPDATE SET
 -- MÓDULOS DE ACCIÓN: GESTIÓN DE SOLICITUDES
 -- GEST_SOL_GESTIONAR → aceptar / revertir solicitudes (sin rechazar)
 -- GEST_SOL_RECHAZAR  → rechazar solicitudes (acción destructiva separada)
--- La página GESTION_SOLICITUDES da acceso de lectura; cada botón de acción
+-- La página GESTION_SOLICITUDES_CONGLOMERADO da acceso de lectura; cada botón de acción
 -- requiere el sub-módulo correspondiente (igual al patrón PEDIDO_SEM_*).
 -- ================================================================
 
@@ -1387,6 +1386,58 @@ SELECT r.id_rol, m.id_modulo, FALSE, FALSE, FALSE, FALSE
 FROM rol r CROSS JOIN modulo m
 WHERE r.nombre_rol IN ('PROFESOR_A_CARGO', 'DOCENTE', 'ENCARGADO_BODEGA', 'ASISTENTE_BODEGA')
   AND m.codigo_modulo IN ('GEST_SOL_GESTIONAR', 'GEST_SOL_RECHAZAR')
+  AND m.enabled = TRUE
+ON CONFLICT (id_rol, id_modulo) DO UPDATE SET
+    puede_leer=FALSE, puede_crear=FALSE, puede_actualizar=FALSE, puede_eliminar=FALSE;
+
+
+-- ================================================================
+-- MÓDULO DE VISTA: GEST_SOL_VISTA ("G. Solicitudes · Revisar Solicitudes")
+-- Hijo de GESTION_SOLICITUDES_CONGLOMERADO. Controla la visibilidad de la
+-- pestaña "Revisar solicitudes" (TriStateCell, 3 estados):
+--   Sin permiso → la pestaña no se muestra.
+--   Lectura     → se ve la pestaña y la lista; los botones de acción se
+--                 rigen igual que siempre por GEST_SOL_GESTIONAR/RECHAZAR.
+--   Escritura   → además de ver, actúa como si tuviera GEST_SOL_GESTIONAR
+--                 concedido (aunque ese permiso puntual no esté marcado aparte).
+-- No gatea ningún endpoint del backend: es un permiso puramente de UI.
+-- ================================================================
+
+INSERT INTO modulo (codigo_modulo, nombre_modulo, descripcion_modulo, icono_modulo, orden_modulo)
+VALUES (
+    'GEST_SOL_VISTA',
+    'G. Solicitudes · Revisar Solicitudes',
+    'Controla si la pestaña Revisar Solicitudes se muestra; Escritura equivale a tener Gestionar Estados concedido',
+    'lucide:eye',
+    82
+)
+ON CONFLICT (codigo_modulo) DO NOTHING;
+
+-- ADMINISTRADOR y CO_ADMINISTRADOR → acceso total
+INSERT INTO permiso_rol (id_rol, id_modulo, puede_leer, puede_crear, puede_actualizar, puede_eliminar)
+SELECT r.id_rol, m.id_modulo, TRUE, TRUE, TRUE, TRUE
+FROM rol r CROSS JOIN modulo m
+WHERE r.nombre_rol IN ('ADMINISTRADOR', 'CO_ADMINISTRADOR')
+  AND m.codigo_modulo = 'GEST_SOL_VISTA'
+  AND m.enabled = TRUE
+ON CONFLICT (id_rol, id_modulo) DO UPDATE SET
+    puede_leer=TRUE, puede_crear=TRUE, puede_actualizar=TRUE, puede_eliminar=TRUE;
+
+-- GESTOR_PEDIDOS → Escritura sin Eliminar (mismo patrón que GEST_SOL_GESTIONAR/RECHAZAR)
+INSERT INTO permiso_rol (id_rol, id_modulo, puede_leer, puede_crear, puede_actualizar, puede_eliminar)
+SELECT (SELECT id_rol FROM rol WHERE nombre_rol = 'GESTOR_PEDIDOS' LIMIT 1), m.id_modulo, TRUE, TRUE, TRUE, FALSE
+FROM modulo m
+WHERE m.codigo_modulo = 'GEST_SOL_VISTA'
+  AND m.enabled = TRUE
+ON CONFLICT (id_rol, id_modulo) DO UPDATE SET
+    puede_leer=TRUE, puede_crear=TRUE, puede_actualizar=TRUE, puede_eliminar=FALSE;
+
+-- Resto de roles → sin acceso
+INSERT INTO permiso_rol (id_rol, id_modulo, puede_leer, puede_crear, puede_actualizar, puede_eliminar)
+SELECT r.id_rol, m.id_modulo, FALSE, FALSE, FALSE, FALSE
+FROM rol r CROSS JOIN modulo m
+WHERE r.nombre_rol IN ('PROFESOR_A_CARGO', 'DOCENTE', 'ENCARGADO_BODEGA', 'ASISTENTE_BODEGA')
+  AND m.codigo_modulo = 'GEST_SOL_VISTA'
   AND m.enabled = TRUE
 ON CONFLICT (id_rol, id_modulo) DO UPDATE SET
     puede_leer=FALSE, puede_crear=FALSE, puede_actualizar=FALSE, puede_eliminar=FALSE;
@@ -1431,6 +1482,59 @@ SELECT r.id_rol, m.id_modulo, FALSE, FALSE, FALSE, FALSE
 FROM rol r CROSS JOIN modulo m
 WHERE r.nombre_rol IN ('PROFESOR_A_CARGO', 'DOCENTE', 'ENCARGADO_BODEGA', 'ASISTENTE_BODEGA')
   AND m.codigo_modulo IN ('CONG_APROBAR_PEDIDO', 'CONG_RECHAZAR_PEDIDO')
+  AND m.enabled = TRUE
+ON CONFLICT (id_rol, id_modulo) DO UPDATE SET
+    puede_leer=FALSE, puede_crear=FALSE, puede_actualizar=FALSE, puede_eliminar=FALSE;
+
+
+-- ================================================================
+-- MÓDULO DE VISTA: CONG_VISTA_PEDIDO ("Conglom. · Conglomerado de Pedidos")
+-- Hijo de GESTION_SOLICITUDES_CONGLOMERADO, y a la vez padre de los 6 códigos
+-- existentes de la pestaña Conglomerado (CONG_VISTA_APROBACION/CRONOGRAMA/
+-- TOTALES/CATEGORIAS y CONG_APROBAR_PEDIDO/RECHAZAR_PEDIDO). Controla la
+-- visibilidad de la pestaña "Conglomerado de pedidos" (TriStateCell, 3 estados):
+--   Sin permiso → la pestaña no se muestra.
+--   Lectura     → se ve la pestaña; cada sub-vista sigue rigiéndose de forma
+--                 independiente por su propio CONG_VISTA_* (sin cambios ahí).
+--   Escritura   → cascada Escritura a los 6 hijos existentes (4 vistas + 2 acciones).
+-- No gatea ningún endpoint del backend: es un permiso puramente de UI.
+-- ================================================================
+
+INSERT INTO modulo (codigo_modulo, nombre_modulo, descripcion_modulo, icono_modulo, orden_modulo)
+VALUES (
+    'CONG_VISTA_PEDIDO',
+    'Conglom. · Conglomerado de Pedidos',
+    'Controla si la pestaña Conglomerado de Pedidos se muestra; Escritura equivale a tener todas sus vistas y acciones concedidas',
+    'lucide:layers',
+    83
+)
+ON CONFLICT (codigo_modulo) DO NOTHING;
+
+-- ADMINISTRADOR y CO_ADMINISTRADOR → acceso total
+INSERT INTO permiso_rol (id_rol, id_modulo, puede_leer, puede_crear, puede_actualizar, puede_eliminar)
+SELECT r.id_rol, m.id_modulo, TRUE, TRUE, TRUE, TRUE
+FROM rol r CROSS JOIN modulo m
+WHERE r.nombre_rol IN ('ADMINISTRADOR', 'CO_ADMINISTRADOR')
+  AND m.codigo_modulo = 'CONG_VISTA_PEDIDO'
+  AND m.enabled = TRUE
+ON CONFLICT (id_rol, id_modulo) DO UPDATE SET
+    puede_leer=TRUE, puede_crear=TRUE, puede_actualizar=TRUE, puede_eliminar=TRUE;
+
+-- GESTOR_PEDIDOS → Escritura sin Eliminar (mismo patrón que CONG_APROBAR_PEDIDO/RECHAZAR_PEDIDO)
+INSERT INTO permiso_rol (id_rol, id_modulo, puede_leer, puede_crear, puede_actualizar, puede_eliminar)
+SELECT (SELECT id_rol FROM rol WHERE nombre_rol = 'GESTOR_PEDIDOS' LIMIT 1), m.id_modulo, TRUE, TRUE, TRUE, FALSE
+FROM modulo m
+WHERE m.codigo_modulo = 'CONG_VISTA_PEDIDO'
+  AND m.enabled = TRUE
+ON CONFLICT (id_rol, id_modulo) DO UPDATE SET
+    puede_leer=TRUE, puede_crear=TRUE, puede_actualizar=TRUE, puede_eliminar=FALSE;
+
+-- Resto de roles → sin acceso
+INSERT INTO permiso_rol (id_rol, id_modulo, puede_leer, puede_crear, puede_actualizar, puede_eliminar)
+SELECT r.id_rol, m.id_modulo, FALSE, FALSE, FALSE, FALSE
+FROM rol r CROSS JOIN modulo m
+WHERE r.nombre_rol IN ('PROFESOR_A_CARGO', 'DOCENTE', 'ENCARGADO_BODEGA', 'ASISTENTE_BODEGA')
+  AND m.codigo_modulo = 'CONG_VISTA_PEDIDO'
   AND m.enabled = TRUE
 ON CONFLICT (id_rol, id_modulo) DO UPDATE SET
     puede_leer=FALSE, puede_crear=FALSE, puede_actualizar=FALSE, puede_eliminar=FALSE;
@@ -4222,13 +4326,13 @@ EXECUTE FUNCTION fn_limpiar_por_sala_inactiva();
  * * ESTRUCTURA ESPERADA DEL JSONB (Array de Objetos):
  * [
  * {
- * "idAsignatura": 1, "idSemana": 2, "idReceta": 5, "observacion": "...",
+ * "idAsignatura": 1, "idSemana": 2, "idPedidoSemanaBodega": 5, "observacion": "...",
  * "secciones": [
  * { "idSeccion": 101, "idUsuario": 55, "cantInscritos": 25, "horarios": [{...}] }
  * ],
  * "deltas": {
  * "eliminados": [12, 15],
- * "modificados": [{ "idDetalleReceta": 8, "cantProducto": 3.5 }],
+ * "modificados": [{ "idDetallePedidoSemana": 8, "cantProducto": 3.5 }],
  * "nuevos": [{ "idProducto": 42, "cantProducto": 1.0 }]
  * }
  * }
@@ -4251,7 +4355,7 @@ AS $$
 DECLARE
     -- Variables para el Loop Externo (Lista de MassiveSolicitationDTO)
     v_solicitud_masiva JSONB;
-    v_id_receta INTEGER;
+    v_id_pedido_semana_bodega INTEGER;
     v_observacion_general TEXT; -- <---(solicitud)
 
     -- Variables para el Loop Interno (Lista de secciones)
@@ -4275,8 +4379,8 @@ BEGIN
     -- =========================================================================
     FOR v_solicitud_masiva IN SELECT * FROM jsonb_array_elements(p_payload)
     LOOP
-        -- Extraemos los datos generales de ESTA asignatura/receta específica
-        v_id_receta := (v_solicitud_masiva->>'idReceta')::INTEGER;
+        -- Extraemos los datos generales de ESTA asignatura/pedido semana a bodega específica
+        v_id_pedido_semana_bodega := (v_solicitud_masiva->>'idPedidoSemanaBodega')::INTEGER;
         -- Extraemos la observación general para toda la solicitud
         v_observacion_general := v_solicitud_masiva->>'observacionesGenerales';
 
@@ -4310,7 +4414,7 @@ BEGIN
             ) VALUES (
                 v_id_usuario,
                 v_id_seccion,
-                v_id_receta,
+                v_id_pedido_semana_bodega,
                 v_id_reserva_sala,
                 v_fecha_solicitada,
                 v_observacion_general,
@@ -4345,8 +4449,8 @@ BEGIN
 					dr.cant_producto AS cant_base,
 					dr.observacion
                 FROM detalle_pedido_semana_bodega dr
-                WHERE v_id_receta IS NOT NULL
-                  AND dr.id_pedido_semana_bodega = v_id_receta
+                WHERE v_id_pedido_semana_bodega IS NOT NULL
+                  AND dr.id_pedido_semana_bodega = v_id_pedido_semana_bodega
                   AND NOT EXISTS (
                       SELECT 1 FROM jsonb_array_elements_text(COALESCE(v_solicitud_masiva->'deltas'->'eliminados', '[]'::jsonb)) e
                       WHERE CASE
@@ -4362,7 +4466,7 @@ BEGIN
                   )
                   AND NOT EXISTS (
                       SELECT 1 FROM jsonb_array_elements(COALESCE(v_solicitud_masiva->'deltas'->'modificados', '[]'::jsonb)) m
-                      WHERE (m->>'idDetalleReceta')::INTEGER = dr.id_detalle_pedido_semana
+                      WHERE (m->>'idDetallePedidoSemana')::INTEGER = dr.id_detalle_pedido_semana
                   )
 
                 UNION ALL
@@ -4376,8 +4480,8 @@ BEGIN
 					   ELSE dr.observacion
 					 END AS observacion
                 FROM jsonb_array_elements(COALESCE(v_solicitud_masiva->'deltas'->'modificados', '[]'::jsonb)) m
-                JOIN detalle_pedido_semana_bodega dr ON dr.id_detalle_pedido_semana = (m->>'idDetalleReceta')::INTEGER
-                WHERE v_id_receta IS NOT NULL
+                JOIN detalle_pedido_semana_bodega dr ON dr.id_detalle_pedido_semana = (m->>'idDetallePedidoSemana')::INTEGER
+                WHERE v_id_pedido_semana_bodega IS NOT NULL
 
                 UNION ALL
 
@@ -4398,7 +4502,7 @@ BEGIN
             total_detalles := total_detalles + v_filas_insertadas;
 
         END LOOP; -- Fin Loop Interno (Secciones)
-    END LOOP; -- Fin Loop Externo (Asignaturas/Recetas)
+    END LOOP; -- Fin Loop Externo (Asignaturas/PedidoSemanaBodega)
 END;
 $$ LANGUAGE plpgsql;
 
