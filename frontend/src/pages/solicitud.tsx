@@ -1063,8 +1063,15 @@ const SolicitudPage: React.FC = () => {
       const result = await generarSolicitudesMasivasService(payload);
       setSendResult(result);
       limpiar();
-    } catch {
-      toast.error('Error al enviar las solicitudes. Verifique los datos e intente nuevamente.');
+    } catch (err: any) {
+      if (err?.response?.status === 403) {
+        toast.error(
+          'Un administrador modificó el permiso que tenías asignado para esta acción. La página se recargará para actualizar tus accesos.',
+          { onClose: () => window.location.reload() }
+        );
+      } else {
+        toast.error('Error al enviar las solicitudes. Verifique los datos e intente nuevamente.');
+      }
     } finally {
       setIsSubmitting(false);
     }

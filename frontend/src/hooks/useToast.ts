@@ -19,6 +19,7 @@ interface ToastParams {
   title?: string;
   animate?: boolean;
   duration?: number;
+  onClose?: () => void;
 }
 
 /**
@@ -34,7 +35,9 @@ export const useToast = () => {
     error: (message: string, params?: string | ToastParams) => {
       const title = typeof params === 'string' ? params : params?.title;
       const animate = typeof params === 'object' ? params?.animate : false;
-      showNotification({ message, title: title || 'Error', type: 'error', duration: 30000, animate });
+      const duration = typeof params === 'object' && params?.duration !== undefined ? params.duration : 30000;
+      const onClose = typeof params === 'object' ? params?.onClose : undefined;
+      showNotification({ message, title: title || 'Error', type: 'error', duration, animate, onClose });
     },
     warning: (message: string, params?: string | ToastParams) => {
       const title = typeof params === 'string' ? params : params?.title;
