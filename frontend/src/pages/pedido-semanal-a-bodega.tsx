@@ -390,8 +390,8 @@ const PedidoSemanalABodegaPage: React.FC = () => {
   };
 
   const handleEliminarPedidoSemanaBodega = async (pedidoSemanaBodega: IPedidoSemanaBodegaPaginedDTO | any) => {
-    if (!isAdmin) {
-      toast.warning('Solo el rol Administrador puede eliminar pedidos semanales.');
+    if (!rec_Eliminar) {
+      toast.warning('No tienes permiso para eliminar pedidos semanales.');
       return;
     }
 
