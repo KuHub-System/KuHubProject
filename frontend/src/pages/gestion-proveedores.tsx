@@ -1070,18 +1070,28 @@ const GestionProveedoresPage: React.FC = () => {
     }
   };
 
-  const handleCerrarSyncExcel = () => {
+  const handleCerrarSyncExcel = async () => {
     // Si el cierre ocurre DESPUÉS de una sincronización (haya o no productos sincronizados),
-    // refrescamos toda la página 500ms después para que la tabla y los detalles caché
-    // muestren los precios nuevos. Equivalente a un F5 manual del usuario.
+    // refrescamos el detalle cacheado del proveedor sincronizado para que la tabla muestre
+    // los precios nuevos -- mismo patrón que handleGuardarProducto (invalidar + refetch si
+    // la fila está expandida). Antes se hacía un window.location.reload(): un F5 completo
+    // reinicia el AuthContext/PermissionContext desde cero, y si la matriz de permisos tarda
+    // en resolver antes que ProtectedRoute reevalúe la ruta, el usuario cae momentáneamente
+    // (o queda atascado si la carga falla) en /sin-acceso pese a tener el permiso correcto.
     const huboSincronizacion = syncResult !== null;
+    const proveedorSincronizado = syncProveedorId;
     setSyncProveedorId(null);
     setSyncFile(null);
     setSyncResult(null);
     setSyncError(null);
     if (excelInputRef.current) excelInputRef.current.value = '';
-    if (huboSincronizacion) {
-      setTimeout(() => window.location.reload(), 500);
+    if (huboSincronizacion && proveedorSincronizado != null && expandedRows.has(proveedorSincronizado)) {
+      try {
+        const detalle = await obtenerProveedorDetalleService(proveedorSincronizado);
+        setDetalleCache(prev => ({ ...prev, [proveedorSincronizado]: detalle }));
+      } catch {
+        // Si falla el refetch, el usuario puede colapsar/expandir la fila para reintentar.
+      }
     }
   };
 
