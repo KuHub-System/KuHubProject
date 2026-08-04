@@ -207,7 +207,9 @@ interface OrdenesVistaProps {
   onCargarDetallesBulk: (ids: number[]) => Promise<void>;
   canCancelar: boolean;
   canExportExcel: boolean;
+  /** Habilita los botones de transición PENDIENTE↔ENVIADA y CANCELADA→PENDIENTE (no gatea lectura). */
   canVerPendienteEnviada: boolean;
+  /** Habilita los botones de transición ENVIADA↔CONFIRMADA (no gatea lectura). */
   canVerConfirmada: boolean;
 }
 
@@ -218,8 +220,7 @@ const OrdenesVista: React.FC<OrdenesVistaProps> = ({
   canCancelar, canExportExcel,
   canVerPendienteEnviada, canVerConfirmada,
 }) => {
-  const initialEstado = canVerPendienteEnviada ? 'PENDIENTE' : canVerConfirmada ? 'CONFIRMADA' : 'CANCELADA';
-  const [filtroEstado, setFiltroEstado] = React.useState<EstadoOrdenPedido>(initialEstado as EstadoOrdenPedido);
+  const [filtroEstado, setFiltroEstado] = React.useState<EstadoOrdenPedido>('PENDIENTE');
   const [agruparPorPedido, setAgruparPorPedido] = React.useState(false);
   const [agruparPorFechaReal, setAgruparPorFechaReal] = React.useState(false);
   const [modoUnificada, setModoUnificada] = React.useState(false);
@@ -236,23 +237,12 @@ const OrdenesVista: React.FC<OrdenesVistaProps> = ({
     return `${String(dt.getDate()).padStart(2,'0')}/${String(dt.getMonth()+1).padStart(2,'0')}/${dt.getFullYear()} ${String(dt.getHours()).padStart(2,'0')}:${String(dt.getMinutes()).padStart(2,'0')}`;
   };
 
-  // Estados que este rol puede ver según sus permisos de sub-vista.
-  const estadosPermitidos = React.useMemo<EstadoOrdenPedido[]>(() =>
-    ESTADO_OP_ORDEN.filter(e => {
-      if (e === 'PENDIENTE' || e === 'ENVIADA') return canVerPendienteEnviada;
-      if (e === 'CONFIRMADA' || e === 'RECIBIDA') return canVerConfirmada;
-      return true; // CANCELADA siempre visible
-    }),
-    [canVerPendienteEnviada, canVerConfirmada],
-  );
-
-  // Auto-switch si el estado activo ya no está en la lista permitida.
-  React.useEffect(() => {
-    if (estadosPermitidos.length > 0 && !estadosPermitidos.includes(filtroEstado)) {
-      setFiltroEstado(estadosPermitidos[0]);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [estadosPermitidos]);
+  // La visibilidad de las pestañas de estado ya está gateada por el acceso a la
+  // pestaña "Órdenes de Pedido" (GPRV_ORDENES) a nivel de página -- todas las
+  // pestañas de estado son visibles para cualquier rol que llegue a este componente.
+  // GPRV_PENDIENTE_ENVIADA / GPRV_CONFIRMADA solo gatean los botones de cambio de
+  // estado (ver `canDo` en renderOpRow), no la visibilidad de lectura.
+  const estadosPermitidos = ESTADO_OP_ORDEN;
 
   const conteosPorEstado = React.useMemo(() => {
     const map = new Map<EstadoOrdenPedido, number>();

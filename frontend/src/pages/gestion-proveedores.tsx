@@ -150,8 +150,8 @@ const GestionProveedoresPage: React.FC = () => {
   // canCreate para las acciones: BinaryWrite → solo true cuando puedeCrear=true (Escritura real,
   // no propagación de Lectura que solo deja puedeLeer=true).
   const { canRead: verOrdenes }           = useModulePermission('GPRV_ORDENES');
-  const { canRead: op_VerPendEnviada }    = useModulePermission('GPRV_PENDIENTE_ENVIADA');
-  const { canRead: op_VerConfirmada }     = useModulePermission('GPRV_CONFIRMADA');
+  const { canCreate: op_VerPendEnviada }  = useModulePermission('GPRV_PENDIENTE_ENVIADA');
+  const { canCreate: op_VerConfirmada }   = useModulePermission('GPRV_CONFIRMADA');
   const { canCreate: op_CancelarOp }      = useModulePermission('GPRV_CANCELAR_OP');
   const { canCreate: op_ExportExcel }     = useModulePermission('GPRV_EXPORT_OP');
 
