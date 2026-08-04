@@ -178,7 +178,8 @@ public class ProveedorController {
      * - **Pantalla UI:** {@code frontend/src/pages/gestion-proveedores.tsx} (Se activa al presionar el botón de eliminación y confirmar en el diálogo toast).
      *
      * @param id    ID del proveedor a eliminar
-     * @param force Si true (solo Administrador), desactiva productos activos y procede con la eliminación
+     * @param force Si true, desactiva los productos activos del proveedor y procede con la eliminación
+     *              (sin restricción de rol adicional: cualquier rol con permiso GPRV_ELIMINAR_PROV puede usarlo)
      */
     @DeleteMapping("/{id}")
     public ResponseEntity<Boolean> softDelete(@PathVariable Integer id,

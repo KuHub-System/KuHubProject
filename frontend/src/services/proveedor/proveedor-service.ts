@@ -230,7 +230,8 @@ export const actualizarProveedorService = async (
 /**
  * Elimina lógicamente un proveedor (activo = false).
  * DELETE /api/v1/proveedor/{id}?force={force} → 204 No Content
- * force=true solo debe usarlo el rol Administrador (desactiva productos automáticamente).
+ * force=true desactiva automáticamente sus productos activos. El backend no restringe este
+ * parámetro por rol, solo por el permiso GPRV_ELIMINAR_PROV (mismo que habilita el borrado normal).
  */
 export const eliminarProveedorService = async (
   idProveedor: number,

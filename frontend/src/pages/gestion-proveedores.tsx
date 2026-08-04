@@ -129,7 +129,7 @@ import OrdenesVista from './gestion-proveedores/OrdenesVista';
 // ── Componente principal ──────────────────────────────────────────────────────
 
 const GestionProveedoresPage: React.FC = () => {
-  const { isLoading: permLoading, isAdmin } = usePermission();
+  const { isLoading: permLoading } = usePermission();
 
   // ── Permisos de la vista Proveedores ──
   const { canRead: prov_VerLista }       = useModulePermission('GESTION_PROVEEDORES');
@@ -661,9 +661,14 @@ const GestionProveedoresPage: React.FC = () => {
       await cargarProveedoresPaginados(1, true);
       setProveedorAEliminar(null);
     } catch (err: any) {
-      if ((err as any).isConProductosActivos && isAdmin) {
-        // El admin puede forzar la eliminación aún con productos activos
+      if ((err as any).isConProductosActivos && prov_EliminarProv) {
+        // Quien tiene el permiso GPRV_ELIMINAR_PROV puede forzar la eliminación aún con
+        // productos activos -- el backend no restringe `force` por rol (ver
+        // ProveedorServiceImpl.softDelete), solo por este permiso.
         openForceDelModal();
+      } else if ((err as any).isConProductosActivos) {
+        showToast('No se puede eliminar: el proveedor tiene productos activos asignados. Contacta a un administrador.', 'error');
+        setProveedorAEliminar(null);
       } else {
         showToast(err.message || 'Error al eliminar el proveedor', 'error');
         setProveedorAEliminar(null);
@@ -3011,7 +3016,9 @@ const GestionProveedoresPage: React.FC = () => {
                   Esta acción no se puede deshacer.
                 </p>
                 <p className="text-xs text-warning-600 bg-warning-50 dark:bg-warning-50/10 rounded p-2 mt-1">
-                  Solo se puede eliminar si no tiene productos activos asignados.
+                  {prov_EliminarProv
+                    ? 'Si el proveedor tiene productos activos asignados, se te ofrecerá la opción de forzar la eliminación.'
+                    : 'Si el proveedor tiene productos activos asignados, no podrás eliminarlo. Contacta a un administrador.'}
                 </p>
               </ModalBody>
               <ModalFooter className="bg-gradient-to-r from-default-50 to-default-50 dark:from-content2 dark:to-content2 border-t border-default-200 dark:border-default-100 gap-2 px-6 py-4">
@@ -3063,7 +3070,7 @@ const GestionProveedoresPage: React.FC = () => {
                 <div className="flex items-start gap-2 bg-danger-50 dark:bg-danger-50/10 rounded-lg p-3 mt-1">
                   <Icon icon="lucide:alert-triangle" className="text-danger mt-0.5 shrink-0" width={15} />
                   <p className="text-xs text-danger-700 dark:text-danger-300">
-                    Acción exclusiva del Administrador. Procede con precaución.
+                    Procede con precaución.
                   </p>
                 </div>
               </ModalBody>
