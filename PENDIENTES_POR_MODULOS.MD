@@ -107,8 +107,8 @@ actual — no confundirlo con `notification-service.ts`, que es el que está en 
 
 **Archivos:** `no_tocar/ConexionXD_v2.sql:992-1007` (bloque `INSERT INTO modulo`), `backend/src/main/java/KuHub/modules/gestion_usuario/service/PermisoRolServiceImpl.java:122-162` (`restaurarPredeterminado`), `frontend/src/types/usuario/permissions.types.ts` (tipo `ModuleKey`), `frontend/src/pages/gestion-roles.tsx`
 
-La tabla `modulo` solo tiene sembrados los 16 códigos de **página** (`DASHBOARD`, `INVENTARIO`,
-`SOLICITUD`, `GESTION_PEDIDOS`, `GESTION_SOLICITUDES`, `CONGLOMERADO_PEDIDOS`,
+La tabla `modulo` solo tiene sembrados los 15 códigos de **página** (`DASHBOARD`, `INVENTARIO`,
+`SOLICITUD`, `GESTION_PEDIDOS`, `GESTION_SOLICITUDES_CONGLOMERADO`,
 `GESTION_PROVEEDORES`, `BODEGA_TRANSITO`, `PEDIDO_SEMANAL_BODEGA`, `GESTION_ACADEMICA`,
 `GESTION_ROLES`, `GESTION_USUARIOS`, `ADMIN_SISTEMA`, `GESTION_CATEGORIAS`, `GESTION_UNIDADES`,
 `HISTORIAL_MOVIMIENTOS` — ver `ConexionXD_v2.sql:992-1007` y el bloque agregado después en
@@ -129,13 +129,26 @@ matriz que arma `gestion-roles.tsx`, y no hay forma de saber desde la BD qué de
 default de fábrica para esos permisos.
 
 Para retomar: comparar el listado completo de `ModuleKey` (`permissions.types.ts`) contra los
-`codigo_modulo` realmente insertados en `ConexionXD_v2.sql`/`ConexionXD_v3.sql`, y escribir los
-`INSERT INTO modulo` + `INSERT INTO permiso_rol` faltantes siguiendo el mismo patrón ya usado para
-agregar `GESTION_CATEGORIAS`/`GESTION_UNIDADES` (`ConexionXD_v2.sql:1128-1183`) y
-`HISTORIAL_MOVIMIENTOS` (`ConexionXD_v2.sql:1187-1231`): un `INSERT INTO modulo ... ON CONFLICT
-(codigo_modulo) DO NOTHING`, seguido de un `INSERT INTO permiso_rol` por rol con
-`ON CONFLICT (id_rol, id_modulo) DO UPDATE` definiendo el CRUD default de cada rol para ese
-permiso granular.
+`codigo_modulo` **realmente presentes en la tabla `modulo` de la base de datos real** (no alcanza
+con que el `INSERT` exista en `ConexionXD_v2.sql`/`ConexionXD_v3.sql` — hay que confirmar que ese
+bloque específico ya se ejecutó contra el entorno; ver conversación 2026-08-04 sobre `kuhub_devs`
+donde varios `INSERT INTO modulo ... ON CONFLICT DO NOTHING` quedaron en el script sin correr
+todavía). Empezar por la familia `GPRV_*` de Gestión de Proveedores, que a la fecha de esta
+revisión seguía sin confirmar en la BD real. Escribir los `INSERT INTO modulo` + `INSERT INTO
+permiso_rol` faltantes (o simplemente ejecutar el bloque ya escrito en el script) siguiendo el
+mismo patrón ya usado para agregar `GESTION_CATEGORIAS`/`GESTION_UNIDADES`
+(`ConexionXD_v2.sql:1128-1183`) y `HISTORIAL_MOVIMIENTOS` (`ConexionXD_v2.sql:1187-1231`): un
+`INSERT INTO modulo ... ON CONFLICT (codigo_modulo) DO NOTHING`, seguido de un `INSERT INTO
+permiso_rol` por rol con `ON CONFLICT (id_rol, id_modulo) DO UPDATE` definiendo el CRUD default de
+cada rol para ese permiso granular.
+
+**✅ Verificado funcionando en BD real:** `GEST_SOL_VISTA` y `CONG_VISTA_PEDIDO` (2026-08-04, ver
+`ConexionXD_v3.sql`) — confirmado por consulta directa a `kuhub_devs`. Las vistas **Pedido Semanal
+a Bodega** (`PEDIDO_SEMANAL_BODEGA`) y **Solicitud** (`SOLICITUD`) también tienen sus permisos
+funcionando perfectamente — son módulos de página simple, ya sembrados en `modulo`, sin permisos
+granulares adicionales pendientes de insertar.
+
+**Persona asignada:** Matheus.
 
 ---
 

@@ -248,17 +248,43 @@ const GestionSolicitudesPage: React.FC = () => {
     if (!futura && atrasada) toast.warning(sinFuturasMsg);
   }, [toast, irASemanaNotificacion]);
 
+  // ── Estado propio de "Revisar solicitudes" ──
+  // GEST_SOL_VISTA gatea la visibilidad de la pestaña completa; en Escritura equivale
+  // a tener GEST_SOL_GESTIONAR concedido aunque ese permiso puntual no esté marcado.
+  const { canRead: verGestSol, canUpdate: gestSolEscritura } = useModulePermission('GEST_SOL_VISTA');
+  const { canUpdate: sol_Gestionar_propio } = useModulePermission('GEST_SOL_GESTIONAR');
+  const { canUpdate: sol_Rechazar  } = useModulePermission('GEST_SOL_RECHAZAR');
+  const sol_Gestionar = sol_Gestionar_propio || gestSolEscritura;
+
+  // CONG_VISTA_PEDIDO gatea la visibilidad de la pestaña "Conglomerado de pedidos" completa
+  // (mismo patrón que GEST_SOL_VISTA); las 4 sub-vistas siguen rigiéndose cada una por su
+  // propio CONG_VISTA_* como antes.
+  const { canRead: verCongPedido } = useModulePermission('CONG_VISTA_PEDIDO');
+
   // ── Tab activa (Revisar solicitudes / Conglomerado de pedidos) ──
   const location = useLocation();
-  const [activeTab, setActiveTab] = React.useState<'solicitudes' | 'pedido'>(
-    location.pathname.startsWith('/conglomerado-pedidos') ? 'pedido' : 'solicitudes'
+  const [activeTab, setActiveTab] = React.useState<'solicitudes' | 'pedido'>(() => {
+    const quierePedido = location.pathname.startsWith('/conglomerado-pedidos');
+    if (quierePedido && verCongPedido) return 'pedido';
+    if (verGestSol) return 'solicitudes';
+    return 'pedido';
+  });
+
+  // ── Título dinámico: si el rol solo tiene acceso a una de las dos pestañas, el título
+  // de la página y del sidebar se acorta a esa sola sección — mostrar "y Conglomerado" (o
+  // viceversa) sería engañoso si no puede ver la otra pestaña.
+  const soloSolicitudes    = verGestSol && !verCongPedido;
+  const soloConglomerado   = verCongPedido && !verGestSol;
+
+  usePageTitle(
+    soloSolicitudes ? 'Gestión Solicitudes' : soloConglomerado ? 'Conglomerado de Pedidos' : 'Gestión Solicitudes y Conglomerado',
+    soloSolicitudes
+      ? 'Administre las solicitudes de insumos.'
+      : soloConglomerado
+        ? 'Administre el pedido consolidado semanal.'
+        : 'Administre las solicitudes de insumos y el pedido consolidado semanal.',
+    'lucide:clipboard-check'
   );
-
-  usePageTitle('Gestión de Solicitudes', 'Administre las solicitudes de insumos y el pedido consolidado semanal.', 'lucide:clipboard-check');
-
-  // ── Estado propio de "Revisar solicitudes" ──
-  const { canUpdate: sol_Gestionar } = useModulePermission('GEST_SOL_GESTIONAR');
-  const { canUpdate: sol_Rechazar  } = useModulePermission('GEST_SOL_RECHAZAR');
 
 
   // ── Solicitudes ──
@@ -1407,8 +1433,8 @@ const GestionSolicitudesPage: React.FC = () => {
           color="primary"
           classNames={{ tabList: 'gap-6' }}
         >
-          <Tab key="solicitudes" title="Revisar solicitudes" />
-          <Tab key="pedido" title="Conglomerado de pedidos" />
+          {verGestSol && <Tab key="solicitudes" title="Revisar solicitudes" />}
+          {verCongPedido && <Tab key="pedido" title="Conglomerado de pedidos" />}
         </Tabs>
       </div>
 

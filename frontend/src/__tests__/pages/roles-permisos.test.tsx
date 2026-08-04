@@ -120,7 +120,7 @@ const MODULE_CHILDREN_TEST: Partial<Record<ModuleKey, ModuleKey[]>> = {
     'PEDIDO_SEM_CREAR', 'PEDIDO_SEM_EDITAR',
     'PEDIDO_SEM_INACTIVAR', 'PEDIDO_SEM_ELIMINAR',
   ],
-  CONGLOMERADO_PEDIDOS: [
+  GESTION_SOLICITUDES_CONGLOMERADO: [
     'CONG_VISTA_APROBACION', 'CONG_VISTA_CRONOGRAMA', 'CONG_VISTA_TOTALES',
     'CONG_VISTA_CATEGORIAS', 'CONG_APROBAR_PEDIDO', 'CONG_RECHAZAR_PEDIDO',
   ],
@@ -478,10 +478,10 @@ describe('Módulo Roles y Permisos Dinámicos — Plan de Pruebas EP3', () => {
   //   (cascade ascendente — MODULE_PARENTS)
   // ============================================================
   describe('RP-09: Cascade ascendente — CONG_APROBAR_PEDIDO a Escritura recalcula ancestros', () => {
-    it('CONGLOMERADO_PEDIDOS sube a Escritura y CONG_VISTA_APROBACION sube a Lectura (cappado)', () => {
+    it('GESTION_SOLICITUDES_CONGLOMERADO sube a Escritura y CONG_VISTA_APROBACION sube a Lectura (cappado)', () => {
       // ARRANGE — todos los módulos en Sin Acceso inicialmente
       const initial: Partial<Record<ModuleKey, ModulePermissions>> = {
-        CONGLOMERADO_PEDIDOS:  { ...nonePerms },
+        GESTION_SOLICITUDES_CONGLOMERADO: { ...nonePerms },
         CONG_VISTA_APROBACION: { ...nonePerms },
         CONG_VISTA_CRONOGRAMA: { ...nonePerms },
         CONG_VISTA_TOTALES:    { ...nonePerms },
@@ -494,7 +494,7 @@ describe('Módulo Roles y Permisos Dinámicos — Plan de Pruebas EP3', () => {
       const result = applyCascade('CONG_APROBAR_PEDIDO', writePerms, initial);
 
       // ASSERT — padre sube a Escritura
-      expect(levelFromPermissions(result.CONGLOMERADO_PEDIDOS)).toBe('write');
+      expect(levelFromPermissions(result.GESTION_SOLICITUDES_CONGLOMERADO)).toBe('write');
 
       // ASSERT — CONG_VISTA_APROBACION es READ_MODULE → se cappea a Lectura
       expect(levelFromPermissions(result.CONG_VISTA_APROBACION)).toBe('read');

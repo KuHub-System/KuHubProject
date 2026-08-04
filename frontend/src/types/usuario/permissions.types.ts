@@ -14,8 +14,7 @@ export type ModuleKey =
   | 'GESTION_UNIDADES'
   | 'SOLICITUD'
   | 'GESTION_PEDIDOS'
-  | 'GESTION_SOLICITUDES'
-  | 'CONGLOMERADO_PEDIDOS'
+  | 'GESTION_SOLICITUDES_CONGLOMERADO'
   | 'GESTION_PROVEEDORES'
   | 'BODEGA_TRANSITO'
   | 'GESTION_PEDIDOS_DIARIOS'
@@ -26,6 +25,7 @@ export type ModuleKey =
   | 'PEDIDO_SEM_INACTIVAR'
   | 'PEDIDO_SEM_ELIMINAR'
   // ── Acciones internas de Gestión de Solicitudes ──
+  | 'GEST_SOL_VISTA'
   | 'GEST_SOL_GESTIONAR'
   | 'GEST_SOL_RECHAZAR'
   | 'GESTION_ACADEMICA'
@@ -40,6 +40,7 @@ export type ModuleKey =
   | 'GP_VISTA_RESUMEN'
   | 'GP_VISTA_ACEPTADAS'
   // ── Vistas internas de Conglomerado de Pedidos ──
+  | 'CONG_VISTA_PEDIDO'
   | 'CONG_VISTA_APROBACION'
   | 'CONG_VISTA_CRONOGRAMA'
   | 'CONG_VISTA_TOTALES'
@@ -173,8 +174,7 @@ export const MODULE_LABELS: Record<ModuleKey, string> = {
   GESTION_UNIDADES:      'Gestión de Unidades',
   SOLICITUD:            'Solicitudes',
   GESTION_PEDIDOS:      'Gestión de Pedidos',
-  GESTION_SOLICITUDES:  'Gestión de Solicitudes',
-  CONGLOMERADO_PEDIDOS: 'Conglomerado de Pedidos',
+  GESTION_SOLICITUDES_CONGLOMERADO: 'Gestión Solicitudes y Conglomerado',
   GESTION_PROVEEDORES:  'Gestión de Proveedores',
   BODEGA_TRANSITO:           'Bodega de Tránsito',
   GESTION_PEDIDOS_DIARIOS:   'Gestión de Pedidos Diarios',
@@ -183,6 +183,7 @@ export const MODULE_LABELS: Record<ModuleKey, string> = {
   PEDIDO_SEM_EDITAR:     'Pedido Sem. · Editar Pedido',
   PEDIDO_SEM_INACTIVAR:  'Pedido Sem. · Inactivar Pedido',
   PEDIDO_SEM_ELIMINAR:   'Pedido Sem. · Eliminar Pedido',
+  GEST_SOL_VISTA:        'G. Solicitudes · Revisar Solicitudes',
   GEST_SOL_GESTIONAR:    'G. Solicitudes · Gestionar Estados',
   GEST_SOL_RECHAZAR:     'G. Solicitudes · Rechazar',
   GESTION_ACADEMICA:      'Gestión Académica',
@@ -206,6 +207,7 @@ export const MODULE_LABELS: Record<ModuleKey, string> = {
   ADMIN_CONFIG_SISTEMA:   'Adm. Sistema · Configuración',
   GP_VISTA_RESUMEN:       'G. Pedidos · Resumen de Productos',
   GP_VISTA_ACEPTADAS:     'G. Pedidos · Solicitudes Aceptadas',
+  CONG_VISTA_PEDIDO:      'Conglom. · Conglomerado de Pedidos',
   CONG_VISTA_APROBACION:  'Conglom. · Aprobación de Pedidos',
   CONG_VISTA_CRONOGRAMA:  'Conglom. · Cronograma Semanal',
   CONG_VISTA_TOTALES:     'Conglom. · Totales del Pedido',
@@ -257,8 +259,7 @@ export const MODULE_ICONS: Record<ModuleKey, string> = {
   GESTION_UNIDADES:      'lucide:scale',
   SOLICITUD:            'lucide:file-text',
   GESTION_PEDIDOS:      'lucide:shopping-cart',
-  GESTION_SOLICITUDES:  'lucide:clipboard-list',
-  CONGLOMERADO_PEDIDOS: 'lucide:layers',
+  GESTION_SOLICITUDES_CONGLOMERADO: 'lucide:clipboard-list',
   GESTION_PROVEEDORES:  'lucide:truck',
   BODEGA_TRANSITO:           'lucide:warehouse',
   GESTION_PEDIDOS_DIARIOS:   'lucide:shopping-cart',
@@ -267,6 +268,7 @@ export const MODULE_ICONS: Record<ModuleKey, string> = {
   PEDIDO_SEM_EDITAR:     'lucide:pencil',
   PEDIDO_SEM_INACTIVAR:  'lucide:power',
   PEDIDO_SEM_ELIMINAR:   'lucide:trash-2',
+  GEST_SOL_VISTA:        'lucide:eye',
   GEST_SOL_GESTIONAR:    'lucide:check-circle',
   GEST_SOL_RECHAZAR:     'lucide:x-circle',
   GESTION_ACADEMICA:      'lucide:book-open',
@@ -290,6 +292,7 @@ export const MODULE_ICONS: Record<ModuleKey, string> = {
   ADMIN_CONFIG_SISTEMA:   'lucide:sliders-horizontal',
   GP_VISTA_RESUMEN:       'lucide:package-check',
   GP_VISTA_ACEPTADAS:     'lucide:clipboard-check',
+  CONG_VISTA_PEDIDO:      'lucide:layers',
   CONG_VISTA_APROBACION:  'lucide:shield-check',
   CONG_VISTA_CRONOGRAMA:  'lucide:calendar-range',
   CONG_VISTA_TOTALES:     'lucide:package-check',
@@ -344,12 +347,12 @@ export const PAGE_TO_MODULE: Record<string, ModuleKey | ModuleKey[]> = {
   'historial-movimientos':  'HISTORIAL_MOVIMIENTOS',
   'solicitud':              'SOLICITUD',
   'gestion-pedidos':      'GESTION_PEDIDOS',
-  // "Conglomerado de Pedidos" se fusionó como pestaña de /gestion-solicitudes -- se
-  // acepta cualquiera de los dos permisos por si la matriz dinámica quedó desincronizada
-  // de roles-config.ts (donde ambos siempre van juntos hoy).
-  'gestion-solicitudes':  ['GESTION_SOLICITUDES', 'CONGLOMERADO_PEDIDOS'],
+  // "Conglomerado de Pedidos" se fusionó como pestaña de /gestion-solicitudes bajo el mismo
+  // módulo padre GESTION_SOLICITUDES_CONGLOMERADO (CONGLOMERADO_PEDIDOS ya no existe como
+  // codigo_modulo independiente — ver ConexionXD_v3.sql).
+  'gestion-solicitudes':  'GESTION_SOLICITUDES_CONGLOMERADO',
   'historico-pedidos':    'HISTORICO_PEDIDOS',
-  'conglomerado-pedidos': 'CONGLOMERADO_PEDIDOS',
+  'conglomerado-pedidos': 'GESTION_SOLICITUDES_CONGLOMERADO',
   'gestion-proveedores':  ['GESTION_PROVEEDORES', 'GPRV_ORDENES', 'GPRV_DATOS_PROV'],
   'bodega-transito':      ['BODEGA_TRANSITO', 'GESTION_PEDIDOS_DIARIOS'],
   'pedido-semanal-a-bodega': 'PEDIDO_SEMANAL_BODEGA',

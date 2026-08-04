@@ -23,6 +23,7 @@ import {
   obtenerNombreRolPorId
 } from '../services/usuario/usuario-service';
 import { useAuth } from '../contexts/auth-context';
+import { useSistemaConfig } from '../contexts/sistema-config-context';
 import { useModulePermission, usePermission } from '../contexts/permission-context';
 import { useToast, useConfirmDeactivate } from '../hooks/useToast';
 import { usePageTitle } from '../hooks/usePageTitle';
@@ -76,9 +77,11 @@ const MODULE_GROUPS: { title: string; modules: ModuleKey[] }[] = [
       'PEDIDO_SEMANAL_BODEGA',
       'PEDIDO_SEM_CREAR', 'PEDIDO_SEM_EDITAR', 'PEDIDO_SEM_INACTIVAR', 'PEDIDO_SEM_ELIMINAR',
       'SOLICITUD',
-      'GESTION_SOLICITUDES', 'GEST_SOL_GESTIONAR', 'GEST_SOL_RECHAZAR',
+      'GESTION_SOLICITUDES_CONGLOMERADO', 'GEST_SOL_VISTA', 'GEST_SOL_GESTIONAR', 'GEST_SOL_RECHAZAR',
+      'CONG_VISTA_PEDIDO', 'CONG_VISTA_APROBACION', 'CONG_APROBAR_PEDIDO', 'CONG_RECHAZAR_PEDIDO', 'CONG_VISTA_CRONOGRAMA', 'CONG_VISTA_TOTALES', 'CONG_VISTA_CATEGORIAS',
+      // Estas 3 filas se ocultan en runtime cuando `solicitudesEnPedido` está activo — ver
+      // GESTION_PEDIDOS_AUTO_HIDDEN y el filtro aplicado sobre group.modules más abajo.
       'GESTION_PEDIDOS', 'GP_VISTA_RESUMEN', 'GP_VISTA_ACEPTADAS',
-      'CONGLOMERADO_PEDIDOS', 'CONG_VISTA_APROBACION', 'CONG_APROBAR_PEDIDO', 'CONG_RECHAZAR_PEDIDO', 'CONG_VISTA_CRONOGRAMA', 'CONG_VISTA_TOTALES', 'CONG_VISTA_CATEGORIAS',
       'GESTION_PROVEEDORES',
         'GPRV_DATOS_PROV', 'GPRV_EXPORT_DATOS',
         'GPRV_NUEVO_PROV', 'GPRV_SYNC_EXCEL', 'GPRV_GENERAR_ORDEN', 'GPRV_COTIZACION',
@@ -121,12 +124,19 @@ const MODULE_GROUPS: { title: string; modules: ModuleKey[] }[] = [
   },
 ];
 
+// Filas que se ocultan en la matriz cuando `solicitudesEnPedido` (sistema-config-context.tsx)
+// está activo: la página Gestión de Pedidos deja de usarse porque el proceso pasa a ser
+// automático (mismo criterio que sidebar.tsx:114, que oculta el ítem del menú). Solo afecta
+// el render — las filas de `permiso_rol` en la BD NUNCA se tocan ni se eliminan, así que si el
+// administrador desactiva el flag más adelante, los permisos ya configurados reaparecen intactos.
+const GESTION_PEDIDOS_AUTO_HIDDEN = new Set<ModuleKey>(['GESTION_PEDIDOS', 'GP_VISTA_RESUMEN', 'GP_VISTA_ACEPTADAS']);
+
 // Submódulos (vistas/acciones internas) → se muestran indentados bajo su padre.
 const SUBMODULES = new Set<ModuleKey>([
   'PEDIDO_SEM_CREAR', 'PEDIDO_SEM_EDITAR', 'PEDIDO_SEM_INACTIVAR', 'PEDIDO_SEM_ELIMINAR',
-  'GEST_SOL_GESTIONAR', 'GEST_SOL_RECHAZAR',
+  'GEST_SOL_VISTA', 'GEST_SOL_GESTIONAR', 'GEST_SOL_RECHAZAR',
   'GP_VISTA_RESUMEN', 'GP_VISTA_ACEPTADAS',
-  'CONG_VISTA_APROBACION', 'CONG_APROBAR_PEDIDO', 'CONG_RECHAZAR_PEDIDO',
+  'CONG_VISTA_PEDIDO', 'CONG_VISTA_APROBACION', 'CONG_APROBAR_PEDIDO', 'CONG_RECHAZAR_PEDIDO',
   'CONG_VISTA_CRONOGRAMA', 'CONG_VISTA_TOTALES', 'CONG_VISTA_CATEGORIAS',
   'GESTION_CATEGORIAS', 'GESTION_UNIDADES',
   'GESTION_PEDIDOS_DIARIOS',
@@ -164,9 +174,10 @@ const ALL_MODULES: ModuleKey[] = MODULE_GROUPS.flatMap((g) => g.modules);
 // (Escritura las habilita todas; el admin luego puede desactivar las que quiera).
 const MODULE_CHILDREN: Partial<Record<ModuleKey, ModuleKey[]>> = {
   PEDIDO_SEMANAL_BODEGA: ['PEDIDO_SEM_CREAR', 'PEDIDO_SEM_EDITAR', 'PEDIDO_SEM_INACTIVAR', 'PEDIDO_SEM_ELIMINAR'],
-  GESTION_SOLICITUDES:   ['GEST_SOL_GESTIONAR', 'GEST_SOL_RECHAZAR'],
+  GESTION_SOLICITUDES_CONGLOMERADO: ['GEST_SOL_VISTA', 'GEST_SOL_GESTIONAR', 'GEST_SOL_RECHAZAR', 'CONG_VISTA_PEDIDO', 'CONG_VISTA_APROBACION', 'CONG_VISTA_CRONOGRAMA', 'CONG_VISTA_TOTALES', 'CONG_VISTA_CATEGORIAS', 'CONG_APROBAR_PEDIDO', 'CONG_RECHAZAR_PEDIDO'],
   GESTION_PEDIDOS:       ['GP_VISTA_RESUMEN', 'GP_VISTA_ACEPTADAS'],
-  CONGLOMERADO_PEDIDOS:  ['CONG_VISTA_APROBACION', 'CONG_VISTA_CRONOGRAMA', 'CONG_VISTA_TOTALES', 'CONG_VISTA_CATEGORIAS', 'CONG_APROBAR_PEDIDO', 'CONG_RECHAZAR_PEDIDO'],
+  GEST_SOL_VISTA:        ['GEST_SOL_GESTIONAR', 'GEST_SOL_RECHAZAR'],
+  CONG_VISTA_PEDIDO:     ['CONG_VISTA_APROBACION', 'CONG_VISTA_CRONOGRAMA', 'CONG_VISTA_TOTALES', 'CONG_VISTA_CATEGORIAS', 'CONG_APROBAR_PEDIDO', 'CONG_RECHAZAR_PEDIDO'],
   CONG_VISTA_APROBACION: ['CONG_APROBAR_PEDIDO', 'CONG_RECHAZAR_PEDIDO'],
   GESTION_PROVEEDORES:   ['GPRV_DATOS_PROV', 'GPRV_EXPORT_DATOS', 'GPRV_NUEVO_PROV', 'GPRV_SYNC_EXCEL', 'GPRV_GENERAR_ORDEN', 'GPRV_COTIZACION', 'GPRV_CAMBIAR_ESTADO_PROV', 'GPRV_EDITAR_PROV', 'GPRV_ASIGNAR_PROD', 'GPRV_ELIMINAR_PROV', 'GPRV_ORDENES', 'GPRV_PENDIENTE_ENVIADA', 'GPRV_CONFIRMADA', 'GPRV_CANCELAR_OP', 'GPRV_EXPORT_OP'],
   GESTION_ACADEMICA:     ['GA_VER_ASIGNATURA', 'GA_CREAR_ASIGNATURA', 'GA_CREAR_SECCION', 'GA_EDITAR_ASIGNATURA', 'GA_ELIMINAR_ASIGNATURA', 'GA_EDITAR_SECCION', 'GA_ELIMINAR_SECCION'],
@@ -196,6 +207,8 @@ const MODULE_PARENTS: Partial<Record<ModuleKey, ModuleKey[]>> = (() => {
 // ── Separadores visuales de sección dentro de un módulo padre ────────────────
 // Antes de renderizar el módulo indicado se muestra una fila etiqueta de sección.
 const SECTION_HEADERS: Partial<Record<ModuleKey, string>> = {
+  GEST_SOL_VISTA:          'Pestaña: Gestión Solicitudes',
+  CONG_VISTA_PEDIDO:       'Pestaña: Gestión Conglomerado',
   GPRV_DATOS_PROV:         'Pestaña: Proveedores',
   GPRV_ORDENES:            'Pestaña: Órdenes de Pedido',
   GA_VER_ASIGNATURA:       'Pestaña: Gestión Académica',
@@ -517,8 +530,8 @@ const READ_MODULES = new Set<ModuleKey>([
   'GPD_RESUMEN_PERIODO',
 ]);
 const AGGREGATE_MODULES = new Set<ModuleKey>([
-  'PEDIDO_SEMANAL_BODEGA', 'GESTION_SOLICITUDES', 'GESTION_PEDIDOS',
-  'CONGLOMERADO_PEDIDOS', 'CONG_VISTA_CATEGORIAS',
+  'PEDIDO_SEMANAL_BODEGA', 'GESTION_SOLICITUDES_CONGLOMERADO', 'GESTION_PEDIDOS',
+  'GEST_SOL_VISTA', 'CONG_VISTA_PEDIDO', 'CONG_VISTA_CATEGORIAS',
   'GESTION_PROVEEDORES',
   'GESTION_ACADEMICA',
   'GESTION_PEDIDOS_DIARIOS',
@@ -976,6 +989,7 @@ const GestionUsuariosPage: React.FC = () => {
   // ═══════════════════════════════════════════════════════════════════════
 
   const restaurarModal = useDisclosure();
+  const { solicitudesEnPedido } = useSistemaConfig();
 
   const [localPermissions,  setLocalPermissions]  = React.useState<RolePermission[]>([]);
   const [saveStatus,        setSaveStatus]        = React.useState<'idle' | 'pending' | 'saving' | 'saved' | 'error'>('idle');
@@ -1528,6 +1542,12 @@ const GestionUsuariosPage: React.FC = () => {
                     ) : (
                       MODULE_GROUPS.map((group) => {
                         const collapsed = collapsedGroups[group.title];
+                        // Gestión de Pedidos se oculta de la matriz mientras `solicitudesEnPedido`
+                        // esté activo (ver GESTION_PEDIDOS_AUTO_HIDDEN) — no se borra ningún dato,
+                        // solo se saltan esas filas del render.
+                        const visibleModules = solicitudesEnPedido
+                          ? group.modules.filter((m) => !GESTION_PEDIDOS_AUTO_HIDDEN.has(m))
+                          : group.modules;
                         return (
                           <React.Fragment key={group.title}>
                             {/* Fila de categoría (colapsable) */}
@@ -1539,7 +1559,7 @@ const GestionUsuariosPage: React.FC = () => {
                                 <div className="flex items-center gap-2">
                                   <Icon icon={collapsed ? 'lucide:chevron-right' : 'lucide:chevron-down'} width={14} className="text-default-500" />
                                   <span className="text-[11px] font-bold uppercase tracking-wider text-default-500">{group.title}</span>
-                                  <span className="text-[10px] text-default-400">({group.modules.length})</span>
+                                  <span className="text-[10px] text-default-400">({visibleModules.length})</span>
                                 </div>
                               </td>
                               <td colSpan={localPermissions.length} className="bg-default-100/70 dark:bg-content2" />
@@ -1547,8 +1567,8 @@ const GestionUsuariosPage: React.FC = () => {
 
                             {/* Filas de módulos del grupo */}
                             {!collapsed && (() => {
-                              const bodegaStartIdx = group.modules.indexOf('BODEGA_TRANSITO' as ModuleKey);
-                              return group.modules.map((moduleKey, modIdx) => {
+                              const bodegaStartIdx = visibleModules.indexOf('BODEGA_TRANSITO' as ModuleKey);
+                              return visibleModules.map((moduleKey, modIdx) => {
                               const inBodegaCtx = bodegaStartIdx !== -1 && modIdx >= bodegaStartIdx;
                               const label      = (inBodegaCtx && BODEGA_LABEL_OVERRIDES[moduleKey]) ? BODEGA_LABEL_OVERRIDES[moduleKey]! : MODULE_LABELS[moduleKey];
                               const icon       = MODULE_ICONS[moduleKey];

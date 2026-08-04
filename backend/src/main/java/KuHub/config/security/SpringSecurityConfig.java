@@ -458,7 +458,7 @@ public class SpringSecurityConfig {
                                 "/api/v*/solicitudes/abastecimiento-bodega"
                         ).authenticated()
 
-                        // Escritura de solicitudes: dinámico (SOLICITUD / GESTION_SOLICITUDES) vía interceptor
+                        // Escritura de solicitudes: dinámico (SOLICITUD / GESTION_SOLICITUDES_CONGLOMERADO) vía interceptor
                         .requestMatchers(HttpMethod.POST, "/api/v*/solicitudes/**", "/api/v*/solicitud/**").authenticated()
                         .requestMatchers(HttpMethod.PUT, "/api/v*/solicitudes/**", "/api/v*/solicitud/**").authenticated()
                         .requestMatchers(HttpMethod.PATCH, "/api/v*/solicitudes/**", "/api/v*/solicitud/**").authenticated()
@@ -488,7 +488,7 @@ public class SpringSecurityConfig {
                         "/api/v*/pedido-solicitud/**"
                         ).authenticated()
 
-                        // Escritura de pedidos: dinámico (GESTION_PEDIDOS / CONGLOMERADO_PEDIDOS /
+                        // Escritura de pedidos: dinámico (GESTION_PEDIDOS / GESTION_SOLICITUDES_CONGLOMERADO /
                         // GESTION_PEDIDOS_DIARIOS para entregas) vía interceptor
                         .requestMatchers(HttpMethod.POST,
                         "/api/v*/pedido/entregas-diarias",

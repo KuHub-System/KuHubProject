@@ -199,6 +199,10 @@ const mockSolicitudPerms = (canCreate = true) =>
 
 const mockGestionPerms = (solGestionar = true, solRechazar = true) =>
   vi.spyOn(permissionContext, 'useModulePermission').mockImplementation((modulo) => {
+    // GEST_SOL_VISTA gatea la visibilidad de la pestaña "Revisar solicitudes" — se deja
+    // en Lectura (canRead=true, canUpdate=false) para no interferir con los parámetros
+    // solGestionar/solRechazar que ya controlan el resto de estos tests.
+    if (modulo === 'GEST_SOL_VISTA')     return { ...defaultModulePerm, canRead: true };
     if (modulo === 'GEST_SOL_GESTIONAR') return { ...defaultModulePerm, canUpdate: solGestionar };
     if (modulo === 'GEST_SOL_RECHAZAR')  return { ...defaultModulePerm, canUpdate: solRechazar };
     return defaultModulePerm;

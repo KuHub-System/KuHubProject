@@ -164,7 +164,7 @@ public class PermisoRolServiceImpl implements PermisoRolService {
     private boolean[] defaultGestorPedidos(String m) {
         if ("DASHBOARD".equals(m))
             return new boolean[]{true, false, false, false};
-        if (Set.of("GESTION_PEDIDOS", "GESTION_SOLICITUDES", "CONGLOMERADO_PEDIDOS").contains(m))
+        if (Set.of("GESTION_PEDIDOS", "GESTION_SOLICITUDES_CONGLOMERADO").contains(m))
             return new boolean[]{true, true, true, false};
         return new boolean[]{false, false, false, false};
     }

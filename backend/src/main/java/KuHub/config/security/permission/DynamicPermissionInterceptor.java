@@ -102,8 +102,8 @@ public class DynamicPermissionInterceptor implements HandlerInterceptor {
         skip("/api/v*/pedido/entregas-diarias", P),       // lectura de entregas via POST con DateRangeDTO (requiere solo lectura GESTION_PEDIDOS_DIARIOS)
         mod("/api/v*/pedido/preparar-entrega", List.of("GPD_PREPARAR_ENTREGA", "GESTION_PEDIDOS_DIARIOS", "GESTION_PEDIDOS"), P),
         mod("/api/v*/orden-pedido/detalles/entregar", List.of("GESTION_PEDIDOS_DIARIOS", "GESTION_PEDIDOS"), PA),
-        mod("/api/v*/orden-pedido/reservar-disponible/**", List.of("CONG_APROBAR_PEDIDO", "CONGLOMERADO_PEDIDOS", "GESTION_PEDIDOS"), P),
-        mod("/api/v*/pedido/change-massive-status", List.of("CONG_APROBAR_PEDIDO", "CONG_RECHAZAR_PEDIDO", "CONGLOMERADO_PEDIDOS", "GESTION_PEDIDOS"), PA),
+        mod("/api/v*/orden-pedido/reservar-disponible/**", List.of("CONG_APROBAR_PEDIDO", "GESTION_SOLICITUDES_CONGLOMERADO", "GESTION_PEDIDOS"), P),
+        mod("/api/v*/pedido/change-massive-status", List.of("CONG_APROBAR_PEDIDO", "CONG_RECHAZAR_PEDIDO", "GESTION_SOLICITUDES_CONGLOMERADO", "GESTION_PEDIDOS"), PA),
         mod("/api/v*/pedido-semana-bodega/importar-excel", List.of("PEDIDO_SEM_CREAR"), P),
 
         // ── Inventario y catálogos ──
@@ -134,15 +134,15 @@ public class DynamicPermissionInterceptor implements HandlerInterceptor {
         mod("/api/v*/seccion/**", List.of("GESTION_ACADEMICA"), P, PU, PA, D),
         mod("/api/v*/docente-seccion/**", List.of("GESTION_ACADEMICA"), P, PU, PA, D),
 
-        // ── Solicitudes (SOLICITUD = crear; GESTION_SOLICITUDES = administrar; misma ruta) ──
-        mod("/api/v*/solicitud/**", List.of("SOLICITUD", "GESTION_SOLICITUDES"), P, PU, PA, D),
-        mod("/api/v*/solicitudes/**", List.of("SOLICITUD", "GESTION_SOLICITUDES"), P, PU, PA, D),
+        // ── Solicitudes (SOLICITUD = crear; GESTION_SOLICITUDES_CONGLOMERADO = administrar; misma ruta) ──
+        mod("/api/v*/solicitud/**", List.of("SOLICITUD", "GESTION_SOLICITUDES_CONGLOMERADO"), P, PU, PA, D),
+        mod("/api/v*/solicitudes/**", List.of("SOLICITUD", "GESTION_SOLICITUDES_CONGLOMERADO"), P, PU, PA, D),
 
-        // ── Pedidos (GESTION_PEDIDOS / CONGLOMERADO_PEDIDOS comparten endpoints) ──
+        // ── Pedidos (GESTION_PEDIDOS / GESTION_SOLICITUDES_CONGLOMERADO comparten endpoints) ──
         mod("/api/v*/orden-pedido/**", List.of("GPRV_GENERAR_ORDEN", "GESTION_PEDIDOS", "GESTION_PROVEEDORES"), P, PU, PA, D),
-        mod("/api/v*/pedido/**", List.of("GESTION_PEDIDOS", "CONGLOMERADO_PEDIDOS"), P, PU, PA, D),
-        mod("/api/v*/detalle-pedido/**", List.of("GESTION_PEDIDOS", "CONGLOMERADO_PEDIDOS"), P, PU, PA, D),
-        mod("/api/v*/pedido-solicitud/**", List.of("GESTION_PEDIDOS", "CONGLOMERADO_PEDIDOS"), P, PU, PA, D),
+        mod("/api/v*/pedido/**", List.of("GESTION_PEDIDOS", "GESTION_SOLICITUDES_CONGLOMERADO"), P, PU, PA, D),
+        mod("/api/v*/detalle-pedido/**", List.of("GESTION_PEDIDOS", "GESTION_SOLICITUDES_CONGLOMERADO"), P, PU, PA, D),
+        mod("/api/v*/pedido-solicitud/**", List.of("GESTION_PEDIDOS", "GESTION_SOLICITUDES_CONGLOMERADO"), P, PU, PA, D),
         mod("/api/v*/categoria-abastecimiento/**", List.of("GESTION_PROVEEDORES", "GESTION_PEDIDOS", "INVENTARIO"), P, PU, PA, D),
 
         // ── Proveedores ──

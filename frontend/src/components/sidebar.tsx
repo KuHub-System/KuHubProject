@@ -76,7 +76,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar, onLogout }) =>
       items: [
         { title: 'Pedido Semanal a Bodega', path: '/pedido-semanal-a-bodega', icon: 'lucide:package-open', pageId: 'pedido-semanal-a-bodega' },
         { title: 'Solicitud', path: '/solicitud', icon: 'lucide:clipboard-list', pageId: 'solicitud' },
-        { title: 'Gestión de Solicitudes', path: '/gestion-solicitudes', icon: 'lucide:clipboard-check', pageId: 'gestion-solicitudes' },
+        { title: 'Ges. Solicitudes y Conglomerado', path: '/gestion-solicitudes', icon: 'lucide:clipboard-check', pageId: 'gestion-solicitudes' },
         { title: 'Gestión de Pedidos', path: '/gestion-pedidos', icon: 'lucide:shopping-cart', pageId: 'gestion-pedidos' },
         { title: 'Gestión de Proveedores', path: '/gestion-proveedores', icon: 'lucide:truck', pageId: 'gestion-proveedores' },
         { title: 'Gestión Académica', path: '/gestion-academica', icon: 'lucide:graduation-cap', pageId: 'gestion-academica' },
@@ -104,22 +104,36 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar, onLogout }) =>
     }
   ];
 
+  // Título dinámico de "gestion-solicitudes": si el rol solo puede ver una de las dos
+  // pestañas (Revisar solicitudes / Conglomerado de pedidos), el ítem se acorta a esa sola
+  // sección — mostrar la otra sería engañoso si no puede verla. CONG_VISTA_PEDIDO y
+  // GEST_SOL_VISTA gatean cada pestaña completa (ver gestion-solicitudes.tsx).
+  const tieneVistaSolicitudes = canAccess('GEST_SOL_VISTA', 'read');
+  const tieneVistaConglomerado = canAccess('CONG_VISTA_PEDIDO', 'read');
+  const tituloGestionSolicitudes = tieneVistaSolicitudes && !tieneVistaConglomerado
+    ? 'Ges. Solicitudes'
+    : !tieneVistaSolicitudes && tieneVistaConglomerado
+      ? 'Ges. Conglomerado'
+      : 'Ges. Solicitudes y Conglomerado';
+
   /**
    * Filtra las categorías y sus items según permisos
    */
   const filteredCategories = menuCategories.map(category => ({
     ...category,
-    items: category.items.filter(item => {
-      if (!user) return false;
-      if (item.pageId === 'gestion-pedidos' && solicitudesEnPedido) return false;
-      if (isAdmin) return true;
-      const moduleKey = PAGE_TO_MODULE[item.pageId];
-      if (!moduleKey) return false;
-      // Si es un array, basta con que CUALQUIERA de los módulos tenga lectura (OR-gate).
-      return Array.isArray(moduleKey)
-        ? moduleKey.some(k => canAccess(k, 'read'))
-        : canAccess(moduleKey, 'read');
-    })
+    items: category.items
+      .filter(item => {
+        if (!user) return false;
+        if (item.pageId === 'gestion-pedidos' && solicitudesEnPedido) return false;
+        if (isAdmin) return true;
+        const moduleKey = PAGE_TO_MODULE[item.pageId];
+        if (!moduleKey) return false;
+        // Si es un array, basta con que CUALQUIERA de los módulos tenga lectura (OR-gate).
+        return Array.isArray(moduleKey)
+          ? moduleKey.some(k => canAccess(k, 'read'))
+          : canAccess(moduleKey, 'read');
+      })
+      .map(item => item.pageId === 'gestion-solicitudes' ? { ...item, title: tituloGestionSolicitudes } : item)
   })).filter(category => category.items.length > 0);
 
   // Estado para controlar qué categorías están colapsadas

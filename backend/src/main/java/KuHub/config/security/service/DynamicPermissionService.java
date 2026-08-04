@@ -80,7 +80,7 @@ public class DynamicPermissionService {
      * Retorna true si el usuario tiene el nivel requerido en AL MENOS UNO de ellos.
      *
      * Útil para endpoints del backend que son compartidos por varios módulos del
-     * frontend (ej: /api/v1/pedido lo usan GESTION_PEDIDOS y CONGLOMERADO_PEDIDOS).
+     * frontend (ej: /api/v1/pedido lo usan GESTION_PEDIDOS y GESTION_SOLICITUDES_CONGLOMERADO).
      */
     @Transactional(readOnly = true)
     public boolean checkAny(Authentication authentication, java.util.List<String> moduleCodes, String level) {
