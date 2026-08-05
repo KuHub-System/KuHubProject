@@ -1684,7 +1684,19 @@ const GestionUsuariosPage: React.FC = () => {
       )}
 
       {/* ── Modal crear/editar usuario ── */}
-      <Modal isOpen={isOpen} onOpenChange={onOpenChange} size="2xl">
+      <Modal
+        isOpen={isOpen}
+        onOpenChange={onOpenChange}
+        isDismissable={false}
+        size="2xl"
+        scrollBehavior="inside"
+        radius="lg"
+        backdrop="blur"
+        classNames={{
+          base: 'rounded-2xl overflow-hidden max-h-[75vh]',
+          closeButton: 'hover:bg-default-100 cursor-pointer',
+        }}
+      >
         <ModalContent>
           {(onClose) => (
             <>
@@ -1696,7 +1708,7 @@ const GestionUsuariosPage: React.FC = () => {
                   </span>
                 </div>
               </ModalHeader>
-              <ModalBody>
+              <ModalBody className="overflow-y-scroll custom-scrollbar">
                 <div className="space-y-4">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <Input
