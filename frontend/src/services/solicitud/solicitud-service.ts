@@ -1141,6 +1141,8 @@ export interface IStockDisponibleItem {
   abreviatura: string;
   fechaRegistro: string;
   tipoDisponible: string;
+  /** Usuario que registró el sobrante. Solo viene poblado en la vista sin agrupar (agrupado=false); en la agrupada es null. */
+  usuario: string | null;
 }
 
 export interface IStockDisponiblePage {
@@ -1151,12 +1153,40 @@ export interface IStockDisponiblePage {
   totalRegistros: number;
 }
 
-export const obtenerStockDisponiblesService = async (
-  tipo: string,
-  page: number
+/**
+ * Lista el stock disponible de Inventario, paginado, filtrable por categoría y por nombre de
+ * producto (búsqueda). agrupado=true (default): una fila por producto con la cantidad sumada de
+ * todos sus registros. agrupado=false: una fila por cada evento de registro individual, con el
+ * usuario que lo generó.
+ * Endpoint propio (permiso SD_INVENTARIO): no se llama si el rol no tiene esa lectura.
+ * GET /api/v1/stock-disponible/inventario
+ */
+export const obtenerStockDisponiblesInventarioService = async (
+  page: number,
+  idCategoria?: number,
+  agrupado: boolean = true,
+  busqueda?: string
 ): Promise<IStockDisponiblePage> => {
-  const response = await api.get<IStockDisponiblePage>('/stock-disponible/listar', {
-    params: { tipo, page },
+  const response = await api.get<IStockDisponiblePage>('/stock-disponible/inventario', {
+    params: { page, idCategoria, agrupado, busqueda: busqueda || undefined },
+  });
+  return response.data;
+};
+
+/**
+ * Lista el stock disponible de Bodega de Tránsito, paginado, filtrable por categoría y búsqueda
+ * (ver semántica de "agrupado" en obtenerStockDisponiblesInventarioService).
+ * Endpoint propio (permiso SD_BODEGA_TRANSITO): no se llama si el rol no tiene esa lectura.
+ * GET /api/v1/stock-disponible/bodega-transito
+ */
+export const obtenerStockDisponiblesBodegaService = async (
+  page: number,
+  idCategoria?: number,
+  agrupado: boolean = true,
+  busqueda?: string
+): Promise<IStockDisponiblePage> => {
+  const response = await api.get<IStockDisponiblePage>('/stock-disponible/bodega-transito', {
+    params: { page, idCategoria, agrupado, busqueda: busqueda || undefined },
   });
   return response.data;
 };
@@ -1180,15 +1210,30 @@ export interface IDisponibleRealItem {
   disponible: number;
 }
 
+export interface IDisponibleRealPage {
+  data: IDisponibleRealItem[];
+  page: number;
+  pageSize: number;
+  totalPaginas: number;
+  totalRegistros: number;
+}
+
 /**
  * Disponible real por producto: (inventario + bodega de tránsito) − demanda comprometida de
  * solicitudes EN_PEDIDO abastecidas − reservas EN_PEDIDO. Mismo cálculo de la columna "Disponible"
  * de Generar OP / "Por Pedido" del Conglomerado (stock libre, no asociado a ninguna solicitud).
- * Devuelve la lista completa (el frontend filtra por nombre y scrollea).
+ * Paginado y filtrable por categoría y búsqueda de nombre (resueltos en SQL).
+ * Endpoint propio (permiso SD_DISPONIBLE_REAL): no se llama si el rol no tiene esa lectura.
  * GET /api/v1/stock-disponible/disponible-real
  */
-export const obtenerDisponibleRealService = async (): Promise<IDisponibleRealItem[]> => {
-  const response = await api.get<IDisponibleRealItem[]>('/stock-disponible/disponible-real');
-  return response.data ?? [];
+export const obtenerDisponibleRealService = async (
+  page: number,
+  idCategoria?: number,
+  busqueda?: string
+): Promise<IDisponibleRealPage> => {
+  const response = await api.get<IDisponibleRealPage>('/stock-disponible/disponible-real', {
+    params: { page, idCategoria, busqueda: busqueda || undefined },
+  });
+  return response.data;
 };
 
