@@ -159,6 +159,16 @@ export interface IDetallePedidoSemanaBodegaDTO {
 }
 
 /**
+ * DTO que agrupa los detalles de un pedido semanal por categoría (Backend).
+ * nombreCategoria aparece una sola vez por grupo; productos y categorías vienen
+ * ordenados alfabéticamente desde la consulta.
+ */
+export interface ICategoriaConDetallesPedidoSemanaBodegaDTO {
+  nombreCategoria: string;
+  productos: IDetallePedidoSemanaBodegaDTO[];
+}
+
+/**
  * DTO para un pedido semanal en Paginación (Backend)
  */
 export interface IPedidoSemanaBodegaPaginedDTO {
@@ -169,7 +179,7 @@ export interface IPedidoSemanaBodegaPaginedDTO {
   totalDetalles: number;
   idSemana?: number | null;
   idAsignatura?: number | null;
-  detalles: IDetallePedidoSemanaBodegaDTO[];
+  detalles: ICategoriaConDetallesPedidoSemanaBodegaDTO[];
 }
 
 /**

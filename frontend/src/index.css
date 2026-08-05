@@ -33,6 +33,9 @@
     border: 2px solid transparent;
     background-clip: padding-box;
   }
+  &::-webkit-scrollbar-corner {
+    background: transparent;
+  }
   scrollbar-width: thin;
   scrollbar-color: #cbd5e1 transparent;
 }

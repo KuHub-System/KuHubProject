@@ -56,7 +56,19 @@ import {
 } from '../services/pedido/pedido-semanal-bodega-service';
 import { obtenerProductosParaPedidoSemanaBodegaService } from '../services/inventario/producto-service';
 import { IProductoPedidoSemanaBodegaSelection } from '../types/inventario/producto.types';
-import { IPedidoSemanaBodegaPaginedDTO, IDetallePedidoSemanaBodegaDTO, IPaginationMeta, IPedidoSemanaBodegaCountResponse } from '../types/pedido/pedidoSemanaBodega.types';
+import { IPedidoSemanaBodegaPaginedDTO, IDetallePedidoSemanaBodegaDTO, ICategoriaConDetallesPedidoSemanaBodegaDTO, IPaginationMeta, IPedidoSemanaBodegaCountResponse } from '../types/pedido/pedidoSemanaBodega.types';
+
+/**
+ * Aplana los detalles de un pedido semanal (agrupados por categoría) a una lista plana de productos.
+ * El backend agrupa por categoría solo para la vista; el resto de la lógica (conteo, edición,
+ * detección de cambios) sigue trabajando con la lista plana de productos.
+ */
+const aplanarDetallesPedidoSemanaBodega = (
+  detalles?: ICategoriaConDetallesPedidoSemanaBodegaDTO[]
+): IDetallePedidoSemanaBodegaDTO[] => {
+  if (!detalles) return [];
+  return detalles.flatMap(grupo => grupo.productos || []);
+};
 
 /**
  * Página de pedido semanal a bodega.
@@ -675,14 +687,14 @@ const PedidoSemanalABodegaPage: React.FC = () => {
           <CardBody className="p-0">
             {/* Caja de altura fija: scroll vertical interno + barra horizontal siempre visible.
                 min-w-[850px] en la tabla fuerza la barra horizontal cuando no cabe (zoom / pantalla angosta). */}
-            <div ref={tableScrollRef} className="overflow-auto max-h-[calc(100vh-180px)] min-h-[300px] rounded-xl">
+            <div ref={tableScrollRef} className="overflow-x-scroll overflow-y-scroll custom-scrollbar max-h-[calc(100vh-180px)] min-h-[300px] rounded-xl">
             <Table
               aria-label="Tabla de pedidos semanales"
               removeWrapper
               layout="fixed"
               classNames={{
                 table: "min-w-[850px]",
-                th: "bg-default-100 dark:bg-default-100 text-default-500 font-bold uppercase text-xs h-12 sticky top-0 z-20",
+                th: "bg-default-100 dark:bg-default-100 text-default-500 font-bold uppercase text-xs h-12 sticky top-0 z-20 shadow-sm",
                 td: "py-3 border-b border-default-50 dark:border-default-50/10 group-data-[last=true]:border-none px-4",
               }}
               bottomContent={
@@ -743,7 +755,7 @@ const PedidoSemanalABodegaPage: React.FC = () => {
                     </TableCell>
                     <TableCell className="text-center">
                       <Chip size="sm" variant="flat">
-                        {pedidoSemanaBodega.detalles?.length || 0} producto{(pedidoSemanaBodega.detalles?.length || 0) > 1 ? 's' : ''}
+                        {pedidoSemanaBodega.totalDetalles || 0} producto{(pedidoSemanaBodega.totalDetalles || 0) > 1 ? 's' : ''}
                       </Chip>
                     </TableCell>
                     <TableCell className="text-center">{renderEstado(pedidoSemanaBodega.estadoPedido)}</TableCell>
@@ -815,7 +827,7 @@ const PedidoSemanalABodegaPage: React.FC = () => {
         onOpenChange={onOpenChange}
         isDismissable={false}
         size="3xl"
-        scrollBehavior="inside"
+        scrollBehavior="normal"
         radius="lg"
         backdrop="blur"
         classNames={{
@@ -825,20 +837,26 @@ const PedidoSemanalABodegaPage: React.FC = () => {
       >
         <ModalContent>
           {(onClose) => (
-            <DetallePedidoSemanaBodega
-              pedidoSemanaBodega={pedidoSemanaBodegaSeleccionada}
-              mode={modalMode}
-              productos={productos}
-              onClose={onClose}
-              onSave={async (nuevaPedidoSemanaBodega, updatePayload) => {
-                try {
-                  await handleGuardarPedidoSemanaBodega(nuevaPedidoSemanaBodega, updatePayload);
-                  onClose();
-                } catch (error) {
-                  // Error ya manejado
-                }
-              }}
-            />
+            // El scroll vive en este div interno (no en `base`, que solo redondea/clipea):
+            // el borde redondeado de `base` con overflow-hidden recorta las puntas del
+            // scrollbar nativo que Chromium no clipea correctamente cuando el redondeo
+            // y el overflow-y-scroll están en el mismo elemento.
+            <div className="max-h-[75vh] overflow-y-scroll custom-scrollbar">
+              <DetallePedidoSemanaBodega
+                pedidoSemanaBodega={pedidoSemanaBodegaSeleccionada}
+                mode={modalMode}
+                productos={productos}
+                onClose={onClose}
+                onSave={async (nuevaPedidoSemanaBodega, updatePayload) => {
+                  try {
+                    await handleGuardarPedidoSemanaBodega(nuevaPedidoSemanaBodega, updatePayload);
+                    onClose();
+                  } catch (error) {
+                    // Error ya manejado
+                  }
+                }}
+              />
+            </div>
           )}
         </ModalContent>
       </Modal>
@@ -1099,7 +1117,7 @@ const DetallePedidoSemanaBodega: React.FC<DetallePedidoSemanaBodegaProps> = ({ p
           </span>
         </div>
       </ModalHeader>
-      <ModalBody className="overflow-y-scroll custom-scrollbar">
+      <ModalBody>
         {mode === 'ver' ? (
           pedidoSemanaBodega && <VistaPedidoSemanaBodega pedidoSemanaBodega={pedidoSemanaBodega} />
         ) : (
@@ -1223,32 +1241,41 @@ const VistaPedidoSemanaBodega: React.FC<VistaPedidoSemanaBodegaProps> = ({ pedid
             </div>
           </div>
           <Chip color="warning" size="sm" variant="flat">
-            Total: {pedidoSemanaBodega.detalles?.length || 0} item{(pedidoSemanaBodega.detalles?.length || 0) > 1 ? 's' : ''}
+            Total: {pedidoSemanaBodega.totalDetalles || 0} item{(pedidoSemanaBodega.totalDetalles || 0) > 1 ? 's' : ''}
           </Chip>
         </div>
 
-        <div className="space-y-2">
-          {(pedidoSemanaBodega.detalles || []).map((detalle, index) => (
-            <Card
-              key={detalle.idDetallePedido}
-              shadow="none"
-              className="border border-default-200 dark:border-default-100 hover:border-primary-200 dark:hover:border-primary-400/30 transition-colors"
-            >
-              <CardBody className="p-3">
-                <div className="flex items-center gap-3">
-                  <Chip size="sm" variant="flat" color="primary" className="font-bold min-w-[28px] h-6">
-                    {index + 1}
-                  </Chip>
-                  <div className="flex-1 min-w-0">
-                    <span className="font-medium text-sm text-secondary dark:text-foreground">{detalle.nombreProducto}</span>
-                  </div>
-                  <Chip variant="faded" size="sm" className="shrink-0 bg-default-100 border-default-200">
-                    <span className="font-bold text-foreground">{detalle.cantProducto}</span>
-                    <span className="ml-1" style={{ opacity: 0.7 }}>{detalle.abreviatura}</span>
-                  </Chip>
-                </div>
-              </CardBody>
-            </Card>
+        <div className="space-y-4">
+          {(pedidoSemanaBodega.detalles || []).map((grupo) => (
+            <div key={grupo.nombreCategoria}>
+              <p className="text-[11px] font-bold text-default-400 uppercase tracking-wide mb-2 px-1">
+                {grupo.nombreCategoria}
+              </p>
+              <div className="space-y-2">
+                {grupo.productos.map((detalle, index) => (
+                  <Card
+                    key={detalle.idDetallePedido}
+                    shadow="none"
+                    className="border border-default-200 dark:border-default-100 hover:border-primary-200 dark:hover:border-primary-400/30 transition-colors"
+                  >
+                    <CardBody className="p-3">
+                      <div className="flex items-center gap-3">
+                        <Chip size="sm" variant="flat" color="primary" className="font-bold min-w-[28px] h-6">
+                          {index + 1}
+                        </Chip>
+                        <div className="flex-1 min-w-0">
+                          <span className="font-medium text-sm text-secondary dark:text-foreground">{detalle.nombreProducto}</span>
+                        </div>
+                        <Chip variant="faded" size="sm" className="shrink-0 bg-default-100 border-default-200">
+                          <span className="font-bold text-foreground">{detalle.cantProducto}</span>
+                          <span className="ml-1" style={{ opacity: 0.7 }}>{detalle.abreviatura}</span>
+                        </Chip>
+                      </div>
+                    </CardBody>
+                  </Card>
+                ))}
+              </div>
+            </div>
           ))}
         </div>
       </div>
@@ -1288,7 +1315,7 @@ export const FormularioPedidoSemanaBodega = React.forwardRef<any, FormularioPedi
     // Se guarda en BD como NUMERIC(10, 3) de PostgreSQL (ej: 1500.5), pero se muestra con formato CL (ej: 1.500,5)
     const [cantidadesTexto, setCantidadesTexto] = React.useState<Record<string, string>>(() => {
       const inicial: Record<string, string> = {};
-      (pedidoSemanaBodega?.detalles || []).forEach(d => {
+      aplanarDetallesPedidoSemanaBodega(pedidoSemanaBodega?.detalles).forEach(d => {
         inicial[d.idDetallePedido.toString()] = d.cantProducto
           ? d.cantProducto.toLocaleString('es-CL', { minimumFractionDigits: 0, maximumFractionDigits: 3 })
           : '';
@@ -1402,19 +1429,19 @@ export const FormularioPedidoSemanaBodega = React.forwardRef<any, FormularioPedi
     const qtyRefs = React.useRef<Record<string, HTMLInputElement | null>>({});
 
     // Snapshot de los detalles originales para calcular deltas en modo editar
-    const originalDetallesRef = React.useRef<IDetallePedidoSemanaBodegaDTO[]>(pedidoSemanaBodega?.detalles || []);
+    const originalDetallesRef = React.useRef<IDetallePedidoSemanaBodegaDTO[]>(aplanarDetallesPedidoSemanaBodega(pedidoSemanaBodega?.detalles));
 
     // REEMPLAZAR deletedDetailIds por deletedProductIds
     const [deletedProductIds, setDeletedProductIds] = React.useState<number[]>([]);
 
     // Set de IDs de productos originales (los que vinieron de la DB)
     const originalProductIdsRef = React.useRef<Set<string>>(
-      new Set((pedidoSemanaBodega?.detalles || []).map(d => d.idProducto.toString()))
+      new Set(aplanarDetallesPedidoSemanaBodega(pedidoSemanaBodega?.detalles).map(d => d.idProducto.toString()))
     );
 
     // REEMPLAZAR el estado y la inicialización de ingredientes en FormularioPedidoSemanaBodega
     const [ingredientes, setIngredientes] = React.useState<(IIngrediente & { observacion?: string })[]>(
-      (pedidoSemanaBodega?.detalles || []).map(d => ({
+      aplanarDetallesPedidoSemanaBodega(pedidoSemanaBodega?.detalles).map(d => ({
         id: d.idDetallePedido.toString(),
         productoId: d.idProducto.toString(),
         productoNombre: d.nombreProducto,
@@ -1481,7 +1508,7 @@ export const FormularioPedidoSemanaBodega = React.forwardRef<any, FormularioPedi
         });
 
         const originalIngsMap = new Map(
-          (pedidoSemanaBodega.detalles || []).map(d => [d.idProducto.toString(), { cantidad: d.cantProducto, observacion: d.observacion }])
+          aplanarDetallesPedidoSemanaBodega(pedidoSemanaBodega.detalles).map(d => [d.idProducto.toString(), { cantidad: d.cantProducto, observacion: d.observacion }])
         );
 
         // ¿Diferente cantidad de productos únicos?
@@ -1994,15 +2021,15 @@ export const FormularioPedidoSemanaBodega = React.forwardRef<any, FormularioPedi
           {vistaTabla ? (
             // === VISTA TABLA ===
             <div className="space-y-3">
-              <div className="overflow-x-auto overflow-y-auto max-h-72 rounded-lg border border-default-200 dark:border-default-100">
+              <div className="overflow-x-scroll overflow-y-scroll custom-scrollbar max-h-72 rounded-lg border border-default-200 dark:border-default-100">
                 <table className="min-w-[900px] w-full text-sm table-fixed">
-                  <thead className="bg-warning-50 dark:bg-warning-900/20 sticky top-0 z-10">
+                  <thead>
                     <tr>
-                      <th className="text-center py-3 px-4 font-bold text-warning-700 dark:text-warning-400 w-[60px]">#</th>
-                      <th className="text-center py-3 px-4 font-bold text-warning-700 dark:text-warning-400 w-[280px]">Producto</th>
-                      <th className="text-center py-3 px-4 font-bold text-warning-700 dark:text-warning-400 w-[240px]">Cantidad</th>
-                      <th className="text-center py-3 px-4 font-bold text-warning-700 dark:text-warning-400 w-[240px]">Observación</th>
-                      <th className="text-center py-3 px-4 font-bold text-warning-700 dark:text-warning-400 w-[80px]"></th>
+                      <th className="sticky top-0 z-10 bg-warning-50 dark:bg-warning-900/20 shadow-sm text-center py-3 px-4 font-bold text-warning-700 dark:text-warning-400 w-[60px]">#</th>
+                      <th className="sticky top-0 z-10 bg-warning-50 dark:bg-warning-900/20 shadow-sm text-center py-3 px-4 font-bold text-warning-700 dark:text-warning-400 w-[280px]">Producto</th>
+                      <th className="sticky top-0 z-10 bg-warning-50 dark:bg-warning-900/20 shadow-sm text-center py-3 px-4 font-bold text-warning-700 dark:text-warning-400 w-[240px]">Cantidad</th>
+                      <th className="sticky top-0 z-10 bg-warning-50 dark:bg-warning-900/20 shadow-sm text-center py-3 px-4 font-bold text-warning-700 dark:text-warning-400 w-[240px]">Observación</th>
+                      <th className="sticky top-0 z-10 bg-warning-50 dark:bg-warning-900/20 shadow-sm text-center py-3 px-4 font-bold text-warning-700 dark:text-warning-400 w-[80px]"></th>
                     </tr>
                   </thead>
                   <tbody>
