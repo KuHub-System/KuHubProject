@@ -1,5 +1,6 @@
 package KuHub.modules.gestion_inventario.services;
 
+import KuHub.modules.gestion_inventario.dtos.request.AplicarCambioUnidadExcelDTO;
 import KuHub.modules.gestion_inventario.dtos.request.ConfirmarNuevosExcelDTO;
 import KuHub.modules.gestion_inventario.dtos.request.FilterInventoryPageDTO;
 import KuHub.modules.gestion_inventario.dtos.request.InventoryWithProductCreateDTO;
@@ -30,4 +31,5 @@ public interface InventarioService {
     SincronizarExcelResultado sincronizarInventarioDesdeExcel(
             MultipartFile archivo, String nombreHoja, Short idCategoria, int filaInicio, int filaFin);
     int confirmarNuevosProductosExcel(List<ConfirmarNuevosExcelDTO.ItemNuevo> items);
+    int aplicarCambioUnidadExcel(List<AplicarCambioUnidadExcelDTO.Item> items);
 }

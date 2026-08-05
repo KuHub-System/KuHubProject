@@ -502,19 +502,25 @@ public class BodegaTransitoServiceImpl implements BodegaTransitoService{
                 if (productoOpt.isEmpty()) {
                     resultados.add(new SincronizarExcelResultado.ResultadoItem(
                             filaNro, nombreRaw, null, null, null,
-                            stockExcel, null, unidadCapitalizada, idUnidadMatcheada, "no_encontrado"
+                            stockExcel, null, unidadCapitalizada, idUnidadMatcheada, "no_encontrado",
+                            null, null
                     ));
                     continue;
                 }
 
                 Producto producto = productoOpt.get();
+                UnidadMedida unidadActualProducto = producto.getUnidadMedida();
+                Short idUnidadMedidaActual = unidadActualProducto != null ? unidadActualProducto.getIdUnidad() : null;
+                String nombreUnidadActual = unidadActualProducto != null ? unidadActualProducto.getNombreUnidad() : null;
+
                 Optional<Inventario> invOpt = inventarioRepository
                         .findByProducto_IdProductoAndActivoTrue(producto.getIdProducto());
 
                 if (invOpt.isEmpty()) {
                     resultados.add(new SincronizarExcelResultado.ResultadoItem(
                             filaNro, nombreRaw, null, producto.getIdProducto(), producto.getNombreProducto(),
-                            stockExcel, null, unidadCapitalizada, idUnidadMatcheada, "no_encontrado"
+                            stockExcel, null, unidadCapitalizada, idUnidadMatcheada, "no_encontrado",
+                            idUnidadMedidaActual, nombreUnidadActual
                     ));
                     continue;
                 }
@@ -527,7 +533,8 @@ public class BodegaTransitoServiceImpl implements BodegaTransitoService{
                     resultados.add(new SincronizarExcelResultado.ResultadoItem(
                             filaNro, nombreRaw, inv.getIdInventario(), producto.getIdProducto(),
                             producto.getNombreProducto(), stockExcel, null,
-                            unidadCapitalizada, idUnidadMatcheada, "no_encontrado"
+                            unidadCapitalizada, idUnidadMatcheada, "no_encontrado",
+                            idUnidadMedidaActual, nombreUnidadActual
                     ));
                     continue;
                 }
@@ -541,7 +548,8 @@ public class BodegaTransitoServiceImpl implements BodegaTransitoService{
                 resultados.add(new SincronizarExcelResultado.ResultadoItem(
                         filaNro, nombreRaw, inv.getIdInventario(), producto.getIdProducto(),
                         producto.getNombreProducto(), stockExcel, stockAnterior,
-                        unidadCapitalizada, idUnidadMatcheada, "ok"
+                        unidadCapitalizada, idUnidadMatcheada, "ok",
+                        idUnidadMedidaActual, nombreUnidadActual
                 ));
             }
 

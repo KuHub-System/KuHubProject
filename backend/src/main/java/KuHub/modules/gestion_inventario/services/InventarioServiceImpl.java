@@ -1,5 +1,6 @@
 package KuHub.modules.gestion_inventario.services;
 
+import KuHub.modules.gestion_inventario.dtos.request.AplicarCambioUnidadExcelDTO;
 import KuHub.modules.gestion_inventario.dtos.request.ConfirmarNuevosExcelDTO;
 import KuHub.modules.gestion_inventario.dtos.request.FilterInventoryPageDTO;
 import KuHub.modules.gestion_inventario.dtos.request.InventoryWithProductCreateDTO;
@@ -634,19 +635,25 @@ public class InventarioServiceImpl implements InventarioService {
                     log.debug("[SyncExcel-NE] fila={} buscado='{}' cat={}", filaNro, nombreCapitalizado, idCategoria);
                     resultados.add(new SincronizarExcelResultado.ResultadoItem(
                             filaNro, nombreRaw, null, null, null,
-                            stockExcel, null, unidadCapitalizada, idUnidadMatcheada, "no_encontrado"
+                            stockExcel, null, unidadCapitalizada, idUnidadMatcheada, "no_encontrado",
+                            null, null
                     ));
                     continue;
                 }
 
                 Producto producto = productoOpt.get();
+                UnidadMedida unidadActualProducto = producto.getUnidadMedida();
+                Short idUnidadMedidaActual = unidadActualProducto != null ? unidadActualProducto.getIdUnidad() : null;
+                String nombreUnidadActual = unidadActualProducto != null ? unidadActualProducto.getNombreUnidad() : null;
+
                 Optional<Inventario> invOpt = inventarioRepository
                         .findByProducto_IdProductoAndActivoTrue(producto.getIdProducto());
 
                 if (invOpt.isEmpty()) {
                     resultados.add(new SincronizarExcelResultado.ResultadoItem(
                             filaNro, nombreRaw, null, producto.getIdProducto(), producto.getNombreProducto(),
-                            stockExcel, null, unidadCapitalizada, idUnidadMatcheada, "no_encontrado"
+                            stockExcel, null, unidadCapitalizada, idUnidadMatcheada, "no_encontrado",
+                            idUnidadMedidaActual, nombreUnidadActual
                     ));
                     continue;
                 }
@@ -668,7 +675,8 @@ public class InventarioServiceImpl implements InventarioService {
                 resultados.add(new SincronizarExcelResultado.ResultadoItem(
                         filaNro, nombreRaw, inv.getIdInventario(), producto.getIdProducto(),
                         producto.getNombreProducto(), stockExcel, stockAnterior,
-                        unidadCapitalizada, idUnidadMatcheada, "ok"
+                        unidadCapitalizada, idUnidadMatcheada, "ok",
+                        idUnidadMedidaActual, nombreUnidadActual
                 ));
             }
 
@@ -744,6 +752,35 @@ public class InventarioServiceImpl implements InventarioService {
         if (!movimientosToSave.isEmpty()) movimientoRepository.saveAll(movimientosToSave);
         log.info("[SyncExcel] Nuevos confirmados: {} productos creados", contador);
         return contador;
+    }
+
+    @Transactional
+    @Override
+    public int aplicarCambioUnidadExcel(List<AplicarCambioUnidadExcelDTO.Item> items) {
+        if (items == null || items.isEmpty()) return 0;
+
+        Map<Integer, Short> destinoPorProducto = items.stream()
+                .collect(Collectors.toMap(
+                        AplicarCambioUnidadExcelDTO.Item::idProducto,
+                        AplicarCambioUnidadExcelDTO.Item::idUnidadMedida,
+                        (a, b) -> b
+                ));
+
+        List<Producto> productos = productoRepository.findAllByIdProductoInAndActivoTrue(destinoPorProducto.keySet());
+        List<Producto> productosToSave = new ArrayList<>();
+
+        for (Producto producto : productos) {
+            Short idUnidadDestino = destinoPorProducto.get(producto.getIdProducto());
+            if (idUnidadDestino == null) continue;
+
+            UnidadMedida unidadDestino = unidadMedidaService.findById(idUnidadDestino);
+            producto.setUnidadMedida(unidadDestino);
+            productosToSave.add(producto);
+        }
+
+        if (!productosToSave.isEmpty()) productoRepository.saveAll(productosToSave);
+        log.info("[SyncExcel] Cambios de unidad aplicados desde conflicto Excel: {} productos", productosToSave.size());
+        return productosToSave.size();
     }
 
     /**<------TODOS METODOS PRIVADOS------>*/

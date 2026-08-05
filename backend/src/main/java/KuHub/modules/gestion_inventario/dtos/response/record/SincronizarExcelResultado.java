@@ -22,6 +22,8 @@ public record SincronizarExcelResultado(
             BigDecimal stockAnterior,
             String unidadMedidaExcel,
             Short idUnidadMedida,
-            String estado
+            String estado,
+            Short idUnidadMedidaActual,
+            String nombreUnidadActual
     ) {}
 }

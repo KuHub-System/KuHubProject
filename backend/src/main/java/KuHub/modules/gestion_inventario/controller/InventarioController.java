@@ -1,5 +1,6 @@
 package KuHub.modules.gestion_inventario.controller;
 
+import KuHub.modules.gestion_inventario.dtos.request.AplicarCambioUnidadExcelDTO;
 import KuHub.modules.gestion_inventario.dtos.request.ConfirmarNuevosExcelDTO;
 import KuHub.modules.gestion_inventario.dtos.request.FilterInventoryPageDTO;
 import KuHub.modules.gestion_inventario.dtos.request.InventoryWithProductCreateDTO;
@@ -212,6 +213,18 @@ public class InventarioController {
             @RequestBody List<ConfirmarNuevosExcelDTO.ItemNuevo> items) {
         return ResponseEntity.status(201)
                 .body(inventarioService.confirmarNuevosProductosExcel(items));
+    }
+
+    /**
+     * Aplica el reemplazo de unidad de medida de productos con conflicto detectado en
+     * la sincronización Excel (unidad leída del Excel distinta a la ya asignada al producto).
+     * ✅ En uso: Consumido por aplicarCambioUnidadExcelService en inventario-service.ts.
+     */
+    @PatchMapping("/sincronizar-excel/aplicar-cambio-unidad")
+    public ResponseEntity<Integer> aplicarCambioUnidadExcel(
+            @RequestBody List<AplicarCambioUnidadExcelDTO.Item> items) {
+        return ResponseEntity.status(200)
+                .body(inventarioService.aplicarCambioUnidadExcel(items));
     }
 
 }
