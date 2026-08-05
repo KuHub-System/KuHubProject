@@ -29,6 +29,7 @@ import {
 } from '@heroui/react';
 import { Icon } from '@iconify/react';
 import { motion } from 'framer-motion';
+import XLSXStyle from 'xlsx-js-style';
 import { useHistory } from 'react-router-dom';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { useToast, useConfirmDelete } from '../hooks/useToast';
@@ -68,6 +69,135 @@ const aplanarDetallesPedidoSemanaBodega = (
 ): IDetallePedidoSemanaBodegaDTO[] => {
   if (!detalles) return [];
   return detalles.flatMap(grupo => grupo.productos || []);
+};
+
+/**
+ * Exporta un pedido semanal a un .xlsx con el mismo layout de la planilla de origen
+ * "SOLICITUD DE MATERIAS PRIMAS" (categoría una sola vez por grupo, productos debajo),
+ * recortado a los campos que existen en el sistema: sin docente/departamento/fecha/
+ * sección/hora/taller (esos datos no se registran en pedido semanal a bodega).
+ * xlsx-js-style no soporta incrustar imágenes (limitación de la librería, no del layout),
+ * así que el logo se reemplaza por el texto "DuocUC · Escuela de Gastronomía".
+ */
+const exportarExcelPedidoSemanal = (
+  pedidoSemanaBodega: IPedidoSemanaBodegaPaginedDTO,
+  nombreSemana?: string | null,
+  nombreAsignatura?: string | null
+) => {
+  const styleTitle = {
+    font:      { bold: true, sz: 13, color: { rgb: 'FFFFFF' } },
+    fill:      { fgColor: { rgb: '1A1A1A' } },
+    alignment: { horizontal: 'center', vertical: 'center' },
+  };
+  const styleBrand = {
+    font:      { bold: true, sz: 10, color: { rgb: '1A1A1A' } },
+    alignment: { horizontal: 'center', vertical: 'center' },
+  };
+  const styleLabel = {
+    font:      { bold: true, sz: 9, color: { rgb: '1A1A1A' } },
+    alignment: { vertical: 'center' },
+  };
+  const styleTableHeader = {
+    font:      { bold: true, sz: 10, color: { rgb: '1A1A1A' } },
+    fill:      { fgColor: { rgb: 'FFB800' } },
+    alignment: { horizontal: 'center', vertical: 'center' },
+    border: {
+      bottom: { style: 'thin', color: { rgb: 'CCCCCC' } },
+    },
+  };
+  const styleCategoria = {
+    font:      { bold: true, sz: 9, color: { rgb: '1A1A1A' } },
+    fill:      { fgColor: { rgb: 'FFF5CC' } },
+    alignment: { vertical: 'center' },
+  };
+  const styleData = {
+    font:      { sz: 10 },
+    alignment: { vertical: 'center' },
+    border: {
+      bottom: { style: 'thin', color: { rgb: 'EEEEEE' } },
+    },
+  };
+  const styleDataCenter = {
+    ...styleData,
+    alignment: { horizontal: 'center', vertical: 'center' },
+  };
+
+  const ec = XLSXStyle.utils.encode_cell;
+  const ws: Record<string, unknown> = {};
+  const merges: { s: { r: number; c: number }; e: { r: number; c: number } }[] = [];
+  let R = 0;
+
+  // Título
+  ws[ec({ r: R, c: 0 })] = { v: 'SOLICITUD DE MATERIAS PRIMAS', t: 's', s: styleTitle };
+  for (let C = 1; C <= 3; C++) ws[ec({ r: R, c: C })] = { v: '', t: 's', s: styleTitle };
+  merges.push({ s: { r: R, c: 0 }, e: { r: R, c: 3 } });
+  R++;
+
+  // Marca (sustituye al logo: xlsx-js-style no permite incrustar imágenes)
+  ws[ec({ r: R, c: 0 })] = { v: 'DuocUC · Escuela de Gastronomía', t: 's', s: styleBrand };
+  for (let C = 1; C <= 3; C++) ws[ec({ r: R, c: C })] = { v: '', t: 's', s: styleBrand };
+  merges.push({ s: { r: R, c: 0 }, e: { r: R, c: 3 } });
+  R++;
+  R++; // fila vacía
+
+  // Asignatura / Semana
+  ws[ec({ r: R, c: 0 })] = { v: 'ASIGNATURA', t: 's', s: styleLabel };
+  ws[ec({ r: R, c: 1 })] = { v: nombreAsignatura || '—', t: 's', s: styleData };
+  ws[ec({ r: R, c: 2 })] = { v: 'SEMANA', t: 's', s: styleLabel };
+  ws[ec({ r: R, c: 3 })] = { v: nombreSemana || '—', t: 's', s: styleData };
+  R++;
+
+  // Preparaciones (nombre del pedido)
+  ws[ec({ r: R, c: 0 })] = { v: 'PREPARACIONES', t: 's', s: styleLabel };
+  ws[ec({ r: R, c: 1 })] = { v: pedidoSemanaBodega.nombrePedido, t: 's', s: styleData };
+  for (let C = 2; C <= 3; C++) ws[ec({ r: R, c: C })] = { v: '', t: 's', s: styleData };
+  merges.push({ s: { r: R, c: 1 }, e: { r: R, c: 3 } });
+  R++;
+
+  if (pedidoSemanaBodega.descripcionPedido) {
+    ws[ec({ r: R, c: 0 })] = { v: 'DESCRIPCIÓN', t: 's', s: styleLabel };
+    ws[ec({ r: R, c: 1 })] = { v: pedidoSemanaBodega.descripcionPedido, t: 's', s: styleData };
+    for (let C = 2; C <= 3; C++) ws[ec({ r: R, c: C })] = { v: '', t: 's', s: styleData };
+    merges.push({ s: { r: R, c: 1 }, e: { r: R, c: 3 } });
+    R++;
+  }
+
+  // Cantidad fija de referencia (igual que la planilla de origen)
+  ws[ec({ r: R, c: 0 })] = { v: '20 PAX', t: 's', s: styleLabel };
+  R++;
+  R++; // fila vacía
+
+  // Cabecera de la tabla (sin columna "Devolución": no existe ese campo en el sistema)
+  const headerRow = R;
+  ['PRODUCTO', 'U/M', 'CANTIDAD', 'OBSERVACIÓN'].forEach((h, C) => {
+    ws[ec({ r: headerRow, c: C })] = { v: h, t: 's', s: styleTableHeader };
+  });
+  R++;
+
+  // Grupos por categoría, alfabético en ambos niveles (ya viene ordenado del backend)
+  (pedidoSemanaBodega.detalles || []).forEach(grupo => {
+    ws[ec({ r: R, c: 0 })] = { v: grupo.nombreCategoria, t: 's', s: styleCategoria };
+    for (let C = 1; C <= 3; C++) ws[ec({ r: R, c: C })] = { v: '', t: 's', s: styleCategoria };
+    merges.push({ s: { r: R, c: 0 }, e: { r: R, c: 3 } });
+    R++;
+
+    grupo.productos.forEach(detalle => {
+      ws[ec({ r: R, c: 0 })] = { v: detalle.nombreProducto, t: 's', s: styleData };
+      ws[ec({ r: R, c: 1 })] = { v: detalle.abreviatura, t: 's', s: styleDataCenter };
+      ws[ec({ r: R, c: 2 })] = { v: detalle.cantProducto, t: 'n', s: styleDataCenter };
+      ws[ec({ r: R, c: 3 })] = { v: detalle.observacion || '', t: 's', s: styleData };
+      R++;
+    });
+  });
+
+  ws['!ref']    = XLSXStyle.utils.encode_range({ s: { r: 0, c: 0 }, e: { r: R - 1, c: 3 } });
+  ws['!cols']   = [{ wch: 38 }, { wch: 10 }, { wch: 12 }, { wch: 30 }];
+  ws['!merges'] = merges;
+
+  const wb = XLSXStyle.utils.book_new();
+  XLSXStyle.utils.book_append_sheet(wb, ws, 'Pedido Semanal');
+  const nombreArchivo = `pedido_semanal_${pedidoSemanaBodega.nombrePedido.replace(/[^a-zA-Z0-9]+/g, '_')}.xlsx`;
+  XLSXStyle.writeFile(wb, nombreArchivo);
 };
 
 /**
@@ -846,6 +976,8 @@ const PedidoSemanalABodegaPage: React.FC = () => {
                 pedidoSemanaBodega={pedidoSemanaBodegaSeleccionada}
                 mode={modalMode}
                 productos={productos}
+                nombreSemana={filterSemanas.find(s => s.idSemana === pedidoSemanaBodegaSeleccionada?.idSemana)?.nombreSemana}
+                nombreAsignatura={filterAsignaturas.find(a => a.idAsignatura === pedidoSemanaBodegaSeleccionada?.idAsignatura)?.nombreAsignatura}
                 onClose={onClose}
                 onSave={async (nuevaPedidoSemanaBodega, updatePayload) => {
                   try {
@@ -868,6 +1000,8 @@ interface DetallePedidoSemanaBodegaProps {
   pedidoSemanaBodega: IPedidoSemanaBodegaPaginedDTO | null;
   mode: 'crear' | 'editar' | 'ver';
   productos: IProductoPedidoSemanaBodegaSelection[];
+  nombreSemana?: string | null;
+  nombreAsignatura?: string | null;
   onClose: () => void;
   onSave: (pedidoSemanaBodega: IPedidoSemanaBodega, updatePayload?: IPedidoSemanaBodegaWithDetailsUpdateDTO) => Promise<void>;
 }
@@ -890,7 +1024,7 @@ const leerNombresHojas = async (file: File): Promise<string[]> => {
   });
 };
 
-const DetallePedidoSemanaBodega: React.FC<DetallePedidoSemanaBodegaProps> = ({ pedidoSemanaBodega, mode, productos, onClose, onSave }) => {
+const DetallePedidoSemanaBodega: React.FC<DetallePedidoSemanaBodegaProps> = ({ pedidoSemanaBodega, mode, productos, nombreSemana, nombreAsignatura, onClose, onSave }) => {
   const toast = useToast();
   const { user } = useAuth();
   const isAdmin = user?.rol === 'Administrador';
@@ -1145,6 +1279,17 @@ const DetallePedidoSemanaBodega: React.FC<DetallePedidoSemanaBodegaProps> = ({ p
         <Button variant="ghost" onPress={onClose} isDisabled={isSaving || isImporting} className="font-medium">
           {mode === 'ver' ? 'Cerrar' : 'Cancelar'}
         </Button>
+
+        {mode === 'ver' && pedidoSemanaBodega && (
+          <Button
+            variant="bordered"
+            onPress={() => exportarExcelPedidoSemanal(pedidoSemanaBodega, nombreSemana, nombreAsignatura)}
+            className="font-medium border-default-300"
+            startContent={<Icon icon="lucide:file-spreadsheet" width={16} />}
+          >
+            Exportar Excel
+          </Button>
+        )}
 
         {mode !== 'ver' && (
           <Button
