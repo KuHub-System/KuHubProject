@@ -35,6 +35,7 @@ public class GestionSistemaService {
 
         GestionSistemaDTO dto = new GestionSistemaDTO();
         dto.setSolicitudesEnPedido(config.getSolicitudesEnPedido());
+        dto.setDisponibleObligatorio(config.getDisponibleObligatorio());
         return dto;
     }
 
@@ -52,10 +53,15 @@ public class GestionSistemaService {
             config.setSolicitudesEnPedido(dto.getSolicitudesEnPedido());
         }
 
+        if (dto.getDisponibleObligatorio() != null) {
+            config.setDisponibleObligatorio(dto.getDisponibleObligatorio());
+        }
+
         gestionSistemaRepository.save(config);
 
         GestionSistemaDTO response = new GestionSistemaDTO();
         response.setSolicitudesEnPedido(config.getSolicitudesEnPedido());
+        response.setDisponibleObligatorio(config.getDisponibleObligatorio());
         return response;
     }
 
@@ -74,10 +80,12 @@ public class GestionSistemaService {
 
         // Copiar valores del default al activo
         configActiva.setSolicitudesEnPedido(configDefault.getSolicitudesEnPedido());
+        configActiva.setDisponibleObligatorio(configDefault.getDisponibleObligatorio());
         gestionSistemaRepository.save(configActiva);
 
         GestionSistemaDTO response = new GestionSistemaDTO();
         response.setSolicitudesEnPedido(configActiva.getSolicitudesEnPedido());
+        response.setDisponibleObligatorio(configActiva.getDisponibleObligatorio());
         return response;
     }
 

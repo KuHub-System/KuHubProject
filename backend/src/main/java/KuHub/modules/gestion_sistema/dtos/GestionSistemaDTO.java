@@ -14,4 +14,11 @@ public class GestionSistemaDTO {
      * automáticamente el pedido de la semana correspondiente.
      */
     private Boolean solicitudesEnPedido;
+
+    /**
+     * Cuando es TRUE, en los diálogos de "¿Registrar como stock disponible?"
+     * (Inventario y Bodega de Tránsito, individual y masivo) se retira la opción
+     * "Continuar sin registrar" — solo quedan Cancelar o Registrar disponibles.
+     */
+    private Boolean disponibleObligatorio;
 }

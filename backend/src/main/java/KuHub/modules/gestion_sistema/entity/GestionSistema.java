@@ -20,6 +20,9 @@ public class GestionSistema {
     @Column(name = "solicitudes_en_pedido", nullable = false)
     private Boolean solicitudesEnPedido = false;
 
+    @Column(name = "disponible_obligatorio", nullable = false)
+    private Boolean disponibleObligatorio = false;
+
     @Column(name = "descripcion", length = 255)
     private String descripcion;
 }
