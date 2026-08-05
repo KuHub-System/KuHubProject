@@ -73,7 +73,7 @@ const ROLE_DESCRIPTIONS: Partial<Record<RolUsuario, string>> = {
 // ── Opciones de nivel de acceso ───────────────────────────────────────────────
 
 const ACCESS_OPTIONS: { value: AccessLevel; label: string; chipColor: 'default' | 'warning' | 'success'; icon: string }[] = [
-  { value: 'none',  label: 'Sin Acceso',    chipColor: 'default', icon: 'lucide:lock' },
+  { value: 'none',  label: 'Sin permiso',   chipColor: 'default', icon: 'lucide:lock' },
   { value: 'read',  label: 'Solo Lectura',  chipColor: 'warning', icon: 'lucide:eye' },
   { value: 'write', label: 'Escritura',     chipColor: 'success', icon: 'lucide:pencil' },
 ];
@@ -287,7 +287,7 @@ const permsFromLevel = (level: AccessLevel): ModulePermissions =>
                       emptyModulePermissions();
 
 // ── Celda CRUD granular (módulos normales) ────────────────────────────────────
-// Muestra un resumen (Sin Acceso / Lectura / Escritura + qué acciones) y al abrir
+// Muestra un resumen (Sin permiso / Lectura / Escritura + qué acciones) y al abrir
 // permite marcar individualmente Leer / Crear / Editar / Eliminar.
 // Regla: cualquier acción de escritura implica Leer automáticamente.
 
@@ -306,7 +306,7 @@ const CrudCell: React.FC<CrudCellProps> = ({ perms, disabled, onChange }) => {
     onChange({ puedeLeer: r, puedeCrear: c, puedeActualizar: u, puedeEliminar: d });
   };
 
-  const levelLabel = level === 'write' ? 'Escritura' : level === 'read' ? 'Lectura' : 'Sin Acceso';
+  const levelLabel = level === 'write' ? 'Escritura' : level === 'read' ? 'Lectura' : 'Sin permiso';
   const levelIcon  = level === 'write' ? 'lucide:pencil' : level === 'read' ? 'lucide:eye' : 'lucide:lock';
 
   return (
@@ -365,7 +365,7 @@ const CrudCellNoDelete: React.FC<CrudCellProps> = ({ perms, disabled, onChange }
     onChange({ puedeLeer: r, puedeCrear: c, puedeActualizar: u, puedeEliminar: false });
   };
 
-  const levelLabel = level === 'write' ? 'Escritura' : level === 'read' ? 'Lectura' : 'Sin Acceso';
+  const levelLabel = level === 'write' ? 'Escritura' : level === 'read' ? 'Lectura' : 'Sin permiso';
   const levelIcon  = level === 'write' ? 'lucide:pencil' : level === 'read' ? 'lucide:eye' : 'lucide:lock';
 
   return (
@@ -408,10 +408,10 @@ const CrudCellNoDelete: React.FC<CrudCellProps> = ({ perms, disabled, onChange }
 };
 
 // ── Celda de 3 estados (módulo "aglobado": página con cascada) ────────────────
-// Sin Acceso / Lectura / Escritura. La Lectura deja la página solo-lectura
+// Sin permiso / Lectura / Escritura. La Lectura deja la página solo-lectura
 // (ver filtros/detalle, íconos apagados); la Escritura cascadea a sus acciones.
 const TRISTATE_OPTIONS: { key: AccessLevel; label: string; icon: string }[] = [
-  { key: 'none',  label: 'Sin Acceso', icon: 'lucide:lock' },
+  { key: 'none',  label: 'Sin permiso', icon: 'lucide:lock' },
   { key: 'read',  label: 'Lectura',    icon: 'lucide:eye' },
   { key: 'write', label: 'Escritura',  icon: 'lucide:pencil' },
 ];
@@ -453,7 +453,7 @@ const TriStateCell: React.FC<CrudCellProps> = ({ perms, disabled, onChange }) =>
 };
 
 // ── Celda binaria de lectura (vista de solo consulta) ────────────────────────
-// Para tabs que solo tienen Sin Acceso o Lectura: no existe acción de escritura
+// Para tabs que solo tienen Sin permiso o Lectura: no existe acción de escritura
 // propia; el write se gestiona con módulos de acción independientes.
 const BinaryReadCell: React.FC<CrudCellProps> = ({ perms, disabled, onChange }) => {
   const isRead = perms.puedeLeer || perms.puedeCrear || perms.puedeActualizar || perms.puedeEliminar;
@@ -468,7 +468,7 @@ const BinaryReadCell: React.FC<CrudCellProps> = ({ perms, disabled, onChange }) 
           className={`${TRIGGER_BASE} ${levelBg(level)} ${disabled ? 'opacity-50 cursor-not-allowed' : 'hover:opacity-90 cursor-pointer'}`}
         >
           <Icon icon={isRead ? 'lucide:eye' : 'lucide:lock'} width={12} />
-          <span>{isRead ? 'Lectura' : 'Sin Acceso'}</span>
+          <span>{isRead ? 'Lectura' : 'Sin permiso'}</span>
           <Icon icon="lucide:chevron-down" width={11} className="ml-0.5 opacity-60" />
         </button>
       </DropdownTrigger>
@@ -481,7 +481,7 @@ const BinaryReadCell: React.FC<CrudCellProps> = ({ perms, disabled, onChange }) 
           onChange(k === 'read' ? permsFromLevel('read') : emptyModulePermissions());
         }}
       >
-        <DropdownItem key="none" startContent={<Icon icon="lucide:lock" width={14} />}>Sin Acceso</DropdownItem>
+        <DropdownItem key="none" startContent={<Icon icon="lucide:lock" width={14} />}>Sin permiso</DropdownItem>
         <DropdownItem key="read"  startContent={<Icon icon="lucide:eye"  width={14} />}>Lectura</DropdownItem>
       </DropdownMenu>
     </Dropdown>
@@ -528,7 +528,7 @@ const BinaryWriteCell: React.FC<CrudCellProps> = ({ perms, disabled, onChange })
 // Aglobado (3 estados con cascada): la página Pedido Semanal a Bodega.
 // Acción (binario Sin/Escritura): sus 4 acciones internas.
 // Resto: CRUD granular (4 checkboxes).
-// Vistas con solo dos opciones (Sin Acceso / Lectura): no tienen escritura propia.
+// Vistas con solo dos opciones (Sin permiso / Lectura): no tienen escritura propia.
 // La escritura se gestiona con módulos de acción independientes (CONG_APROBAR_*, etc.).
 const READ_MODULES = new Set<ModuleKey>([
   'CONG_VISTA_APROBACION', 'CONG_VISTA_CRONOGRAMA', 'CONG_VISTA_TOTALES',
@@ -540,6 +540,7 @@ const READ_MODULES = new Set<ModuleKey>([
   'INV_STOCK_DISPONIBLE', 'SD_INVENTARIO', 'SD_BODEGA_TRANSITO', 'SD_DISPONIBLE_REAL',
   'HISTORIAL_MOVIMIENTOS',
   'GPD_RESUMEN_PERIODO',
+  'GP_VISTA_RESUMEN',
 ]);
 const AGGREGATE_MODULES = new Set<ModuleKey>([
   'PEDIDO_SEMANAL_BODEGA', 'GESTION_SOLICITUDES_CONGLOMERADO', 'GESTION_PEDIDOS',
@@ -569,9 +570,14 @@ const ACTION_MODULES = new Set<ModuleKey>([
   'HIST_EXPORT_EXCEL',
   'GPD_PREPARAR_ENTREGA',
   'ADMIN_CONFIG_SISTEMA',
+  'GP_VISTA_ACEPTADAS',
 ]);
 // ACTION_MODULES que requieren puedeActualizar en el padre para activarse (no basta puedeCrear).
-const ACTION_REQUIRES_UPDATE = new Set<ModuleKey>(['BOD_EDITAR_PRODUCTO']);
+const ACTION_REQUIRES_UPDATE = new Set<ModuleKey>(['BOD_EDITAR_PRODUCTO', 'INV_EDITAR_PRODUCTO', 'INV_ABASTECIMIENTO']);
+// ACTION_MODULES que requieren puedeCrear en el padre para activarse (no basta puedeActualizar/puedeEliminar).
+// INV_CONTROL_MASIVO se incluye para que sus hijos (INV_ABAST_BODEGA, INV_ABAST_PROV) hereden
+// la misma condición al recibir el nivel ya colapsado de este nodo intermedio.
+const ACTION_REQUIRES_CREATE = new Set<ModuleKey>(['INV_NUEVO_PRODUCTO', 'INV_CONTROL_MASIVO']);
 
 const cellComponentFor = (moduleKey: ModuleKey): React.FC<CrudCellProps> =>
   ACTION_MODULES.has(moduleKey)    ? BinaryWriteCell :
@@ -1090,7 +1096,9 @@ const GestionUsuariosPage: React.FC = () => {
       // Cascada hacia abajo: recursiva, propaga las perms reales del padre.
       // - READ_MODULES: capean a Lectura (none si padre es none).
       // - ACTION_MODULES: 'write' si padre tiene acceso general; los de ACTION_REQUIRES_UPDATE
-      //   solo 'write' si padre tiene puedeActualizar.
+      //   solo 'write' si padre tiene puedeActualizar, los de ACTION_REQUIRES_CREATE solo si
+      //   padre tiene puedeCrear (ej. Inventario · Nuevo Producto / Control Masivo, que a su vez
+      //   cascadea a Abastec. Bodega y Abastec. Proveedores).
       // - CrudCell/resto: copia bit a bit las perms del padre.
       const downQueue: { key: ModuleKey; perms: ModulePermissions }[] = [{ key: moduleKey, perms: newValue }];
       const downVisited = new Set<ModuleKey>([moduleKey]);
@@ -1106,6 +1114,8 @@ const GestionUsuariosPage: React.FC = () => {
           } else if (ACTION_MODULES.has(child)) {
             const hasWrite = ACTION_REQUIRES_UPDATE.has(child)
               ? !!parentPerms.puedeActualizar
+              : ACTION_REQUIRES_CREATE.has(child)
+              ? !!parentPerms.puedeCrear
               : parentLevel === 'write';
             childPerms = permsFromLevel(hasWrite ? 'write' : 'none');
           } else {
@@ -1675,7 +1685,7 @@ const GestionUsuariosPage: React.FC = () => {
               </div>
               <div className="flex items-start gap-2">
                 <Icon icon="lucide:lock" width={12} className="shrink-0 mt-0.5 text-default-400" />
-                <span><strong>Sin Acceso</strong> (nada marcado): el módulo no aparece en el menú ni por URL; no se muestra ningún ícono.</span>
+                <span><strong>Sin permiso</strong> (nada marcado): el módulo no aparece en el menú ni por URL; no se muestra ningún ícono.</span>
               </div>
               <div className="flex items-start gap-2">
                 <Icon icon="lucide:eye" width={12} className="shrink-0 mt-0.5 text-warning-500" />
@@ -1687,7 +1697,7 @@ const GestionUsuariosPage: React.FC = () => {
               </div>
               <div className="flex items-start gap-2">
                 <Icon icon="lucide:package-open" width={12} className="shrink-0 mt-0.5 text-[#FFB800]" />
-                <span><strong>Pedido Semanal a Bodega:</strong> la página tiene Sin Acceso / Lectura / Escritura (Lectura = ver con íconos apagados). Sus acciones <strong>Nuevo, Editar, Inactivar y Eliminar</strong> son solo <strong>Sin permiso o Escritura</strong>. Poner la página en Escritura las activa todas; luego puedes apagar las que quieras.</span>
+                <span><strong>Pedido Semanal a Bodega:</strong> la página tiene Sin permiso / Lectura / Escritura (Lectura = ver con íconos apagados). Sus acciones <strong>Nuevo, Editar, Inactivar y Eliminar</strong> son solo <strong>Sin permiso o Escritura</strong>. Poner la página en Escritura las activa todas; luego puedes apagar las que quieras.</span>
               </div>
             </div>
           </div>
