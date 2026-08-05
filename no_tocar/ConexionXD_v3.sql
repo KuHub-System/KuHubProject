@@ -47,3 +47,22 @@ ALTER TABLE gestion_sistema
 UPDATE gestion_sistema
    SET disponible_obligatorio = FALSE
  WHERE id IN (1, 2);
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- 2026-08-05 — stock_disponible: autor del registro (id_usuario)
+-- ─────────────────────────────────────────────────────────────────────────────
+-- Contexto de negocio: el modal "Stock Disponible" (pestañas Inventario y Bodega
+-- de Tránsito) es un control de qué sobrante hay vigente por producto, con la
+-- opción de ver el detalle fila por fila de cada evento de registro (igual que
+-- el historial de Movimientos). Para eso, cada registro de sobrante necesita
+-- guardar qué usuario lo generó — hoy no queda ningún rastro de autoría.
+--
+-- Se agrega id_usuario como FK opcional (nullable) a usuario: los registros que
+-- ya existían antes de esta columna no tienen autor conocido, así que se dejan
+-- en NULL en vez de forzar un valor ficticio. De acá en adelante,
+-- StockDisponibleServiceImpl.registrar() lo completa siempre, resolviendo el
+-- usuario autenticado desde el token (mismo patrón que Movimiento.usuario /
+-- UsuarioService.findUserByToken()).
+
+ALTER TABLE stock_disponible
+    ADD COLUMN IF NOT EXISTS id_usuario INTEGER REFERENCES usuario(id_usuario);
