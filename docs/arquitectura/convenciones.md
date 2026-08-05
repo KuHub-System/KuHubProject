@@ -101,3 +101,116 @@ para casos excepcionales ya evaluados con el equipo.
 correspondiente en `vi.mock('../../hooks/useToast', ...)` (`useConfirmDelete: () => vi.fn()` o
 `useConfirmDeactivate: () => vi.fn()`), o el render falla con
 `No "useConfirmDelete" export is defined on the "../../hooks/useToast" mock.`
+
+## Tablas — barra de scroll horizontal y vertical siempre visible
+
+**Norma:** todo contenedor de tabla que pueda desbordar el ancho o el alto disponible (tablas de
+datos, matrices, grids con muchas columnas/filas) debe usar la clase `custom-scrollbar` (definida en
+`frontend/src/index.css`) junto con `overflow-x-scroll overflow-y-scroll` — **no** `overflow-auto` ni
+`overflow-x-auto` a secas. `overflow-auto` solo dibuja la barra cuando el navegador decide que hace
+falta y, según el sistema operativo o el modo de scrollbar del usuario, puede quedar prácticamente
+invisible; `overflow-scroll` fuerza que la barra (con el estilo delgado del sistema) esté siempre
+presente y visible, para que el usuario sepa de entrada que puede desplazarse — esto es crítico en
+monitores angostos donde una tabla ancha (ej. matriz de roles con muchas columnas) corta contenido a
+la derecha sin dejar pista visual de que hay más.
+
+```tsx
+<div className="overflow-x-scroll overflow-y-scroll custom-scrollbar max-h-[calc(100vh-300px)] min-h-[300px] rounded-xl">
+  <table className="w-full min-w-max">
+    <thead>
+      <tr className="bg-default-50 dark:bg-default-100/5 border-b border-divider">
+        {/* Columna fija (ej. nombre de fila): sticky en ambos ejes si además hay scroll horizontal */}
+        <th className="sticky left-0 top-0 z-30 bg-default-50 dark:bg-content1 px-5 py-3 border-r border-b border-divider shadow-sm">
+          Columna
+        </th>
+        <th className="sticky top-0 z-20 bg-default-50 dark:bg-content1 px-4 py-3 border-b border-divider shadow-sm">
+          Otra columna
+        </th>
+      </tr>
+    </thead>
+    <tbody>{/* filas */}</tbody>
+  </table>
+</div>
+```
+
+Reglas:
+- El contenedor scrolleable acota su alto con `max-h-[...]` (ej. `max-h-[calc(100vh-300px)]`) para que
+  el scroll quede contenido dentro de la tarjeta/card, no en la página completa — si no, la cabecera
+  de la tabla desaparece de la vista al hacer scroll de la página.
+- La fila de cabecera (`<thead><tr>` y sus `<th>`) usa `sticky top-0` con **fondo sólido explícito**
+  (`bg-default-50 dark:bg-content1`) y `shadow-sm`, para que el nombre de cada columna se mantenga
+  visible mientras se scrollea verticalmente. El `th` sticky necesita su propio color de fondo — el
+  fondo del `<tr>` no cubre el contenido que pasa por debajo una vez que el `th` queda "pegado".
+- Si además hay una primera columna fija (ej. nombre de fila/módulo), usa `sticky left-0`; la celda
+  de la esquina superior-izquierda (fija en ambos ejes) necesita el `z-index` más alto de la tabla
+  para quedar por encima tanto de las filas como de las columnas que pasan por debajo.
+- Tablas HeroUI (`<Table>`) siguen el mismo criterio con `classNames.th: "sticky top-0 z-20 ..."` en
+  vez de `<th>` manual.
+- Referencia real: `frontend/src/pages/gestion-usuarios.tsx` (tabla de usuarios y matriz de
+  Módulos × Roles en la pestaña "Roles y Permisos").
+
+## Modales — tamaño máximo 75% de pantalla y barra de scroll vertical (aplica a TODOS los modales)
+
+**Norma:** todo `<Modal>` del sistema, sin excepción, debe limitarse al 75% del alto de pantalla
+(`max-h-[75vh]`) y su contenido scrolleable debe usar siempre la barra vertical estilizada del
+sistema (`custom-scrollbar` + `overflow-y-scroll`, no `overflow-y-auto`) — igual criterio de "barra
+siempre visible" que en la sección de tablas de arriba. Nunca dejar que un modal crezca libremente
+fuera del viewport en pantallas chicas.
+
+**La barra de scroll tiene que abarcar el modal completo** (header + body + footer juntos), no
+solo el `ModalBody`. Poner `overflow-y-scroll` + `custom-scrollbar` únicamente en `<ModalBody>` dejaba
+el header fuera del área scrolleable, con una barra corta que no cubría el modal entero (se veía como
+si la barra "no llegara" a las esquinas superior e inferior del modal).
+
+**No poner `overflow-y-scroll` y el redondeo de esquinas (`rounded-*`) en el mismo elemento.** El
+scroll no va en `classNames.base` del `<Modal>` (que solo debe encargarse de redondear y recortar con
+`overflow-hidden`) ni en `<ModalBody>` — va en un `div` interno que envuelve *todo* el contenido
+(`ModalHeader` + `ModalBody` + `ModalFooter`). Si el redondeo y el `overflow-y-scroll` quedan en el
+mismo elemento, Chromium no clipea correctamente las puntas de la barra nativa contra la esquina
+redondeada, dejando un pequeño resto cuadrado visible en la esquina — separar ambas responsabilidades
+(el `base` redondea/recorta, el `div` interno scrollea sin su propio `rounded-*`) evita ese artefacto.
+
+```tsx
+<Modal
+  isOpen={isOpen}
+  onOpenChange={onOpenChange}
+  isDismissable={false}
+  size="3xl"
+  scrollBehavior="normal"
+  radius="lg"
+  backdrop="blur"
+  classNames={{
+    base: 'rounded-2xl overflow-hidden max-h-[75vh]',
+    closeButton: 'hover:bg-default-100 cursor-pointer',
+  }}
+>
+  <ModalContent>
+    {(onClose) => (
+      // El scroll vive en este div interno (no en `base`, que solo redondea/clipea):
+      // el borde redondeado de `base` con overflow-hidden recorta las puntas del
+      // scrollbar nativo que Chromium no clipea correctamente cuando el redondeo
+      // y el overflow-y-scroll están en el mismo elemento.
+      <div className="max-h-[75vh] overflow-y-scroll custom-scrollbar">
+        <ModalHeader>Título del modal</ModalHeader>
+        <ModalBody>
+          {/* contenido */}
+        </ModalBody>
+        <ModalFooter>...</ModalFooter>
+      </div>
+    )}
+  </ModalContent>
+</Modal>
+```
+
+Este es el mismo patrón usado en `frontend/src/pages/pedido-semanal-a-bodega.tsx` (modal "Detalle de
+Pedido Semanal") y en `frontend/src/components/modals/GestionCategoriasModal.tsx` — son la referencia
+real a seguir al escribir un modal nuevo.
+
+Para modales con banner de color como bloque visual propio en vez de `<ModalHeader>` (ej. "¡Órdenes
+generadas!"), el banner y el resto del contenido van igual dentro del mismo `div` scrolleable que
+envuelve todo el modal — no hace falta el caso especial de `scrollBehavior="inside"` que antes rompía
+con banners sin `<ModalHeader>` real, porque ahora el scroll nunca depende de `<ModalBody>`.
+
+El detalle completo (con el código exacto) está documentado en `frontend/CLAUDE.md`, sección
+"Modales estándar (circulares)" — esa guía técnica vive en el repo junto al código y es la referencia
+a seguir al escribir un modal nuevo.

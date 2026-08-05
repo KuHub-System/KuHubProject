@@ -286,14 +286,18 @@ const GestionCategoriasModal: React.FC<GestionCategoriasModalProps> = ({
 
     return (
         <>
-            <Modal isOpen={isOpen} onOpenChange={onOpenChange} size="md" scrollBehavior="inside" isDismissable={false} backdrop="blur" radius="lg" classNames={{ base: 'rounded-2xl overflow-hidden max-h-[75vh]', closeButton: 'hover:bg-default-100 cursor-pointer' }}>
+            <Modal isOpen={isOpen} onOpenChange={onOpenChange} size="md" scrollBehavior="normal" isDismissable={false} backdrop="blur" radius="lg" classNames={{ base: 'rounded-2xl overflow-hidden max-h-[75vh]', closeButton: 'hover:bg-default-100 cursor-pointer' }}>
                 <ModalContent>
                     {(onClose) => (
-                        <>
+                        // El scroll vive en este div interno (no en `base`, que solo redondea/clipea):
+                        // el borde redondeado de `base` con overflow-hidden recorta las puntas del
+                        // scrollbar nativo que Chromium no clipea correctamente cuando el redondeo
+                        // y el overflow-y-scroll están en el mismo elemento.
+                        <div className="max-h-[75vh] overflow-y-scroll custom-scrollbar">
                             <ModalHeader className="flex flex-col gap-1">
                                 Gestión de Categorías
                             </ModalHeader>
-                            <ModalBody className="overflow-y-scroll custom-scrollbar">
+                            <ModalBody>
                                 <div className="flex flex-col gap-4">
                                     <div className="flex items-center justify-between">
                                         <h3 className="text-sm font-semibold text-default-500 uppercase">Lista de Categorías</h3>
@@ -370,7 +374,7 @@ const GestionCategoriasModal: React.FC<GestionCategoriasModalProps> = ({
 
                                     <Divider />
 
-                                    <div className="flex flex-col gap-1 max-h-[400px] overflow-y-auto pr-2">
+                                    <div className="flex flex-col gap-1">
                                         {isFetchingCategorias ? (
                                             <div className="flex flex-col items-center justify-center py-8 gap-2">
                                                 <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin"></div>
@@ -497,7 +501,7 @@ const GestionCategoriasModal: React.FC<GestionCategoriasModalProps> = ({
                                     Cerrar
                                 </Button>
                             </ModalFooter>
-                        </>
+                        </div>
                     )}
                 </ModalContent>
             </Modal>
@@ -508,12 +512,14 @@ const GestionCategoriasModal: React.FC<GestionCategoriasModalProps> = ({
                 onOpenChange={setShowReassociate}
                 size="md"
                 backdrop="blur"
-                scrollBehavior="inside"
+                scrollBehavior="normal"
                 isDismissable={false}
+                radius="lg"
+                classNames={{ base: 'rounded-2xl overflow-hidden max-h-[75vh]' }}
             >
                 <ModalContent>
                     {(onClose) => (
-                        <>
+                        <div className="max-h-[75vh] overflow-y-scroll custom-scrollbar">
                             <ModalHeader className="bg-danger-50 border-b border-danger-100 py-4">
                                 <div className="flex items-center gap-3 text-danger-600">
                                     <Icon icon="lucide:alert-triangle" width={28} />
@@ -587,7 +593,7 @@ const GestionCategoriasModal: React.FC<GestionCategoriasModalProps> = ({
                                     Transferir
                                 </Button>
                             </ModalFooter>
-                        </>
+                        </div>
                     )}
                 </ModalContent>
             </Modal>

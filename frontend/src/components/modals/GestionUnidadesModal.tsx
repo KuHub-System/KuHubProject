@@ -256,10 +256,10 @@ const GestionUnidadesModal: React.FC<GestionUnidadesModalProps> = ({
 
     return (
         <>
-            <Modal isOpen={isOpen} onOpenChange={onOpenChange} size="md" scrollBehavior="inside" isDismissable={false} backdrop="blur" radius="lg" classNames={{ base: 'rounded-2xl overflow-hidden max-h-[75vh]', closeButton: 'hover:bg-default-100 cursor-pointer' }}>
+            <Modal isOpen={isOpen} onOpenChange={onOpenChange} size="md" scrollBehavior="normal" isDismissable={false} backdrop="blur" radius="lg" classNames={{ base: 'rounded-2xl overflow-hidden max-h-[75vh]', closeButton: 'hover:bg-default-100 cursor-pointer' }}>
                 <ModalContent>
                     {(onClose) => (
-                        <>
+                        <div className="max-h-[75vh] overflow-y-scroll custom-scrollbar">
                             <ModalHeader className="flex items-center gap-3 py-4 border-b border-default-100">
                                 <div className="p-2 bg-yellow-100 rounded-full">
                                     <Icon icon="lucide:plus-circle" className="text-yellow-600 text-xl" />
@@ -268,7 +268,7 @@ const GestionUnidadesModal: React.FC<GestionUnidadesModalProps> = ({
                                     {editingId ? 'Editar Unidad' : isAdding ? 'Nueva Unidad' : 'Gestión de Unidades'}
                                 </h2>
                             </ModalHeader>
-                            <ModalBody className="py-6 overflow-y-scroll custom-scrollbar">
+                            <ModalBody className="py-6">
                                 <div className="flex flex-col gap-4">
                                     <div className="flex items-center justify-between">
                                         <h3 className="text-sm font-semibold text-default-500 uppercase">Lista de Unidades</h3>
@@ -391,7 +391,7 @@ const GestionUnidadesModal: React.FC<GestionUnidadesModalProps> = ({
 
                                     <Divider />
 
-                                    <div className="flex flex-col gap-1 max-h-[400px] overflow-y-auto pr-2">
+                                    <div className="flex flex-col gap-1 pr-2">
                                         {unidades.length === 0 ? (
                                             <p className="text-center text-default-400 py-4 italic">No hay unidades registradas</p>
                                         ) : (
@@ -479,7 +479,7 @@ const GestionUnidadesModal: React.FC<GestionUnidadesModalProps> = ({
                                     Cerrar
                                 </Button>
                             </ModalFooter>
-                        </>
+                        </div>
                     )}
                 </ModalContent>
             </Modal>
@@ -490,12 +490,14 @@ const GestionUnidadesModal: React.FC<GestionUnidadesModalProps> = ({
                 onOpenChange={setShowReassociate}
                 size="md"
                 backdrop="blur"
-                scrollBehavior="inside"
+                scrollBehavior="normal"
                 isDismissable={false}
+                radius="lg"
+                classNames={{ base: 'rounded-2xl overflow-hidden max-h-[75vh]' }}
             >
                 <ModalContent>
                     {(onClose) => (
-                        <>
+                        <div className="max-h-[75vh] overflow-y-scroll custom-scrollbar">
                             <ModalHeader className="bg-danger-50 border-b border-danger-100 py-4">
                                 <div className="flex items-center gap-3 text-danger-600">
                                     <Icon icon="lucide:alert-triangle" width={28} />
@@ -563,7 +565,7 @@ const GestionUnidadesModal: React.FC<GestionUnidadesModalProps> = ({
                                     Transferir
                                 </Button>
                             </ModalFooter>
-                        </>
+                        </div>
                     )}
                 </ModalContent>
             </Modal>
@@ -575,10 +577,13 @@ const GestionUnidadesModal: React.FC<GestionUnidadesModalProps> = ({
                 size="sm"
                 backdrop="blur"
                 isDismissable={false}
+                scrollBehavior="normal"
+                radius="lg"
+                classNames={{ base: 'rounded-2xl overflow-hidden max-h-[75vh]' }}
             >
                 <ModalContent>
                     {(onClose) => (
-                        <>
+                        <div className="max-h-[75vh] overflow-y-scroll custom-scrollbar">
                             <ModalHeader className="bg-danger-50 border-b border-danger-100 py-4">
                                 <div className="flex items-center gap-3 text-danger-600">
                                     <Icon icon="lucide:trash-2" width={24} />
@@ -603,7 +608,7 @@ const GestionUnidadesModal: React.FC<GestionUnidadesModalProps> = ({
                                     Eliminar Definitivamente
                                 </Button>
                             </ModalFooter>
-                        </>
+                        </div>
                     )}
                 </ModalContent>
             </Modal>

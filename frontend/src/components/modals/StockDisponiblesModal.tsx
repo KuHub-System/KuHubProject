@@ -117,12 +117,12 @@ const StockDisponiblesModal: React.FC<StockDisponiblesModalProps> = ({
             size={esReal ? '5xl' : '3xl'}
             backdrop="blur"
             radius="lg"
-            scrollBehavior="inside"
+            scrollBehavior="normal"
             classNames={{ base: 'rounded-2xl overflow-hidden max-h-[75vh]', closeButton: 'hover:bg-default-100 cursor-pointer' }}
         >
             <ModalContent>
                 {(onClose) => (
-                    <>
+                    <div className="max-h-[75vh] overflow-y-scroll custom-scrollbar">
                         <ModalHeader className="flex flex-col gap-1 border-b border-default-100 pb-3">
                             <div className="flex items-center gap-2">
                                 <Icon icon="lucide:package-check" width={20} className="text-primary" />
@@ -142,7 +142,7 @@ const StockDisponiblesModal: React.FC<StockDisponiblesModalProps> = ({
                             </p>
                         </ModalHeader>
 
-                        <ModalBody className="px-4 py-4 space-y-4 overflow-y-scroll custom-scrollbar">
+                        <ModalBody className="px-4 py-4 space-y-4">
                             {/* Toggle de vista */}
                             <div className="flex flex-wrap gap-2">
                                 {verInventario && (
@@ -468,7 +468,7 @@ const StockDisponiblesModal: React.FC<StockDisponiblesModalProps> = ({
                                 Cerrar
                             </Button>
                         </ModalFooter>
-                    </>
+                    </div>
                 )}
             </ModalContent>
         </Modal>

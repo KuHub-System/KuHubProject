@@ -1033,10 +1033,10 @@ const InventarioPage: React.FC = () => {
         {/* Barra de herramientas */}
         <Card className="shadow-sm bg-white dark:bg-content1 border border-default-200 dark:border-default-100 mx-4">
           <CardBody className="p-4">
-            <div className="flex flex-col md:flex-row gap-4 justify-between items-center">
-              <div className="w-full flex flex-col md:flex-row gap-2 md:w-[48%]">
+            <div className="flex flex-col lg:flex-row gap-4 justify-between items-center">
+              <div className="w-full flex flex-col lg:flex-row gap-2 lg:w-[48%]">
                 <Input
-                  className="w-full md:w-1/2"
+                  className="w-full lg:w-1/2"
                   placeholder="Buscar código de producto..."
                   value={searchCode}
                   onValueChange={(val) => {
@@ -1050,7 +1050,7 @@ const InventarioPage: React.FC = () => {
                   onClear={() => setSearchCode('')}
                 />
                 <Input
-                  className="w-full md:w-1/2"
+                  className="w-full lg:w-1/2"
                   placeholder="Buscar productos por nombre..."
                   value={searchTerm}
                   onValueChange={(val) => {
@@ -1065,7 +1065,7 @@ const InventarioPage: React.FC = () => {
                 />
               </div>
 
-              <div className="flex items-center gap-3 flex-wrap">
+              <div className="w-full lg:w-auto flex flex-col lg:flex-row items-center gap-3">
                 <div className="flex flex-col gap-1">
                   <Checkbox
                     isSelected={selectedFilters.has('stock-bajo')}
@@ -1099,13 +1099,14 @@ const InventarioPage: React.FC = () => {
                   </Checkbox>
                 </div>
 
+                <div className="w-full lg:w-auto flex flex-col lg:flex-row gap-3">
                 <Dropdown onOpenChange={(isOpen) => {
                   if (!isOpen) scheduleFilterRequest();
                 }}>
                   <DropdownTrigger>
                     <Button
                       variant="bordered"
-                      className="bg-white dark:bg-default-100/50"
+                      className="w-full lg:w-auto bg-white dark:bg-default-100/50"
                       startContent={<Icon icon="lucide:tag" className="text-default-500" />}
                       endContent={<Icon icon="lucide:chevron-down" className="text-default-400" width={14} />}
                     >
@@ -1177,7 +1178,7 @@ const InventarioPage: React.FC = () => {
                   <DropdownTrigger>
                     <Button
                       variant="bordered"
-                      className="bg-white dark:bg-default-100/50"
+                      className="w-full lg:w-auto bg-white dark:bg-default-100/50"
                       startContent={<Icon icon="lucide:ruler" className="text-default-500" />}
                       endContent={<Icon icon="lucide:chevron-down" className="text-default-400" width={14} />}
                     >
@@ -1213,6 +1214,7 @@ const InventarioPage: React.FC = () => {
                     ))}
                   </DropdownMenu>
                 </Dropdown>
+                </div>
 
               </div>
             </div>
@@ -1222,7 +1224,7 @@ const InventarioPage: React.FC = () => {
         {/* Tabla de productos */}
         <Card className="shadow-sm border border-default-200 dark:border-default-100 bg-white dark:bg-content1 mx-4">
           <CardBody className="p-0">
-            <div ref={scrollerRef} className="overflow-auto max-h-[calc(100vh-300px)] min-h-[300px] rounded-xl">
+            <div ref={scrollerRef} className="overflow-x-scroll overflow-y-scroll custom-scrollbar max-h-[calc(100vh-300px)] min-h-[300px] rounded-xl">
               <div className="min-w-[800px] w-full">
         <Table
           aria-label="Tabla de inventario"
@@ -1391,17 +1393,17 @@ const InventarioPage: React.FC = () => {
         )}
 
         {/* Modales */}
-        <Modal isOpen={isOpen} onOpenChange={onOpenChange} size="lg" backdrop="blur" placement="top" scrollBehavior="inside" radius="lg" classNames={{ base: 'rounded-2xl overflow-hidden max-h-[75vh] mt-4', closeButton: 'hover:bg-default-100 cursor-pointer' }} isDismissable={false}>
+        <Modal isOpen={isOpen} onOpenChange={onOpenChange} size="lg" backdrop="blur" placement="top" scrollBehavior="normal" radius="lg" classNames={{ base: 'rounded-2xl overflow-hidden max-h-[75vh] mt-4', closeButton: 'hover:bg-default-100 cursor-pointer' }} isDismissable={false}>
           <ModalContent>
             {(onClose) => (
-              <>
+              <div className="max-h-[75vh] overflow-y-scroll custom-scrollbar">
                 <ModalHeader className="border-b border-default-100 dark:border-default-50 bg-white dark:bg-content2">
                   <div className="flex items-center gap-2">
                     <Icon icon={modalMode === 'crear' ? "lucide:plus-circle" : "lucide:package-check"} className="text-primary" width={24} />
                     <span className="font-bold text-lg text-secondary dark:text-foreground">{modalMode === 'crear' ? 'Nuevo Inventario' : 'Control de Inventario'}</span>
                   </div>
                 </ModalHeader>
-                <ModalBody className="py-6 overflow-y-scroll custom-scrollbar">
+                <ModalBody className="py-6">
                   <FormularioProducto
                     producto={productoSeleccionado}
                     onClose={onClose}
@@ -1411,12 +1413,12 @@ const InventarioPage: React.FC = () => {
                     onConflictSync={handleConflictSync}
                   />
                 </ModalBody>
-              </>
+              </div>
             )}
           </ModalContent>
         </Modal>
 
-        <Modal key={bulkModalKey} isOpen={isPedidoMasivoOpen} onOpenChange={onPedidoMasivoOpenChange} size="5xl" backdrop="blur" scrollBehavior="inside" radius="lg" classNames={{ base: 'rounded-2xl overflow-hidden max-h-[75vh]', closeButton: 'hover:bg-default-100 cursor-pointer' }} isDismissable={false}>
+        <Modal key={bulkModalKey} isOpen={isPedidoMasivoOpen} onOpenChange={onPedidoMasivoOpenChange} size="5xl" backdrop="blur" scrollBehavior="normal" radius="lg" classNames={{ base: 'rounded-2xl overflow-hidden max-h-[75vh]', closeButton: 'hover:bg-default-100 cursor-pointer' }} isDismissable={false}>
           <ModalContent>
             {(onClose) => (
               <PedidoMasivoModal
@@ -1442,16 +1444,16 @@ const InventarioPage: React.FC = () => {
           isOpen={isResultModalOpen}
           onOpenChange={onResultModalOpenChange}
           size="md"
-          scrollBehavior="inside"
+          scrollBehavior="normal"
           isDismissable={false}
           classNames={{
             backdrop: "bg-background/50 backdrop-blur-sm",
-            base: "bg-background dark:bg-content1 shadow-xl border border-default-200 dark:border-default-100",
+            base: "bg-background dark:bg-content1 shadow-xl border border-default-200 dark:border-default-100 overflow-hidden max-h-[75vh]",
           }}
         >
           <ModalContent>
             {(onClose) => (
-              <>
+              <div className="max-h-[75vh] overflow-y-scroll custom-scrollbar">
                 <ModalBody>
                   <div className="flex flex-col items-center justify-center px-6 pt-8 pb-4 text-center gap-4 animate-appearance-in w-full">
                     <Icon icon="lucide:check-circle" className="text-success w-16 h-16" />
@@ -1530,7 +1532,7 @@ const InventarioPage: React.FC = () => {
                     {bulkRetryItems.length > 0 ? 'Corregir errores' : 'Entendido'}
                   </Button>
                 </ModalFooter>
-              </>
+              </div>
             )}
           </ModalContent>
         </Modal>
@@ -1557,10 +1559,10 @@ const InventarioPage: React.FC = () => {
           onRefresh={() => cargarProductosPaginados(1, true)}
         />
 
-        <Modal isOpen={showStockWarning} onOpenChange={setShowStockWarning} backdrop="blur" isDismissable={false}>
+        <Modal isOpen={showStockWarning} onOpenChange={setShowStockWarning} backdrop="blur" isDismissable={false} scrollBehavior="normal" radius="lg" classNames={{ base: 'rounded-2xl overflow-hidden max-h-[75vh]' }}>
           <ModalContent>
             {(onClose) => (
-              <>
+              <div className="max-h-[75vh] overflow-y-scroll custom-scrollbar">
                 <ModalHeader className="flex flex-col gap-1 items-center pt-8">
                   <div className="p-3 bg-danger-50 rounded-full text-danger-500 mb-2">
                     <Icon icon="lucide:alert-circle" width={40} />
@@ -1575,7 +1577,7 @@ const InventarioPage: React.FC = () => {
                     <Button color="primary" variant="flat" onPress={onClose} className="font-bold">Entendido</Button>
                   </div>
                 </ModalBody>
-              </>
+              </div>
             )}
           </ModalContent>
         </Modal>
@@ -1588,12 +1590,13 @@ const InventarioPage: React.FC = () => {
           size="lg"
           backdrop="blur"
           radius="lg"
-          scrollBehavior="inside"
+          scrollBehavior="normal"
           isDismissable={false}
+          classNames={{ base: 'rounded-2xl overflow-hidden max-h-[75vh]' }}
         >
           <ModalContent>
             {(onClose) => (
-              <>
+              <div className="max-h-[75vh] overflow-y-scroll custom-scrollbar">
                 <ModalHeader className="flex flex-col gap-1 pb-2">
                   <div className="flex items-center gap-2">
                     <Icon icon="lucide:upload-cloud" className="text-success" width={22} />
@@ -1740,7 +1743,7 @@ const InventarioPage: React.FC = () => {
                     </Button>
                   )}
                 </ModalFooter>
-              </>
+              </div>
             )}
           </ModalContent>
         </Modal>
@@ -1750,8 +1753,10 @@ const InventarioPage: React.FC = () => {
           isOpen={isExcelResultOpen}
           onOpenChange={onExcelResultOpenChange}
           size="2xl"
-          scrollBehavior="inside"
+          scrollBehavior="normal"
           isDismissable={false}
+          radius="lg"
+          classNames={{ base: 'rounded-2xl overflow-hidden max-h-[75vh]' }}
         >
           <ModalContent>
             {(onClose) => {
@@ -1763,7 +1768,7 @@ const InventarioPage: React.FC = () => {
                 (item, i) => (item.stockExcel ?? 0) === 0 && excelNoEncontradosSeleccionados.has(i)
               );
               return (
-                <>
+                <div className="max-h-[75vh] overflow-y-scroll custom-scrollbar">
                   <ModalHeader className="flex items-center gap-2">
                     <Icon icon="lucide:file-check" className="text-success" width={20} />
                     Resultado — Sincronización Excel
@@ -1899,7 +1904,7 @@ const InventarioPage: React.FC = () => {
                       </Button>
                     )}
                   </ModalFooter>
-                </>
+                </div>
               );
             }}
           </ModalContent>
@@ -1911,11 +1916,12 @@ const InventarioPage: React.FC = () => {
           size="md"
           backdrop="blur"
           radius="lg"
-          classNames={{ base: 'rounded-2xl' }}
+          scrollBehavior="normal"
+          classNames={{ base: 'rounded-2xl overflow-hidden max-h-[75vh]' }}
         >
           <ModalContent>
             {(onClose) => (
-              <>
+              <div className="max-h-[75vh] overflow-y-scroll custom-scrollbar">
                 <ModalHeader className="flex items-center gap-2">
                   <Icon icon="lucide:alert-triangle" className="text-warning" width={20} />
                   Categoría no reconocida
@@ -1935,7 +1941,7 @@ const InventarioPage: React.FC = () => {
                     Entendido
                   </Button>
                 </ModalFooter>
-              </>
+              </div>
             )}
           </ModalContent>
         </Modal>
@@ -1948,13 +1954,14 @@ const InventarioPage: React.FC = () => {
           backdrop="blur"
           radius="lg"
           isDismissable={false}
-          classNames={{ base: 'rounded-2xl' }}
+          scrollBehavior="normal"
+          classNames={{ base: 'rounded-2xl overflow-hidden max-h-[75vh]' }}
         >
           <ModalContent>
             {(onClose) => {
               const catSeleccionada = categoriasActivas.find(c => c.id === excelSelectedCatId);
               return (
-                <>
+                <div className="max-h-[75vh] overflow-y-scroll custom-scrollbar">
                   <ModalHeader className="flex items-center gap-2">
                     <Icon icon="lucide:warehouse" className="text-warning" width={20} />
                     Categoría de Bodega de Tránsito
@@ -1988,7 +1995,7 @@ const InventarioPage: React.FC = () => {
                       Sí, sincronizar bodega
                     </Button>
                   </ModalFooter>
-                </>
+                </div>
               );
             }}
           </ModalContent>

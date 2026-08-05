@@ -80,20 +80,20 @@ const GestionAbastecimientoModal: React.FC<GestionAbastecimientoModalProps> = ({
             onOpenChange={onOpenChange}
             size="2xl"
             isDismissable={false}
-            scrollBehavior="inside"
+            scrollBehavior="normal"
             backdrop="blur"
             radius="lg"
             classNames={{ base: 'rounded-2xl overflow-hidden max-h-[75vh]', closeButton: 'hover:bg-default-100 cursor-pointer' }}
         >
             <ModalContent>
                 {(onClose) => (
-                    <>
+                    <div className="max-h-[75vh] overflow-y-scroll custom-scrollbar">
                         <ModalHeader className="flex items-center gap-2">
                             <Icon icon="lucide:warehouse" width={20} className="text-primary" />
                             <span>Gestión de Abastecimiento</span>
                         </ModalHeader>
 
-                        <ModalBody className="overflow-y-scroll custom-scrollbar">
+                        <ModalBody>
                             <p className="text-sm text-default-500 mb-3">
                                 Configura qué categorías participan en cada tipo de abastecimiento.
                                 Las categorías sin ningún tipo activo quedarán excluidas.
@@ -164,7 +164,7 @@ const GestionAbastecimientoModal: React.FC<GestionAbastecimientoModalProps> = ({
                                 Guardar
                             </Button>
                         </ModalFooter>
-                    </>
+                    </div>
                 )}
             </ModalContent>
         </Modal>

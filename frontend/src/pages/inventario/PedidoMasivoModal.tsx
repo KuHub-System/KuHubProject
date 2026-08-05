@@ -717,6 +717,7 @@ const PedidoMasivoModal: React.FC<PedidoMasivoModalProps> = ({ onClose, onNuevoP
 
   return (
     <>
+    <div className="max-h-[75vh] overflow-y-scroll custom-scrollbar">
       <ModalHeader className="flex flex-col gap-3 border-b border-default-100 dark:border-default-50 bg-white dark:bg-content2 px-6 py-4">
         <div className="flex-1">
           <h2 className="text-xl font-bold text-secondary dark:text-foreground">Control de Stock Masivo</h2>
@@ -753,7 +754,7 @@ const PedidoMasivoModal: React.FC<PedidoMasivoModalProps> = ({ onClose, onNuevoP
           </Tooltip>
         </div>
       </ModalHeader>
-      <ModalBody className="px-4 py-3 space-y-3 overflow-y-scroll custom-scrollbar max-h-[calc(75vh-150px)]">
+      <ModalBody className="px-4 py-3 space-y-3">
           <AnimatePresence initial={false}>
             {!listadoExpandido && (
               <motion.div
@@ -1076,6 +1077,7 @@ const PedidoMasivoModal: React.FC<PedidoMasivoModalProps> = ({ onClose, onNuevoP
           </Button>
         </div>
       </ModalFooter>
+    </div>
 
       {/* Modal de Abastecimiento de Proveedores (OPs CONFIRMADA) */}
       <Modal
@@ -1084,13 +1086,13 @@ const PedidoMasivoModal: React.FC<PedidoMasivoModalProps> = ({ onClose, onNuevoP
         size="5xl"
         backdrop="blur"
         radius="lg"
-        scrollBehavior="inside"
+        scrollBehavior="normal"
         classNames={{ base: 'rounded-2xl overflow-hidden max-h-[75vh]', closeButton: 'hover:bg-default-100 cursor-pointer' }}
         isDismissable={false}
       >
         <ModalContent>
           {(onAbastClose) => (
-            <>
+            <div className="max-h-[75vh] overflow-y-scroll custom-scrollbar">
               <ModalHeader className="flex flex-col gap-2 border-b border-default-100 pb-4">
                 <div className="flex items-center gap-2">
                   <Icon icon="lucide:truck" width={20} className="text-secondary dark:text-foreground" />
@@ -1131,7 +1133,7 @@ const PedidoMasivoModal: React.FC<PedidoMasivoModalProps> = ({ onClose, onNuevoP
                   ))}
                 </div>
               </ModalHeader>
-              <ModalBody className="py-5 px-5 overflow-y-scroll custom-scrollbar max-h-[calc(75vh-150px)] space-y-4">
+              <ModalBody className="py-5 px-5 space-y-4">
                 {loadingAbastecimiento ? (
                   <div className="space-y-3">
                     {Array.from({ length: 3 }).map((_, i) => <CardSkeleton key={i} lines={2} />)}
@@ -1253,7 +1255,7 @@ const PedidoMasivoModal: React.FC<PedidoMasivoModalProps> = ({ onClose, onNuevoP
                   Cargar {diasSeleccionados.size > 0 ? `${diasSeleccionados.size} día(s)` : 'seleccionados'}
                 </Button>
               </ModalFooter>
-            </>
+            </div>
           )}
         </ModalContent>
       </Modal>
@@ -1265,13 +1267,14 @@ const PedidoMasivoModal: React.FC<PedidoMasivoModalProps> = ({ onClose, onNuevoP
         size="lg"
         backdrop="blur"
         radius="lg"
-        classNames={{ base: 'rounded-2xl' }}
+        scrollBehavior="normal"
+        classNames={{ base: 'rounded-2xl overflow-hidden max-h-[75vh]' }}
         isDismissable={false}
         hideCloseButton
       >
         <ModalContent>
           {() => (
-            <>
+            <div className="max-h-[75vh] overflow-y-scroll custom-scrollbar">
               <ModalHeader className="flex flex-col gap-1 border-b border-default-100 pb-4">
                 <div className="flex items-center gap-2">
                   <Icon icon="lucide:circle-check-big" width={20} className="text-success" />
@@ -1331,16 +1334,16 @@ const PedidoMasivoModal: React.FC<PedidoMasivoModalProps> = ({ onClose, onNuevoP
                   Omitir entregados
                 </Button>
               </ModalFooter>
-            </>
+            </div>
           )}
         </ModalContent>
       </Modal>
 
       {/* Modal de Abastecimiento de Bodega */}
-      <Modal isOpen={isBodegaOpen} onOpenChange={onBodegaOpenChange} size="4xl" backdrop="blur" radius="lg" isDismissable={false} scrollBehavior="inside" classNames={{ base: 'rounded-2xl overflow-hidden max-h-[75vh]', closeButton: 'hover:bg-default-100 cursor-pointer' }}>
+      <Modal isOpen={isBodegaOpen} onOpenChange={onBodegaOpenChange} size="4xl" backdrop="blur" radius="lg" isDismissable={false} scrollBehavior="normal" classNames={{ base: 'rounded-2xl overflow-hidden max-h-[75vh]', closeButton: 'hover:bg-default-100 cursor-pointer' }}>
         <ModalContent>
           {(onBodegaClose) => (
-            <>
+            <div className="max-h-[75vh] overflow-y-scroll custom-scrollbar">
               <ModalHeader className="flex flex-col gap-1">
                 <h2 className="text-lg font-bold text-secondary dark:text-foreground">Abastecimiento de Bodega</h2>
                 <p className="text-xs text-default-500 font-normal">Solicitudes EN_PEDIDO con productos de categorías INVENTARIO → TRASLADO a bodega de tránsito</p>
@@ -1363,7 +1366,7 @@ const PedidoMasivoModal: React.FC<PedidoMasivoModalProps> = ({ onClose, onNuevoP
                   )}
                 </div>
               </ModalHeader>
-              <ModalBody className="space-y-4 overflow-y-scroll custom-scrollbar max-h-[calc(75vh-150px)]">
+              <ModalBody className="space-y-4">
                 {/* Filtro de fechas — auto-búsqueda 1.5 s tras seleccionar */}
                 <div className="flex gap-2 items-end">
                   <div className="flex-1">
@@ -1553,7 +1556,7 @@ const PedidoMasivoModal: React.FC<PedidoMasivoModalProps> = ({ onClose, onNuevoP
                   Cargar {solicitudesSeleccionadas.size > 0 ? `${solicitudesSeleccionadas.size} solicitud(es)` : ''}
                 </Button>
               </ModalFooter>
-            </>
+            </div>
           )}
         </ModalContent>
       </Modal>
@@ -1566,9 +1569,11 @@ const PedidoMasivoModal: React.FC<PedidoMasivoModalProps> = ({ onClose, onNuevoP
         size="lg"
         backdrop="blur"
         radius="lg"
-        classNames={{ base: 'rounded-2xl' }}
+        scrollBehavior="normal"
+        classNames={{ base: 'rounded-2xl overflow-hidden max-h-[75vh]' }}
       >
         <ModalContent>
+        <div className="max-h-[75vh] overflow-y-scroll custom-scrollbar">
           <ModalHeader>
             <div className="flex items-center gap-2">
               <Icon icon="lucide:alert-triangle" width={20} className="text-warning" />
@@ -1625,6 +1630,7 @@ const PedidoMasivoModal: React.FC<PedidoMasivoModalProps> = ({ onClose, onNuevoP
               Sí, registrar disponibles
             </Button>
           </ModalFooter>
+        </div>
         </ModalContent>
       </Modal>
 

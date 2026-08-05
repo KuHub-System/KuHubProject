@@ -61,9 +61,11 @@ const ConfirmarSalidaDisponibleModal: React.FC<ConfirmarSalidaDisponibleModalPro
             size="2xl"
             backdrop="blur"
             radius="lg"
-            classNames={{ base: 'rounded-2xl' }}
+            scrollBehavior="normal"
+            classNames={{ base: 'rounded-2xl overflow-hidden max-h-[75vh]' }}
         >
             <ModalContent>
+              <div className="max-h-[75vh] overflow-y-scroll custom-scrollbar">
                 <ModalHeader>
                     <div className="flex items-center gap-2">
                         <Icon icon="lucide:alert-triangle" width={20} className="text-warning" />
@@ -127,6 +129,7 @@ const ConfirmarSalidaDisponibleModal: React.FC<ConfirmarSalidaDisponibleModalPro
                         Confirmar
                     </Button>
                 </ModalFooter>
+              </div>
             </ModalContent>
         </Modal>
     );
