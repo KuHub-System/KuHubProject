@@ -31,6 +31,8 @@ export interface IResultadoItemInventarioExcel {
   unidadMedidaExcel?: string;
   idUnidadMedida?: number;
   estado: 'ok' | 'no_encontrado';
+  idUnidadMedidaActual?: number;
+  nombreUnidadActual?: string;
 }
 
 // ── Configuración de abastecimiento por categoría ──────────────────────────

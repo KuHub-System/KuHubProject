@@ -1968,6 +1968,7 @@ const BodegaTransitoPage: React.FC = () => {
       onRefresh={() => {
         cacheRef.current = {};
         cargarProductosPaginados(1, true);
+        cargarFiltros(true);
       }}
     />
 
@@ -1977,12 +1978,14 @@ const BodegaTransitoPage: React.FC = () => {
       onRefresh={() => {
         cacheRef.current = {};
         cargarProductosPaginados(1, true);
+        cargarFiltros(true);
       }}
     />
 
     <GestionAbastecimientoModal
       isOpen={isAbastecimientoConfigOpen}
       onOpenChange={onAbastecimientoConfigOpenChange}
+      onRefresh={() => cargarFiltros(true)}
     />
     </>
   );

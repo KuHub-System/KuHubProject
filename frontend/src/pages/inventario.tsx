@@ -75,6 +75,7 @@ import {
   IStockInsuficiente,
   sincronizarInventarioDesdeExcelService,
   confirmarNuevosProductosExcelService,
+  aplicarCambioUnidadExcelService,
   obtenerConfigAbastecimientoService
 } from '../services/inventario/inventario-service';
 import {
@@ -230,7 +231,10 @@ const InventarioPage: React.FC = () => {
   const [excelResultado,                setExcelResultado]                = React.useState<ISincronizarInventarioExcelResultado | null>(null);
   const [excelNoEncontradosSeleccionados, setExcelNoEncontradosSeleccionados] = React.useState<Set<number>>(new Set());
   const [isIncluyendoNoEncontrados,     setIsIncluyendoNoEncontrados]     = React.useState(false);
-  const [excelResultVista, setExcelResultVista] = React.useState<'sincronizados' | 'no_encontrados'>('no_encontrados');
+  const [excelResultVista, setExcelResultVista] = React.useState<'sincronizados' | 'no_encontrados' | 'conflicto_unidad'>('no_encontrados');
+  const [excelConflictoUnidadSeleccionados, setExcelConflictoUnidadSeleccionados] = React.useState<Set<number>>(new Set());
+  const [excelConflictoResueltos, setExcelConflictoResueltos] = React.useState<Set<IResultadoItemInventarioExcel>>(new Set());
+  const [isAplicandoCambioUnidad, setIsAplicandoCambioUnidad] = React.useState(false);
   const [excelSyncTarget, setExcelSyncTarget] = React.useState<'inventario' | 'bodega'>('inventario');
   const [configAbastecimiento, setConfigAbastecimiento] = React.useState<ICategoriaAbastecimientoView[]>([]);
   const [excelCatNoEncontradaHoja, setExcelCatNoEncontradaHoja] = React.useState<string>('');
@@ -829,6 +833,8 @@ const InventarioPage: React.FC = () => {
             .map(({ i }) => i)
         )
       );
+      setExcelConflictoUnidadSeleccionados(new Set());
+      setExcelConflictoResueltos(new Set());
       setExcelResultVista(noEncontrados.length > 0 ? 'no_encontrados' : 'sincronizados');
       onSincronizarExcelOpenChange();
       onExcelResultOpen();
@@ -857,6 +863,8 @@ const InventarioPage: React.FC = () => {
             .map(({ i }) => i)
         )
       );
+      setExcelConflictoUnidadSeleccionados(new Set());
+      setExcelConflictoResueltos(new Set());
       setExcelResultVista(noEncontrados.length > 0 ? 'no_encontrados' : 'sincronizados');
       onSincronizarExcelOpenChange();
       onExcelBodegaAdvertenciaOpenChange();
@@ -872,30 +880,111 @@ const InventarioPage: React.FC = () => {
     if (!excelResultado || !excelSelectedCatId) return;
     const noEncontrados = excelResultado.resultados.filter(r => r.estado === 'no_encontrado');
     const seleccionados = noEncontrados.filter((_, i) => excelNoEncontradosSeleccionados.has(i));
-    if (seleccionados.length === 0) { onExcelResultOpenChange(); return; }
+    if (seleccionados.length === 0) return;
+    // La unidad leída del Excel puede no existir en el sistema (idUnidadMedida null) — en ese
+    // caso no hay ID válido para crear el producto: se excluye del envío y se avisa en vez
+    // de crearlo igual con un ID inválido o de omitirlo en silencio.
+    const conUnidadValida = seleccionados.filter(r => r.idUnidadMedida != null);
+    const sinUnidadValida = seleccionados.filter(r => r.idUnidadMedida == null);
     setIsIncluyendoNoEncontrados(true);
     try {
-      const items = seleccionados.map(r => ({
-        nombre: r.nombreExcel,
-        idUnidadMedida: r.idUnidadMedida ?? 0,
-        stock: r.stockExcel ?? 0,
-        idCategoria: excelSelectedCatId,
-      }));
-      if (excelSyncTarget === 'bodega') {
-        const count = await confirmarNuevosBodegaExcelService(items);
-        toast.success(`${count} nuevos productos registrados en bodega de tránsito`);
-        window.dispatchEvent(new Event('productosActualizados'));
-      } else {
-        const count = await confirmarNuevosProductosExcelService(items);
-        toast.success(`${count} nuevos productos agregados al inventario`);
+      if (conUnidadValida.length > 0) {
+        const items = conUnidadValida.map(r => ({
+          nombre: r.nombreExcel,
+          idUnidadMedida: r.idUnidadMedida!,
+          stock: r.stockExcel ?? 0,
+          idCategoria: excelSelectedCatId,
+        }));
+        if (excelSyncTarget === 'bodega') {
+          const count = await confirmarNuevosBodegaExcelService(items);
+          toast.success(`${count} nuevos productos registrados en bodega de tránsito`);
+          window.dispatchEvent(new Event('productosActualizados'));
+        } else {
+          const count = await confirmarNuevosProductosExcelService(items);
+          toast.success(`${count} nuevos productos agregados al inventario`);
+        }
       }
-      onExcelResultOpenChange();
+      if (sinUnidadValida.length > 0) {
+        const nombresUnidades = Array.from(new Set(sinUnidadValida.map(r => `"${r.unidadMedidaExcel || '—'}"`))).join(', ');
+        toast.error(
+          `${sinUnidadValida.length} producto(s) no se pudieron crear: la unidad ${nombresUnidades} no existe en el sistema. Créela en Gestión de Unidades y vuelva a sincronizar.`,
+          { duration: 8000 }
+        );
+      }
+      // No se cierra el modal: el usuario puede seguir revisando otras pestañas
+      // y cierra manualmente cuando termine. Los de unidad inválida quedan en la
+      // lista (no se pudieron crear) para que no se pierdan de vista.
+      setExcelResultado(prev => prev && {
+        ...prev,
+        resultados: prev.resultados.filter(r => !conUnidadValida.includes(r)),
+      });
+      setExcelNoEncontradosSeleccionados(new Set());
       setCache({});
       cargarProductosPaginados(1, true);
     } catch (err: any) {
       toast.error(err.message || 'Error al agregar productos');
     } finally {
       setIsIncluyendoNoEncontrados(false);
+    }
+  };
+
+  const handleAplicarCambioUnidad = async () => {
+    if (!excelResultado) return;
+    const sincronizados = excelResultado.resultados.filter(r => r.estado === 'ok');
+    const conflictos = sincronizados.filter(
+      item => (item.idUnidadMedida ?? null) !== (item.idUnidadMedidaActual ?? null) && !excelConflictoResueltos.has(item)
+    );
+    if (conflictos.length === 0) return;
+    // Checkbox invertido: tildado (default) = mantener la unidad actual, sin tildar = reemplazar por la del Excel.
+    const mantenidos = conflictos.filter((_, i) => !excelConflictoUnidadSeleccionados.has(i));
+    const reemplazar = conflictos.filter((_, i) => excelConflictoUnidadSeleccionados.has(i));
+    // La unidad leída del Excel puede no existir en el sistema (idUnidadMedida null) — en ese
+    // caso no hay ID válido para enviar: se avisa en vez de omitirlo en silencio.
+    const conUnidadValida = reemplazar.filter(r => r.idProducto != null && r.idUnidadMedida != null);
+    const sinUnidadValida = reemplazar.filter(r => r.idUnidadMedida == null);
+    setIsAplicandoCambioUnidad(true);
+    try {
+      let actualizados: typeof reemplazar = [];
+      if (conUnidadValida.length > 0) {
+        const items = conUnidadValida.map(r => ({ idProducto: r.idProducto!, idUnidadMedida: r.idUnidadMedida! }));
+        const count = await aplicarCambioUnidadExcelService(items);
+        actualizados = conUnidadValida.slice(0, count);
+        toast.success(`${count} producto${count !== 1 ? 's' : ''} actualizado${count !== 1 ? 's' : ''} con la nueva unidad`);
+      }
+      if (sinUnidadValida.length > 0) {
+        const nombresUnidades = Array.from(new Set(sinUnidadValida.map(r => `"${r.unidadMedidaExcel || '—'}"`))).join(', ');
+        toast.error(
+          `${sinUnidadValida.length} producto(s) no se pudieron actualizar: la unidad ${nombresUnidades} no existe en el sistema. Créela en Gestión de Unidades y vuelva a sincronizar.`,
+          { duration: 8000 }
+        );
+      }
+      if (mantenidos.length > 0) {
+        toast.success(`${mantenidos.length} producto${mantenidos.length !== 1 ? 's' : ''} sincronizado${mantenidos.length !== 1 ? 's' : ''} — se mantuvo la unidad actual`);
+      }
+      // No se cierra el modal: los mantenidos y los reemplazados con éxito se marcan
+      // como resueltos para que dejen de figurar en conflicto. Los de unidad inexistente
+      // quedan pendientes hasta que se cree la unidad y se vuelva a sincronizar.
+      setExcelConflictoResueltos(prev => {
+        const next = new Set(prev);
+        mantenidos.forEach(r => next.add(r));
+        actualizados.forEach(r => next.add(r));
+        return next;
+      });
+      setExcelResultado(prev => prev && {
+        ...prev,
+        resultados: prev.resultados.map(r =>
+          actualizados.includes(r)
+            ? { ...r, idUnidadMedidaActual: r.idUnidadMedida, nombreUnidadActual: r.unidadMedidaExcel }
+            : r
+        ),
+      });
+      setExcelConflictoUnidadSeleccionados(new Set());
+      setCache({});
+      cargarProductosPaginados(1, true);
+    } catch (err: any) {
+      toast.error(err.message || 'Error al aplicar el cambio de unidad');
+    } finally {
+      setIsAplicandoCambioUnidad(false);
     }
   };
 
@@ -1540,12 +1629,13 @@ const InventarioPage: React.FC = () => {
         <GestionCategoriasModal
           isOpen={isCategoriasOpen}
           onOpenChange={onCategoriasOpenChange}
-          onRefresh={() => cargarProductosPaginados(1, true)}
+          onRefresh={() => { cargarProductosPaginados(1, true); cargarFiltros(true); }}
         />
 
         <GestionAbastecimientoModal
           isOpen={isAbastecimientoConfigOpen}
           onOpenChange={onAbastecimientoConfigOpenChange}
+          onRefresh={() => cargarFiltros(true)}
         />
 
         <StockDisponiblesModal
@@ -1556,7 +1646,7 @@ const InventarioPage: React.FC = () => {
         <GestionUnidadesModal
           isOpen={isUnidadesOpen}
           onOpenChange={onUnidadesOpenChange}
-          onRefresh={() => cargarProductosPaginados(1, true)}
+          onRefresh={() => { cargarProductosPaginados(1, true); cargarFiltros(true); }}
         />
 
         <Modal isOpen={showStockWarning} onOpenChange={setShowStockWarning} backdrop="blur" isDismissable={false} scrollBehavior="normal" radius="lg" classNames={{ base: 'rounded-2xl overflow-hidden max-h-[75vh]' }}>
@@ -1763,6 +1853,14 @@ const InventarioPage: React.FC = () => {
               if (!excelResultado) return null;
               const noEncontradosList = excelResultado.resultados.filter(r => r.estado === 'no_encontrado');
               const sincronizadosList = excelResultado.resultados.filter(r => r.estado === 'ok');
+              // Conflicto de unidad: la unidad leída del Excel no coincide con la ya asignada
+              // al producto — ya sea porque es distinta (ambas válidas) o porque no matcheó
+              // ninguna unidad activa del sistema (idUnidadMedida null).
+              const conflictoUnidadList = sincronizadosList.filter(
+                item => (item.idUnidadMedida ?? null) !== (item.idUnidadMedidaActual ?? null) && !excelConflictoResueltos.has(item)
+              );
+              const todosMarcadosParaMantener = conflictoUnidadList.length > 0
+                && conflictoUnidadList.every((_, i) => !excelConflictoUnidadSeleccionados.has(i));
               const tieneConCero = noEncontradosList.some(item => (item.stockExcel ?? 0) === 0);
               const incluyeCero = tieneConCero && noEncontradosList.some(
                 (item, i) => (item.stockExcel ?? 0) === 0 && excelNoEncontradosSeleccionados.has(i)
@@ -1777,51 +1875,130 @@ const InventarioPage: React.FC = () => {
                     <div className="flex flex-col gap-4">
                       {/* Chips clickeables para cambiar vista */}
                       <div className="flex gap-3 flex-wrap">
-                        {excelResultado.totalSincronizados > 0 && (
+                        {sincronizadosList.length > 0 && (
                           <Chip
                             color="success"
                             variant={excelResultVista === 'sincronizados' ? 'solid' : 'flat'}
                             className="cursor-pointer"
                             onClick={() => setExcelResultVista('sincronizados')}
                           >
-                            {excelResultado.totalSincronizados} sincronizados
+                            {sincronizadosList.length} sincronizados
                           </Chip>
                         )}
-                        {excelResultado.totalNoEncontrados > 0 && (
+                        {noEncontradosList.length > 0 && (
                           <Chip
                             color="warning"
                             variant={excelResultVista === 'no_encontrados' ? 'solid' : 'flat'}
                             className="cursor-pointer"
                             onClick={() => setExcelResultVista('no_encontrados')}
                           >
-                            {excelResultado.totalNoEncontrados} no encontrados
+                            {noEncontradosList.length} no encontrados
                           </Chip>
                         )}
                         <Chip color="default" variant="flat">
                           {excelResultado.totalFilasProcesadas} filas procesadas
                         </Chip>
+                        {conflictoUnidadList.length > 0 && (
+                          <Tooltip content="El producto ya existe pero la unidad leída del Excel no coincide con la ya asignada (puede ser distinta, o no existir en el sistema). El stock se sincronizó igual — revise si corresponde cambiar la unidad." color="foreground" className="text-xs max-w-64">
+                            <Chip
+                              color="danger"
+                              variant={excelResultVista === 'conflicto_unidad' ? 'solid' : 'flat'}
+                              className="cursor-pointer"
+                              startContent={<Icon icon="lucide:git-compare-arrows" width={14} className="ml-1" />}
+                              onClick={() => setExcelResultVista('conflicto_unidad')}
+                            >
+                              {conflictoUnidadList.length} con conflicto de unidad
+                            </Chip>
+                          </Tooltip>
+                        )}
                       </div>
+
+                      {/* Vista: conflicto de unidad (producto encontrado con unidad distinta o no reconocida) */}
+                      {excelResultVista === 'conflicto_unidad' && conflictoUnidadList.length > 0 && (
+                        <div className="flex flex-col gap-2">
+                          <p className="text-sm font-medium text-danger-600">
+                            El Excel indica una unidad distinta a la ya asignada al producto. Marcado = mantener la unidad actual. Desmarque para intentar reemplazarla por la del Excel — si esa unidad no existe en el sistema, créela primero en Gestión de Unidades.
+                          </p>
+                          <Checkbox
+                            size="sm"
+                            isSelected={todosMarcadosParaMantener}
+                            onValueChange={(checked) => {
+                              setExcelConflictoUnidadSeleccionados(() => {
+                                const next = new Set<number>();
+                                if (!checked) conflictoUnidadList.forEach((_, i) => next.add(i));
+                                return next;
+                              });
+                            }}
+                          >
+                            <span className="text-xs text-default-500">Mantener la unidad actual para todos (desmarque para reemplazar todos por la del Excel)</span>
+                          </Checkbox>
+                          <div className="flex flex-col gap-1 max-h-72 overflow-y-auto pr-1">
+                            {conflictoUnidadList.map((item, idx) => (
+                              <div
+                                key={idx}
+                                className="flex items-center gap-3 p-2 rounded-lg bg-danger-50 dark:bg-danger-900/20"
+                              >
+                                <Checkbox
+                                  isSelected={!excelConflictoUnidadSeleccionados.has(idx)}
+                                  onValueChange={(checked) => {
+                                    setExcelConflictoUnidadSeleccionados(prev => {
+                                      const next = new Set(prev);
+                                      checked ? next.delete(idx) : next.add(idx);
+                                      return next;
+                                    });
+                                  }}
+                                />
+                                <span className="text-xs text-default-400 w-14 shrink-0">Fila {item.fila}</span>
+                                <span className="flex-1 text-sm">{item.nombreProducto ?? item.nombreExcel}</span>
+                                <span className="text-xs text-default-500 shrink-0">
+                                  {item.nombreUnidadActual || '—'} → <span className="text-danger-600 font-semibold">{item.unidadMedidaExcel || '—'}</span>
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
 
                       {/* Vista: sincronizados */}
                       {excelResultVista === 'sincronizados' && sincronizadosList.length > 0 && (
                         <div className="flex flex-col gap-2">
                           <p className="text-sm font-medium text-success-600">Productos actualizados</p>
                           <div className="flex flex-col gap-1 max-h-72 overflow-y-auto pr-1">
-                            {sincronizadosList.map((item, idx) => (
-                              <div
-                                key={idx}
-                                className="flex items-center gap-3 p-2 rounded-lg bg-success-50 dark:bg-success-900/20"
-                              >
-                                <Icon icon="lucide:check-circle" className="text-success flex-shrink-0" width={16} />
-                                <span className="flex-1 text-sm">{item.nombreProducto ?? item.nombreExcel}</span>
-                                <span className="text-xs text-default-400 w-16 text-right shrink-0">
-                                  {item.unidadMedidaExcel || '—'}
-                                </span>
-                                <span className="text-xs font-mono text-default-500 shrink-0">
-                                  {item.stockAnterior ?? 0} → <span className="text-success-600 font-semibold">{item.stockExcel ?? 0}</span>
-                                </span>
-                              </div>
-                            ))}
+                            {sincronizadosList.map((item, idx) => {
+                              const tieneConflictoUnidad = (item.idUnidadMedida ?? null) !== (item.idUnidadMedidaActual ?? null) && !excelConflictoResueltos.has(item);
+                              const fila = (
+                                <div
+                                  className={`flex items-center gap-3 p-2 rounded-lg ${
+                                    tieneConflictoUnidad
+                                      ? 'bg-warning-50 dark:bg-warning-900/20'
+                                      : 'bg-success-50 dark:bg-success-900/20'
+                                  }`}
+                                >
+                                  <Icon
+                                    icon={tieneConflictoUnidad ? 'lucide:alert-triangle' : 'lucide:check-circle'}
+                                    className={tieneConflictoUnidad ? 'text-warning-600 flex-shrink-0' : 'text-success flex-shrink-0'}
+                                    width={16}
+                                  />
+                                  <span className="flex-1 text-sm">{item.nombreProducto ?? item.nombreExcel}</span>
+                                  <span className={`text-xs w-16 text-right shrink-0 ${tieneConflictoUnidad ? 'text-warning-700 font-semibold' : 'text-default-400'}`}>
+                                    {item.unidadMedidaExcel || '—'}
+                                  </span>
+                                  <span className="text-xs font-mono text-default-500 shrink-0">
+                                    {item.stockAnterior ?? 0} → <span className="text-success-600 font-semibold">{item.stockExcel ?? 0}</span>
+                                  </span>
+                                </div>
+                              );
+                              return tieneConflictoUnidad ? (
+                                <Tooltip
+                                  key={idx}
+                                  content={`Fila ${item.fila}: unidad asignada "${item.nombreUnidadActual || '—'}", el Excel indica "${item.unidadMedidaExcel || '—'}". Revíselo en la pestaña "con conflicto de unidad".`}
+                                  color="foreground"
+                                  className="text-xs max-w-72"
+                                >
+                                  {fila}
+                                </Tooltip>
+                              ) : fila;
+                            })}
                           </div>
                         </div>
                       )}
@@ -1857,11 +2034,16 @@ const InventarioPage: React.FC = () => {
                             )}
                           </div>
                           <div className="flex flex-col gap-1 max-h-72 overflow-y-auto pr-1">
-                            {noEncontradosList.map((item, idx) => (
-                              <div
-                                key={idx}
-                                className="flex items-center gap-3 p-2 rounded-lg bg-default-50 dark:bg-default-100/50"
-                              >
+                            {noEncontradosList.map((item, idx) => {
+                              const unidadNoReconocida = !item.idUnidadMedida;
+                              const fila = (
+                                <div
+                                  className={`flex items-center gap-3 p-2 rounded-lg ${
+                                    unidadNoReconocida
+                                      ? 'bg-warning-50 dark:bg-warning-900/20'
+                                      : 'bg-default-50 dark:bg-default-100/50'
+                                  }`}
+                                >
                                 <Checkbox
                                   isSelected={excelNoEncontradosSeleccionados.has(idx)}
                                   onValueChange={(checked) => {
@@ -1873,7 +2055,8 @@ const InventarioPage: React.FC = () => {
                                   }}
                                 />
                                 <span className="flex-1 text-sm">{item.nombreExcel}</span>
-                                <span className="text-xs text-default-400 w-16 text-right shrink-0">
+                                {unidadNoReconocida && <Icon icon="lucide:alert-triangle" className="text-warning-600 shrink-0" width={14} />}
+                                <span className={`text-xs w-16 text-right shrink-0 ${unidadNoReconocida ? 'text-warning-700 font-semibold' : 'text-default-400'}`}>
                                   {item.unidadMedidaExcel || '—'}
                                 </span>
                                 <Chip
@@ -1884,8 +2067,19 @@ const InventarioPage: React.FC = () => {
                                 >
                                   {item.stockExcel ?? 0}
                                 </Chip>
-                              </div>
-                            ))}
+                                </div>
+                              );
+                              return unidadNoReconocida ? (
+                                <Tooltip
+                                  key={idx}
+                                  content={`La unidad "${item.unidadMedidaExcel || '—'}" no existe en el sistema. Si incluye este producto, no se enviará al crearlo — créela primero en Gestión de Unidades y vuelva a sincronizar.`}
+                                  color="foreground"
+                                  className="text-xs max-w-72"
+                                >
+                                  {fila}
+                                </Tooltip>
+                              ) : <React.Fragment key={idx}>{fila}</React.Fragment>;
+                            })}
                           </div>
                         </div>
                       )}
@@ -1901,6 +2095,15 @@ const InventarioPage: React.FC = () => {
                         onPress={handleConfirmarNuevos}
                       >
                         Incluir seleccionados ({excelNoEncontradosSeleccionados.size})
+                      </Button>
+                    )}
+                    {excelResultVista === 'conflicto_unidad' && conflictoUnidadList.length > 0 && (
+                      <Button
+                        color="danger"
+                        isLoading={isAplicandoCambioUnidad}
+                        onPress={handleAplicarCambioUnidad}
+                      >
+                        Aplicar cambios ({conflictoUnidadList.length})
                       </Button>
                     )}
                   </ModalFooter>

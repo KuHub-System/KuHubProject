@@ -692,6 +692,16 @@ export const sincronizarInventarioDesdeExcelService = async (
     }
 };
 
+export const aplicarCambioUnidadExcelService = async (
+    items: Array<{ idProducto: number; idUnidadMedida: number }>
+): Promise<number> => {
+    const response = await api.patch<number>(
+        '/inventario/sincronizar-excel/aplicar-cambio-unidad',
+        items
+    );
+    return response.data;
+};
+
 // ── Configuración de Gestión de Abastecimiento ──────────────────────────────
 
 export const obtenerConfigAbastecimientoService = async (): Promise<ICategoriaAbastecimientoView[]> => {

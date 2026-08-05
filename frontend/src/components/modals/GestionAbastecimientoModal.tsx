@@ -20,11 +20,13 @@ import { TableSkeleton } from '../SkeletonLoader';
 interface GestionAbastecimientoModalProps {
     isOpen: boolean;
     onOpenChange: (isOpen: boolean) => void;
+    onRefresh?: () => void;
 }
 
 const GestionAbastecimientoModal: React.FC<GestionAbastecimientoModalProps> = ({
     isOpen,
     onOpenChange,
+    onRefresh,
 }) => {
     const toast = useToast();
     const [categorias, setCategorias] = React.useState<ICategoriaAbastecimientoView[]>([]);
@@ -66,6 +68,7 @@ const GestionAbastecimientoModal: React.FC<GestionAbastecimientoModalProps> = ({
                 }))
             );
             toast.success('Configuración de abastecimiento guardada');
+            if (onRefresh) onRefresh();
             onOpenChange(false);
         } catch {
             toast.error('Error al guardar la configuración');
