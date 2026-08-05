@@ -1316,8 +1316,9 @@ const SolicitudPage: React.FC = () => {
       </motion.div>
 
       {/* ── Modal de resultado ── */}
-      <Modal isOpen={sendResult !== null} onClose={() => setSendResult(null)} size="md" hideCloseButton isDismissable={false} radius="lg" classNames={{ base: 'rounded-2xl overflow-hidden' }}>
+      <Modal isOpen={sendResult !== null} onClose={() => setSendResult(null)} size="md" hideCloseButton isDismissable={false} radius="lg" scrollBehavior="normal" classNames={{ base: 'rounded-2xl overflow-hidden max-h-[75vh]' }}>
         <ModalContent>
+        <div className="max-h-[75vh] overflow-y-scroll custom-scrollbar">
           {/* Banner de éxito */}
           <div className="bg-gradient-to-br from-success-400 to-success-600 px-6 py-8 flex flex-col items-center gap-3">
             <div className="bg-white/20 rounded-full p-4">
@@ -1329,7 +1330,7 @@ const SolicitudPage: React.FC = () => {
             </p>
           </div>
 
-          <div className="px-6 py-6 space-y-4 overflow-y-auto overflow-x-auto custom-scrollbar max-h-[45vh]">
+          <div className="px-6 py-6 space-y-4">
             {/* Stats */}
             <div className="flex gap-3">
               <div className="flex-1 flex flex-col items-center gap-2 py-5 rounded-2xl bg-success-50 border border-success-200">
@@ -1365,6 +1366,7 @@ const SolicitudPage: React.FC = () => {
               Entendido
             </Button>
           </ModalFooter>
+        </div>
         </ModalContent>
       </Modal>
     </div>
