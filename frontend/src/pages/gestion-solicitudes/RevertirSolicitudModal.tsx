@@ -18,10 +18,17 @@ const RevertirSolicitudModal: React.FC<RevertirSolicitudModalProps> = ({
   revertirConfirm, setRevertirConfirm, isSaving, confirmarRevertir,
 }) => {
   return (
-    <Modal isOpen={isOpen} onOpenChange={onOpenChange} size="sm">
+    <Modal
+      isOpen={isOpen}
+      onOpenChange={onOpenChange}
+      size="sm"
+      radius="lg"
+      scrollBehavior="normal"
+      classNames={{ base: 'rounded-2xl overflow-hidden max-h-[75vh]' }}
+    >
       <ModalContent>
         {onClose => selSol && (
-          <>
+          <div className="max-h-[75vh] overflow-y-scroll custom-scrollbar">
             <ModalHeader className="flex items-center gap-2 text-warning-700">
               <Icon icon="lucide:alert-triangle" width={18} />
               Aceptar solicitud Rechazada
@@ -64,7 +71,7 @@ const RevertirSolicitudModal: React.FC<RevertirSolicitudModalProps> = ({
                 Confirmar aceptación
               </Button>
             </ModalFooter>
-          </>
+          </div>
         )}
       </ModalContent>
     </Modal>

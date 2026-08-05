@@ -29,15 +29,16 @@ const DetalleSolicitudModal: React.FC<DetalleSolicitudModalProps> = ({
       isOpen={isOpen}
       onOpenChange={onOpenChange}
       size="3xl"
-      scrollBehavior="inside"
+      scrollBehavior="normal"
+      radius="lg"
       isDismissable={false}
       classNames={{
-        base: "max-h-[75vh]"
+        base: "rounded-2xl overflow-hidden max-h-[75vh]"
       }}
     >
       <ModalContent>
         {onClose => selSol && (
-          <>
+          <div className="max-h-[75vh] overflow-y-scroll custom-scrollbar">
             <ModalHeader className="flex flex-col gap-0 pb-0">
               <div className="flex items-center gap-2.5">
                 <div className="p-2 rounded-xl bg-primary-100 dark:bg-primary-900/30 text-primary">
@@ -65,7 +66,7 @@ const DetalleSolicitudModal: React.FC<DetalleSolicitudModalProps> = ({
               </div>
             </ModalHeader>
 
-            <ModalBody className="pt-4 space-y-4 overflow-y-scroll custom-scrollbar">
+            <ModalBody className="pt-4 space-y-4">
               {/* Grid de info */}
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
                 {[
@@ -242,7 +243,7 @@ const DetalleSolicitudModal: React.FC<DetalleSolicitudModalProps> = ({
               </Button>
               <Button variant="light" onPress={onClose}>Cerrar</Button>
             </ModalFooter>
-          </>
+          </div>
         )}
       </ModalContent>
     </Modal>

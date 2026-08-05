@@ -2877,12 +2877,12 @@ const GestionSolicitudesPage: React.FC = () => {
         size="lg"
         backdrop="blur"
         radius="lg"
-        scrollBehavior="inside"
-        classNames={{ base: 'rounded-2xl max-h-[75vh]' }}
+        scrollBehavior="normal"
+        classNames={{ base: 'rounded-2xl overflow-hidden max-h-[75vh]' }}
       >
         <ModalContent>
           {() => (
-            <>
+            <div className="max-h-[75vh] overflow-y-scroll custom-scrollbar">
               <ModalHeader className="flex flex-col gap-1">
                 <span className="flex items-center gap-2 text-secondary">
                   <Icon icon="lucide:bookmark-check" width={20} className="text-primary" />
@@ -2896,7 +2896,7 @@ const GestionSolicitudesPage: React.FC = () => {
                   )}
                 </span>
               </ModalHeader>
-              <ModalBody className="overflow-y-scroll custom-scrollbar">
+              <ModalBody>
                 <div className="border border-default-200 rounded-xl overflow-hidden">
                   <div className="grid grid-cols-12 px-4 py-2 bg-default-50 border-b border-default-100 text-[10px] font-bold text-default-500 uppercase tracking-wider">
                     <span className="col-span-8">Producto</span>
@@ -2956,7 +2956,7 @@ const GestionSolicitudesPage: React.FC = () => {
                   </>
                 )}
               </ModalFooter>
-            </>
+            </div>
           )}
         </ModalContent>
       </Modal>
@@ -2968,12 +2968,12 @@ const GestionSolicitudesPage: React.FC = () => {
         size="lg"
         backdrop="blur"
         radius="lg"
-        scrollBehavior="inside"
-        classNames={{ base: 'rounded-2xl max-h-[75vh]' }}
+        scrollBehavior="normal"
+        classNames={{ base: 'rounded-2xl overflow-hidden max-h-[75vh]' }}
       >
         <ModalContent>
           {() => (
-            <>
+            <div className="max-h-[75vh] overflow-y-scroll custom-scrollbar">
               <ModalHeader className="flex flex-col gap-1">
                 <span className="flex items-center gap-2 text-danger">
                   <Icon icon="lucide:alert-triangle" width={20} />
@@ -2984,7 +2984,7 @@ const GestionSolicitudesPage: React.FC = () => {
                   pedido pasarán a <strong>Rechazada</strong> y el pedido quedará cancelado.
                 </span>
               </ModalHeader>
-              <ModalBody className="overflow-y-scroll custom-scrollbar">
+              <ModalBody>
                 <div className="space-y-4">
                   {/* Reservas que se liberarán */}
                   {reservasALiberar.length > 0 && (
@@ -3084,7 +3084,7 @@ const GestionSolicitudesPage: React.FC = () => {
                   Rechazar pedido
                 </Button>
               </ModalFooter>
-            </>
+            </div>
           )}
         </ModalContent>
       </Modal>

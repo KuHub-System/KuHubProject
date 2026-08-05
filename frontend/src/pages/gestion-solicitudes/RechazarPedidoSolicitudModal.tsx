@@ -17,10 +17,18 @@ const RechazarPedidoSolicitudModal: React.FC<RechazarPedidoSolicitudModalProps> 
   isOpen, onOpenChange, selSol, motivoRechazoPedido, setMotivoRechazoPedido, isSaving, confirmarRechazoPedido,
 }) => {
   return (
-    <Modal isOpen={isOpen} onOpenChange={onOpenChange} size="sm" isDismissable={false}>
+    <Modal
+      isOpen={isOpen}
+      onOpenChange={onOpenChange}
+      size="sm"
+      isDismissable={false}
+      radius="lg"
+      scrollBehavior="normal"
+      classNames={{ base: 'rounded-2xl overflow-hidden max-h-[75vh]' }}
+    >
       <ModalContent>
         {onClose => selSol && (
-          <>
+          <div className="max-h-[75vh] overflow-y-scroll custom-scrollbar">
             <ModalHeader className="flex items-center gap-2 text-danger">
               <Icon icon="lucide:x-circle" width={18} />
               Rechazar solicitud en pedido
@@ -57,7 +65,7 @@ const RechazarPedidoSolicitudModal: React.FC<RechazarPedidoSolicitudModalProps> 
                 Confirmar y restar del pedido
               </Button>
             </ModalFooter>
-          </>
+          </div>
         )}
       </ModalContent>
     </Modal>

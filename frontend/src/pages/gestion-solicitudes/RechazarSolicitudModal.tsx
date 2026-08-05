@@ -17,10 +17,17 @@ const RechazarSolicitudModal: React.FC<RechazarSolicitudModalProps> = ({
   isOpen, onOpenChange, selSol, motivoRechazo, setMotivoRechazo, isSaving, confirmarRechazo,
 }) => {
   return (
-    <Modal isOpen={isOpen} onOpenChange={onOpenChange} size="sm">
+    <Modal
+      isOpen={isOpen}
+      onOpenChange={onOpenChange}
+      size="sm"
+      radius="lg"
+      scrollBehavior="normal"
+      classNames={{ base: 'rounded-2xl overflow-hidden max-h-[75vh]' }}
+    >
       <ModalContent>
         {onClose => selSol && (
-          <>
+          <div className="max-h-[75vh] overflow-y-scroll custom-scrollbar">
             <ModalHeader className="flex items-center gap-2 text-danger">
               <Icon icon="lucide:x-circle" width={18} />
               Rechazar solicitud
@@ -49,7 +56,7 @@ const RechazarSolicitudModal: React.FC<RechazarSolicitudModalProps> = ({
                 Confirmar rechazo
               </Button>
             </ModalFooter>
-          </>
+          </div>
         )}
       </ModalContent>
     </Modal>
