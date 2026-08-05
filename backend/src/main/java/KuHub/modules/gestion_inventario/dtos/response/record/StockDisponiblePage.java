@@ -20,7 +20,8 @@ public record StockDisponiblePage(
             String nombreUnidad,      // 3
             String abreviatura,       // 4
             String fechaRegistro,     // 5
-            String tipoDisponible     // 6
+            String tipoDisponible,    // 6
+            String usuario            // 7 — solo presente en la vista sin agrupar; NULL en la agrupada
     ) {
         public static StockDisponibleItem fromRow(Object[] row) {
             return new StockDisponibleItem(
@@ -30,7 +31,8 @@ public record StockDisponiblePage(
                     (String) row[3],
                     (String) row[4],
                     row[5] != null ? row[5].toString() : null,
-                    (String) row[6]
+                    (String) row[6],
+                    row[7] != null ? (String) row[7] : null
             );
         }
     }

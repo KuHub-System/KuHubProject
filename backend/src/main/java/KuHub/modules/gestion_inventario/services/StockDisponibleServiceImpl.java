@@ -2,13 +2,15 @@ package KuHub.modules.gestion_inventario.services;
 
 import KuHub.modules.gestion_inventario.dtos.request.RegistrarDisponibleDTO;
 import KuHub.modules.gestion_inventario.dtos.request.RestarDisponibleDTO;
-import KuHub.modules.gestion_inventario.dtos.response.record.DisponibleRealItem;
+import KuHub.modules.gestion_inventario.dtos.response.record.DisponibleRealPage;
 import KuHub.modules.gestion_inventario.dtos.response.record.RestarDisponibleResult;
 import KuHub.modules.gestion_inventario.dtos.response.record.StockDisponiblePage;
 import KuHub.modules.gestion_inventario.entity.Producto;
 import KuHub.modules.gestion_inventario.entity.StockDisponible;
 import KuHub.modules.gestion_inventario.repository.ProductoRepository;
 import KuHub.modules.gestion_inventario.repository.StockDisponibleRepository;
+import KuHub.modules.gestion_usuario.entity.Usuario;
+import KuHub.modules.gestion_usuario.service.UsuarioService;
 import KuHub.utils.PaginationUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -32,9 +34,14 @@ public class StockDisponibleServiceImpl implements StockDisponibleService {
     @Autowired
     private ProductoRepository productoRepository;
 
+    /**Services*/
+    @Autowired
+    private UsuarioService usuarioService;
+
     @Override
     @Transactional
     public void registrar(List<RegistrarDisponibleDTO> items) {
+        Usuario usuarioActual = usuarioService.findUserByToken();
         List<StockDisponible> entidades = new ArrayList<>();
         for (RegistrarDisponibleDTO dto : items) {
             Producto producto = productoRepository.findById(dto.idProducto())
@@ -44,6 +51,7 @@ public class StockDisponibleServiceImpl implements StockDisponibleService {
             sd.setIdSolicitud(dto.idSolicitud());
             sd.setIdPedido(dto.idPedido());
             sd.setCantidad(dto.cantidad());
+            sd.setUsuario(usuarioActual);
             // Si no viene tipo, la entidad conserva su default 'INVENTARIO'.
             if (dto.tipoDisponible() != null && !dto.tipoDisponible().isBlank()) {
                 sd.setTipoDisponible(dto.tipoDisponible());
@@ -51,24 +59,29 @@ public class StockDisponibleServiceImpl implements StockDisponibleService {
             entidades.add(sd);
         }
         stockDisponibleRepository.saveAll(entidades);
-        log.info("StockDisponible: {} registro(s) guardado(s)", entidades.size());
+        log.info("StockDisponible: {} registro(s) guardado(s) por usuario {}", entidades.size(), usuarioActual.getIdUsuario());
     }
 
     @Override
     @Transactional(readOnly = true)
-    public StockDisponiblePage listar(String tipo, int page) {
-        long total = stockDisponibleRepository.countByTipoAndActivo(tipo);
+    public StockDisponiblePage listarInventario(int page, Integer idCategoria, boolean agrupado, String busqueda) {
+        return listarPorTipo("INVENTARIO", page, idCategoria, agrupado, busqueda);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public StockDisponiblePage listarBodegaTransito(int page, Integer idCategoria, boolean agrupado, String busqueda) {
+        return listarPorTipo("BODEGA_TRANSITO", page, idCategoria, agrupado, busqueda);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public DisponibleRealPage listarDisponibleReal(String busqueda, Integer idCategoria, int page) {
+        long total = stockDisponibleRepository.countDisponibleReal(idCategoria, busqueda);
         PaginationUtils.PagingResult paging = PaginationUtils.buildPaging(page, total);
-        List<Object[]> rows = stockDisponibleRepository.findByTipoPaginado(tipo, paging.limit(), paging.offset());
-        return StockDisponiblePage.of(rows, paging, total);
-    }
-
-    @Override
-    @Transactional(readOnly = true)
-    public List<DisponibleRealItem> listarDisponibleReal() {
-        return stockDisponibleRepository.findDisponibleReal().stream()
-                .map(DisponibleRealItem::fromRow)
-                .toList();
+        List<Object[]> rows = stockDisponibleRepository.findDisponibleRealPaginado(
+                idCategoria, busqueda, paging.limit(), paging.offset());
+        return DisponibleRealPage.of(rows, paging, total);
     }
 
     @Override
@@ -143,5 +156,21 @@ public class StockDisponibleServiceImpl implements StockDisponibleService {
 
         log.info("StockDisponible.restar: {} producto(s) procesado(s)", resultados.size());
         return new RestarDisponibleResult(resultados);
+    }
+
+    /**
+     * Arma la página de stock disponible para un tipo (INVENTARIO | BODEGA_TRANSITO), filtrable
+     * por categoría y nombre de producto (búsqueda), en vista agrupada (sumada por producto) o
+     * individual (una fila por registro, con el usuario que lo generó).
+     */
+    private StockDisponiblePage listarPorTipo(String tipo, int page, Integer idCategoria, boolean agrupado, String busqueda) {
+        long total = agrupado
+                ? stockDisponibleRepository.countAgrupadoByTipoAndActivo(tipo, idCategoria, busqueda)
+                : stockDisponibleRepository.countIndividualByTipoAndActivo(tipo, idCategoria, busqueda);
+        PaginationUtils.PagingResult paging = PaginationUtils.buildPaging(page, total);
+        List<Object[]> rows = agrupado
+                ? stockDisponibleRepository.findAgrupadoByTipoPaginado(tipo, idCategoria, busqueda, paging.limit(), paging.offset())
+                : stockDisponibleRepository.findIndividualByTipoPaginado(tipo, idCategoria, busqueda, paging.limit(), paging.offset());
+        return StockDisponiblePage.of(rows, paging, total);
     }
 }

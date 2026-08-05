@@ -3,7 +3,7 @@ package KuHub.modules.gestion_inventario.controller;
 import KuHub.config.security.service.DynamicPermissionService;
 import KuHub.modules.gestion_inventario.dtos.request.RegistrarDisponibleDTO;
 import KuHub.modules.gestion_inventario.dtos.request.RestarDisponibleDTO;
-import KuHub.modules.gestion_inventario.dtos.response.record.DisponibleRealItem;
+import KuHub.modules.gestion_inventario.dtos.response.record.DisponibleRealPage;
 import KuHub.modules.gestion_inventario.dtos.response.record.RestarDisponibleResult;
 import KuHub.modules.gestion_inventario.dtos.response.record.StockDisponiblePage;
 import KuHub.modules.gestion_inventario.services.StockDisponibleService;
@@ -110,25 +110,60 @@ public class StockDisponibleController {
     }
 
     /**
-     * Lista el stock disponible paginado (20 primera página, 10 siguientes), filtrado por tipo.
-     * ✅ En uso: Consumido por StockDisponiblesModal en inventario.tsx.
-     * Requiere permiso de LECTURA en el módulo INVENTARIO.
+     * Lista el stock disponible de Inventario, paginado (20 primera página, 10 siguientes) y
+     * filtrable por categoría. Endpoint propio (no comparte handler con Bodega de Tránsito ni
+     * Disponible Real) para que la matriz de permisos gobierne cada pestaña por separado y no se
+     * pidan datos de una vista que el rol no puede ver.
+     * agrupado=true (default): una fila por producto con la cantidad sumada de todos sus registros
+     * de sobrante. agrupado=false: una fila por cada evento de registro individual, con el usuario
+     * que lo generó — misma idea que el historial de Movimientos.
+     * ✅ En uso: Consumido por StockDisponiblesModal (pestaña "Inventario").
+     * Requiere permiso de LECTURA en el módulo SD_INVENTARIO.
      */
-    @GetMapping("/listar")
-    public ResponseEntity<?> listar(
-            @RequestParam(defaultValue = "INVENTARIO") String tipo,
+    @GetMapping("/inventario")
+    public ResponseEntity<?> listarInventario(
             @RequestParam(defaultValue = "1") Integer page,
+            @RequestParam(required = false) Integer idCategoria,
+            @RequestParam(defaultValue = "true") Boolean agrupado,
+            @RequestParam(required = false) String busqueda,
             Authentication authentication) {
         try {
-            if (!dynamicPermissionService.check(authentication, "INVENTARIO", "read")) {
+            if (!dynamicPermissionService.check(authentication, "SD_INVENTARIO", "read")) {
                 return ResponseEntity.status(HttpStatus.FORBIDDEN)
-                        .body(Map.of("message", "No tiene permisos para ver stock disponible"));
+                        .body(Map.of("message", "No tiene permisos para ver el stock disponible de Inventario"));
             }
-            StockDisponiblePage resultado = stockDisponibleService.listar(tipo, page);
+            StockDisponiblePage resultado = stockDisponibleService.listarInventario(page, idCategoria, agrupado, busqueda);
             return ResponseEntity.status(HttpStatus.OK).body(resultado);
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(Map.of("error", "Error al listar stock disponible", "message", e.getMessage()));
+                    .body(Map.of("error", "Error al listar stock disponible de Inventario", "message", e.getMessage()));
+        }
+    }
+
+    /**
+     * Lista el stock disponible de Bodega de Tránsito, paginado (20 primera página, 10 siguientes)
+     * y filtrable por categoría. Endpoint propio, ver justificación y semántica de "agrupado" en
+     * {@link #listarInventario}.
+     * ✅ En uso: Consumido por StockDisponiblesModal (pestaña "Bodega Tránsito").
+     * Requiere permiso de LECTURA en el módulo SD_BODEGA_TRANSITO.
+     */
+    @GetMapping("/bodega-transito")
+    public ResponseEntity<?> listarBodegaTransito(
+            @RequestParam(defaultValue = "1") Integer page,
+            @RequestParam(required = false) Integer idCategoria,
+            @RequestParam(defaultValue = "true") Boolean agrupado,
+            @RequestParam(required = false) String busqueda,
+            Authentication authentication) {
+        try {
+            if (!dynamicPermissionService.check(authentication, "SD_BODEGA_TRANSITO", "read")) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                        .body(Map.of("message", "No tiene permisos para ver el stock disponible de Bodega de Tránsito"));
+            }
+            StockDisponiblePage resultado = stockDisponibleService.listarBodegaTransito(page, idCategoria, agrupado, busqueda);
+            return ResponseEntity.status(HttpStatus.OK).body(resultado);
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("error", "Error al listar stock disponible de Bodega de Tránsito", "message", e.getMessage()));
         }
     }
 
@@ -136,19 +171,24 @@ public class StockDisponibleController {
      * Lista el disponible real por producto, paginado: (inventario + bodega de tránsito) − demanda
      * comprometida de solicitudes EN_PEDIDO ya abastecidas − reservas activas EN_PEDIDO. Es el mismo
      * cálculo de la columna "Disponible" de Generar OP / "Por Pedido" del Conglomerado: representa el
-     * stock libre, no asociado a ninguna solicitud.
-     * El frontend filtra por nombre y scrollea (sin paginación).
-     * ✅ En uso: Consumido por StockDisponiblesModal (pestaña "Disponible Real") en inventario.tsx y bodega-transito.tsx.
-     * Requiere permiso de LECTURA en el módulo INVENTARIO.
+     * stock libre, no asociado a ninguna solicitud. Filtrable por categoría y por nombre (búsqueda),
+     * ambos resueltos en SQL para escalar cuando crezca el catálogo.
+     * Endpoint propio, ver justificación en {@link #listarInventario}.
+     * ✅ En uso: Consumido por StockDisponiblesModal (pestaña "Disponible Real").
+     * Requiere permiso de LECTURA en el módulo SD_DISPONIBLE_REAL.
      */
     @GetMapping("/disponible-real")
-    public ResponseEntity<?> listarDisponibleReal(Authentication authentication) {
+    public ResponseEntity<?> listarDisponibleReal(
+            @RequestParam(defaultValue = "1") Integer page,
+            @RequestParam(required = false) Integer idCategoria,
+            @RequestParam(required = false) String busqueda,
+            Authentication authentication) {
         try {
-            if (!dynamicPermissionService.check(authentication, "INVENTARIO", "read")) {
+            if (!dynamicPermissionService.check(authentication, "SD_DISPONIBLE_REAL", "read")) {
                 return ResponseEntity.status(HttpStatus.FORBIDDEN)
                         .body(Map.of("message", "No tiene permisos para ver el disponible real"));
             }
-            List<DisponibleRealItem> resultado = stockDisponibleService.listarDisponibleReal();
+            DisponibleRealPage resultado = stockDisponibleService.listarDisponibleReal(busqueda, idCategoria, page);
             return ResponseEntity.status(HttpStatus.OK).body(resultado);
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)

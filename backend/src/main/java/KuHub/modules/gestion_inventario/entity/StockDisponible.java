@@ -1,5 +1,6 @@
 package KuHub.modules.gestion_inventario.entity;
 
+import KuHub.modules.gestion_usuario.entity.Usuario;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -19,6 +20,7 @@ import java.time.LocalDate;
  *   id_producto         INTEGER NOT NULL REFERENCES producto(id_producto),
  *   id_pedido           INTEGER REFERENCES pedido(id_pedido),
  *   id_solicitud        INTEGER REFERENCES solicitud(id_solicitud),
+ *   id_usuario          INTEGER REFERENCES usuario(id_usuario),
  *   cantidad            DECIMAL(10,3) NOT NULL CHECK (cantidad >= 0),
  *   tipo_disponible     tipo_abastecimiento NOT NULL DEFAULT 'INVENTARIO',
  *   fecha_registro      DATE NOT NULL DEFAULT CURRENT_DATE,
@@ -46,6 +48,11 @@ public class StockDisponible {
 
     @Column(name = "id_solicitud")
     private Integer idSolicitud;
+
+    /** Usuario que registró el sobrante (resuelto desde el token, ver StockDisponibleServiceImpl.registrar). Nullable: los registros previos a esta columna no tienen autor. */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "id_usuario", nullable = true)
+    private Usuario usuario;
 
     @Column(name = "cantidad", nullable = false, precision = 10, scale = 3)
     private BigDecimal cantidad;
