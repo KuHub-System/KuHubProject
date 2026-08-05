@@ -1242,7 +1242,7 @@ const GestionUsuariosPage: React.FC = () => {
 
           <Card className="shadow-md border border-default-200 dark:border-default-100 bg-white dark:bg-content1">
             <CardBody className="p-0">
-              <div ref={scrollerRef} className="overflow-auto max-h-[calc(100vh-300px)] min-h-[300px] rounded-xl">
+              <div ref={scrollerRef} className="overflow-x-scroll overflow-y-scroll custom-scrollbar max-h-[calc(100vh-300px)] min-h-[300px] rounded-xl">
                 <div className="min-w-[900px] w-full">
               <Table
                 aria-label="Tabla de usuarios"
@@ -1490,20 +1490,20 @@ const GestionUsuariosPage: React.FC = () => {
               </div>
             </CardHeader>
             <CardBody className="p-0">
-              <div className="overflow-x-auto">
+              <div className="overflow-x-scroll overflow-y-scroll custom-scrollbar max-h-[calc(100vh-300px)] min-h-[300px] rounded-b-xl">
                 <table className="w-full min-w-max">
 
-                  {/* ── Cabecera: nombre de los roles ── */}
+                  {/* ── Cabecera: nombre de los roles (fija al hacer scroll vertical) ── */}
                   <thead>
                     <tr className="bg-default-50 dark:bg-default-100/5 border-b border-divider">
-                      {/* Columna fija: Módulo */}
-                      <th className="sticky left-0 z-10 bg-default-50 dark:bg-content1 px-5 py-3 text-left text-xs font-semibold text-default-500 uppercase tracking-wider min-w-[200px] border-r border-divider">
+                      {/* Columna fija: Módulo (fija en ambos ejes — esquina superior izquierda) */}
+                      <th className="sticky left-0 top-0 z-30 bg-default-50 dark:bg-content1 px-5 py-3 text-left text-xs font-semibold text-default-500 uppercase tracking-wider min-w-[200px] border-r border-b border-divider shadow-sm">
                         Módulo
                       </th>
                       {permIsLoading ? null : localPermissions.map((rp) => (
                         <th
                           key={rp.role}
-                          className="px-4 py-3 text-center text-xs font-bold text-default-700 uppercase tracking-wider min-w-[160px]"
+                          className="sticky top-0 z-20 bg-default-50 dark:bg-content1 px-4 py-3 text-center text-xs font-bold text-default-700 uppercase tracking-wider min-w-[160px] border-b border-divider shadow-sm"
                         >
                           <div className="flex flex-col items-center gap-1">
                             <div className="w-7 h-7 rounded-full bg-[#FFB800]/10 flex items-center justify-center">
