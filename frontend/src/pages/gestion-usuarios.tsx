@@ -625,7 +625,7 @@ const GestionUsuariosPage: React.FC = () => {
     location.pathname.startsWith('/gestion-roles') ? 'roles' : 'usuarios'
   );
 
-  usePageTitle('Gestión de Usuarios', 'Administra los usuarios del sistema y, si eres Administrador, sus roles y permisos', 'lucide:user-cog');
+  usePageTitle('Gestión de Usuarios', 'Administra los usuarios del sistema. Si eres Administrador, también puedes gestionar sus roles y permisos.', 'lucide:user-cog');
 
   // Modal de crear/editar
   const { isOpen, onOpen, onOpenChange } = useDisclosure();
