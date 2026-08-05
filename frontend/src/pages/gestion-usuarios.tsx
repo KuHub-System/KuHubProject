@@ -52,6 +52,18 @@ const ROLES: RolUsuario[] = [
   'Asistente de Bodega'
 ];
 
+// Descripción breve de cada rol, mostrada bajo el selector del modal de crear/editar usuario
+// para que quien asigna el rol entienda su alcance sin tener que ir a la pestaña Roles y Permisos.
+const ROLE_DESCRIPTIONS: Partial<Record<RolUsuario, string>> = {
+  'Administrador': 'Acceso total al sistema. Es el único rol que puede gestionar los permisos de los demás roles.',
+  'Co-Administrador': 'Acceso a casi todo el sistema, con la única excepción de la gestión de permisos de roles.',
+  'Gestor de Pedidos': 'Encargado de revisar solicitudes, pedidos y proveedores.',
+  'Profesor': 'Vinculado a las solicitudes: puede visualizar sus propias solicitudes y el estado de sus procesos.',
+  'Profesor a Cargo': 'A cargo de la gestión de las solicitudes de una asignatura asignada.',
+  'Encargado de Bodega': 'Orientado a la gestión de bodega e inventario.',
+  'Asistente de Bodega': 'Orientado a la gestión de bodega en tránsito.',
+};
+
 // ═══════════════════════════════════════════════════════════════════════════
 // TAB "ROLES Y PERMISOS" — fusionado desde gestion-roles.tsx
 // Matriz interactiva: Módulos (filas) × Roles (columnas). Solo visible/accesible
@@ -1818,6 +1830,13 @@ const GestionUsuariosPage: React.FC = () => {
                       <SelectItem key={rol}>{rol}</SelectItem>
                     ))}
                   </Select>
+
+                  {formData.rol && ROLE_DESCRIPTIONS[formData.rol] && (
+                    <div className="flex items-start gap-2 px-3 py-2 -mt-2 rounded-lg bg-default-50 dark:bg-default-100/10 text-xs text-default-500">
+                      <Icon icon="lucide:info" width={14} className="shrink-0 mt-0.5 text-[#FFB800]" />
+                      <p>{ROLE_DESCRIPTIONS[formData.rol]}</p>
+                    </div>
+                  )}
 
                   <div className="p-4 rounded-2xl bg-default-50 dark:bg-default-100/50 border border-default-200 dark:border-default-100">
                     <div className="flex items-center gap-4 mb-3">
