@@ -16,7 +16,7 @@ public record PedidoSemanaBodegasPage(
         PaginationUtils.PagingResult paging
 ) {
 
-    // ─── RECORD INTERNO: Item de pedidoSemanaBodega con sus detalles ─────────────────────
+    // ─── RECORD INTERNO: Item de pedidoSemanaBodega con sus detalles agrupados por categoría ──
     public record RecipeItem(
             Integer idPedidoSemanaBodega,
             String nombrePedido,
@@ -25,7 +25,14 @@ public record PedidoSemanaBodegasPage(
             Long totalDetalles,
             Integer idSemana,
             Integer idAsignatura,
-            List<RecipeDetail> detalles
+            List<CategoriaConDetalles> detalles
+    ) {}
+
+    // ─── RECORD INTERNO: Grupo de detalles por categoría (nombreCategoria una sola vez) ──────
+    @JsonPropertyOrder({"nombreCategoria", "productos"})
+    public record CategoriaConDetalles(
+            String nombreCategoria,
+            List<RecipeDetail> productos
     ) {}
 
     // ─── RECORD INTERNO: Detalle de ingrediente ───────────────────────────────
@@ -55,11 +62,11 @@ public record PedidoSemanaBodegasPage(
             ObjectMapper objectMapper
     ) {
         List<RecipeItem> content = rows.stream().map(row -> {
-            List<RecipeDetail> detalles;
+            List<CategoriaConDetalles> detalles;
             try {
                 String jsonStr = row.getDetallesJson();
                 detalles = (jsonStr != null && !jsonStr.isBlank())
-                        ? objectMapper.readValue(jsonStr, new TypeReference<List<RecipeDetail>>() {})
+                        ? objectMapper.readValue(jsonStr, new TypeReference<List<CategoriaConDetalles>>() {})
                         : Collections.emptyList();
             } catch (Exception e) {
                 detalles = Collections.emptyList();

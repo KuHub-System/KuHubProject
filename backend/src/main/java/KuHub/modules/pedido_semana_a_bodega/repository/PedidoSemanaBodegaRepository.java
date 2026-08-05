@@ -34,34 +34,54 @@ public interface PedidoSemanaBodegaRepository extends JpaRepository<PedidoSemana
     /** Lista todos los pedidos semana bodega activos sin paginación. */
     List<PedidoSemanaBodega> findAllByActivoTrue();
 
-    /** Lista paginada de pedidos semana bodega activos con sus detalles agrupados en JSON, filtrable por estado. */
+    /**
+     * Lista paginada de pedidos semana bodega activos con sus detalles agrupados en JSON, filtrable por estado.
+     * detallesJson agrupa los productos por categoría (Patrón C): el nombreCategoria aparece una sola vez por
+     * grupo, ordenado alfabéticamente, con sus productos anidados también ordenados alfabéticamente.
+     */
     @Query(value = """
         SELECT
             p.id_pedido_semana_bodega AS "idPedidoSemanaBodega",
             p.nombre_pedido_semana_bodega AS "nombrePedido",
             p.descripcion_pedido_semana_bodega AS "descripcionPedido",
             p.estado_pedido::text AS "estadoPedido",
-            COUNT(d.id_detalle_pedido_semana) AS "totalDetalles",
+            (SELECT COUNT(*) FROM detalle_pedido_semana_bodega d2 WHERE d2.id_pedido_semana_bodega = p.id_pedido_semana_bodega) AS "totalDetalles",
             p.id_semana AS "idSemana",
             p.id_asignatura AS "idAsignatura",
-            jsonb_agg(
-                jsonb_build_object(
-                    'nombreProducto', pr.nombre_producto,
-                    'cantProducto', d.cant_producto,
-                    'abreviatura', u.abreviatura,
-                    'idDetallePedido', d.id_detalle_pedido_semana,
-                    'idProducto', pr.id_producto,
-                    'idUnidad', u.id_unidad,
-                    'observacion', d.observacion
+            COALESCE((
+                SELECT jsonb_agg(
+                    jsonb_build_object(
+                        'nombreCategoria', cat_group.nombre_categoria,
+                        'productos', cat_group.productos
+                    )
+                    ORDER BY cat_group.nombre_categoria ASC
                 )
-            ) AS "detallesJson"
+                FROM (
+                    SELECT
+                        c.nombre_categoria,
+                        jsonb_agg(
+                            jsonb_build_object(
+                                'nombreProducto', pr.nombre_producto,
+                                'cantProducto', d.cant_producto,
+                                'abreviatura', u.abreviatura,
+                                'idDetallePedido', d.id_detalle_pedido_semana,
+                                'idProducto', pr.id_producto,
+                                'idUnidad', u.id_unidad,
+                                'observacion', d.observacion
+                            )
+                            ORDER BY pr.nombre_producto ASC
+                        ) AS productos
+                    FROM detalle_pedido_semana_bodega d
+                    JOIN producto pr ON pr.id_producto = d.id_producto
+                    JOIN unidad_medida u ON u.id_unidad = pr.id_unidad
+                    JOIN categoria c ON c.id_categoria = pr.id_categoria
+                    WHERE d.id_pedido_semana_bodega = p.id_pedido_semana_bodega
+                    GROUP BY c.nombre_categoria
+                ) cat_group
+            ), '[]'::jsonb) AS "detallesJson"
         FROM pedido_semana_bodega p
-        LEFT JOIN detalle_pedido_semana_bodega d ON d.id_pedido_semana_bodega = p.id_pedido_semana_bodega
-        LEFT JOIN producto pr ON d.id_producto = pr.id_producto
-        LEFT JOIN unidad_medida u ON u.id_unidad = pr.id_unidad
         WHERE p.activo = true
           AND (CAST(:estadoPedido AS text) IS NULL OR p.estado_pedido::text = :estadoPedido)
-        GROUP BY p.id_pedido_semana_bodega, p.nombre_pedido_semana_bodega, p.descripcion_pedido_semana_bodega, p.estado_pedido, p.id_semana, p.id_asignatura
         ORDER BY p.nombre_pedido_semana_bodega ASC
         LIMIT :limit OFFSET :offset
         """, nativeQuery = true)
@@ -70,34 +90,53 @@ public interface PedidoSemanaBodegaRepository extends JpaRepository<PedidoSemana
             @Param("limit") int limit,
             @Param("offset") int offset);
 
-    /** Lista paginada de pedidos semana bodega activos filtrados por idSemana, filtrable por estado. */
+    /**
+     * Lista paginada de pedidos semana bodega activos filtrados por idSemana, filtrable por estado.
+     * detallesJson agrupa los productos por categoría (ver findAllWithDetailsPaging).
+     */
     @Query(value = """
         SELECT
             p.id_pedido_semana_bodega AS "idPedidoSemanaBodega",
             p.nombre_pedido_semana_bodega AS "nombrePedido",
             p.descripcion_pedido_semana_bodega AS "descripcionPedido",
             p.estado_pedido::text AS "estadoPedido",
-            COUNT(d.id_detalle_pedido_semana) AS "totalDetalles",
+            (SELECT COUNT(*) FROM detalle_pedido_semana_bodega d2 WHERE d2.id_pedido_semana_bodega = p.id_pedido_semana_bodega) AS "totalDetalles",
             p.id_semana AS "idSemana",
             p.id_asignatura AS "idAsignatura",
-            jsonb_agg(
-                jsonb_build_object(
-                    'nombreProducto', pr.nombre_producto,
-                    'cantProducto', d.cant_producto,
-                    'abreviatura', u.abreviatura,
-                    'idDetallePedido', d.id_detalle_pedido_semana,
-                    'idProducto', pr.id_producto,
-                    'idUnidad', u.id_unidad,
-                    'observacion', d.observacion
+            COALESCE((
+                SELECT jsonb_agg(
+                    jsonb_build_object(
+                        'nombreCategoria', cat_group.nombre_categoria,
+                        'productos', cat_group.productos
+                    )
+                    ORDER BY cat_group.nombre_categoria ASC
                 )
-            ) AS "detallesJson"
+                FROM (
+                    SELECT
+                        c.nombre_categoria,
+                        jsonb_agg(
+                            jsonb_build_object(
+                                'nombreProducto', pr.nombre_producto,
+                                'cantProducto', d.cant_producto,
+                                'abreviatura', u.abreviatura,
+                                'idDetallePedido', d.id_detalle_pedido_semana,
+                                'idProducto', pr.id_producto,
+                                'idUnidad', u.id_unidad,
+                                'observacion', d.observacion
+                            )
+                            ORDER BY pr.nombre_producto ASC
+                        ) AS productos
+                    FROM detalle_pedido_semana_bodega d
+                    JOIN producto pr ON pr.id_producto = d.id_producto
+                    JOIN unidad_medida u ON u.id_unidad = pr.id_unidad
+                    JOIN categoria c ON c.id_categoria = pr.id_categoria
+                    WHERE d.id_pedido_semana_bodega = p.id_pedido_semana_bodega
+                    GROUP BY c.nombre_categoria
+                ) cat_group
+            ), '[]'::jsonb) AS "detallesJson"
         FROM pedido_semana_bodega p
-        LEFT JOIN detalle_pedido_semana_bodega d ON d.id_pedido_semana_bodega = p.id_pedido_semana_bodega
-        LEFT JOIN producto pr ON d.id_producto = pr.id_producto
-        LEFT JOIN unidad_medida u ON u.id_unidad = pr.id_unidad
         WHERE p.activo = true AND p.id_semana = :idSemana
           AND (CAST(:estadoPedido AS text) IS NULL OR p.estado_pedido::text = :estadoPedido)
-        GROUP BY p.id_pedido_semana_bodega, p.nombre_pedido_semana_bodega, p.descripcion_pedido_semana_bodega, p.estado_pedido, p.id_semana, p.id_asignatura
         ORDER BY p.nombre_pedido_semana_bodega ASC
         LIMIT :limit OFFSET :offset
         """, nativeQuery = true)
@@ -124,35 +163,54 @@ public interface PedidoSemanaBodegaRepository extends JpaRepository<PedidoSemana
     long countByActivoTrueAndIdSemana(@Param("idSemana") Integer idSemana,
                                       @Param("estadoPedido") String estadoPedido);
 
-    /** Lista paginada de pedidos semana bodega activos filtrados por nombre o descripción con detalles en JSON, filtrable por estado. */
+    /**
+     * Lista paginada de pedidos semana bodega activos filtrados por nombre o descripción con detalles en JSON, filtrable por estado.
+     * detallesJson agrupa los productos por categoría (ver findAllWithDetailsPaging).
+     */
     @Query(value = """
         SELECT
             p.id_pedido_semana_bodega AS "idPedidoSemanaBodega",
             p.nombre_pedido_semana_bodega AS "nombrePedido",
             p.descripcion_pedido_semana_bodega AS "descripcionPedido",
             p.estado_pedido::text AS "estadoPedido",
-            COUNT(d.id_detalle_pedido_semana) AS "totalDetalles",
+            (SELECT COUNT(*) FROM detalle_pedido_semana_bodega d2 WHERE d2.id_pedido_semana_bodega = p.id_pedido_semana_bodega) AS "totalDetalles",
             p.id_semana AS "idSemana",
             p.id_asignatura AS "idAsignatura",
-            jsonb_agg(
-                jsonb_build_object(
-                    'nombreProducto', pr.nombre_producto,
-                    'cantProducto', d.cant_producto,
-                    'abreviatura', u.abreviatura,
-                    'idDetallePedido', d.id_detalle_pedido_semana,
-                    'idProducto', pr.id_producto,
-                    'idUnidad', u.id_unidad,
-                    'observacion', d.observacion
+            COALESCE((
+                SELECT jsonb_agg(
+                    jsonb_build_object(
+                        'nombreCategoria', cat_group.nombre_categoria,
+                        'productos', cat_group.productos
+                    )
+                    ORDER BY cat_group.nombre_categoria ASC
                 )
-            ) AS "detallesJson"
+                FROM (
+                    SELECT
+                        c.nombre_categoria,
+                        jsonb_agg(
+                            jsonb_build_object(
+                                'nombreProducto', pr.nombre_producto,
+                                'cantProducto', d.cant_producto,
+                                'abreviatura', u.abreviatura,
+                                'idDetallePedido', d.id_detalle_pedido_semana,
+                                'idProducto', pr.id_producto,
+                                'idUnidad', u.id_unidad,
+                                'observacion', d.observacion
+                            )
+                            ORDER BY pr.nombre_producto ASC
+                        ) AS productos
+                    FROM detalle_pedido_semana_bodega d
+                    JOIN producto pr ON pr.id_producto = d.id_producto
+                    JOIN unidad_medida u ON u.id_unidad = pr.id_unidad
+                    JOIN categoria c ON c.id_categoria = pr.id_categoria
+                    WHERE d.id_pedido_semana_bodega = p.id_pedido_semana_bodega
+                    GROUP BY c.nombre_categoria
+                ) cat_group
+            ), '[]'::jsonb) AS "detallesJson"
         FROM pedido_semana_bodega p
-        LEFT JOIN detalle_pedido_semana_bodega d ON d.id_pedido_semana_bodega = p.id_pedido_semana_bodega
-        LEFT JOIN producto pr ON d.id_producto = pr.id_producto
-        LEFT JOIN unidad_medida u ON u.id_unidad = pr.id_unidad
         WHERE p.activo = true
           AND (p.nombre_pedido_semana_bodega ILIKE %:term% OR p.descripcion_pedido_semana_bodega ILIKE %:term%)
           AND (CAST(:estadoPedido AS text) IS NULL OR p.estado_pedido::text = :estadoPedido)
-        GROUP BY p.id_pedido_semana_bodega, p.nombre_pedido_semana_bodega, p.descripcion_pedido_semana_bodega, p.estado_pedido, p.id_semana, p.id_asignatura
         ORDER BY p.nombre_pedido_semana_bodega ASC
         LIMIT :limit OFFSET :offset
         """, nativeQuery = true)
@@ -162,36 +220,55 @@ public interface PedidoSemanaBodegaRepository extends JpaRepository<PedidoSemana
             @Param("limit") int limit,
             @Param("offset") int offset);
 
-    /** Lista paginada de pedidos semana bodega activos filtrados por búsqueda e idSemana, filtrable por estado. */
+    /**
+     * Lista paginada de pedidos semana bodega activos filtrados por búsqueda e idSemana, filtrable por estado.
+     * detallesJson agrupa los productos por categoría (ver findAllWithDetailsPaging).
+     */
     @Query(value = """
         SELECT
             p.id_pedido_semana_bodega AS "idPedidoSemanaBodega",
             p.nombre_pedido_semana_bodega AS "nombrePedido",
             p.descripcion_pedido_semana_bodega AS "descripcionPedido",
             p.estado_pedido::text AS "estadoPedido",
-            COUNT(d.id_detalle_pedido_semana) AS "totalDetalles",
+            (SELECT COUNT(*) FROM detalle_pedido_semana_bodega d2 WHERE d2.id_pedido_semana_bodega = p.id_pedido_semana_bodega) AS "totalDetalles",
             p.id_semana AS "idSemana",
             p.id_asignatura AS "idAsignatura",
-            jsonb_agg(
-                jsonb_build_object(
-                    'nombreProducto', pr.nombre_producto,
-                    'cantProducto', d.cant_producto,
-                    'abreviatura', u.abreviatura,
-                    'idDetallePedido', d.id_detalle_pedido_semana,
-                    'idProducto', pr.id_producto,
-                    'idUnidad', u.id_unidad,
-                    'observacion', d.observacion
+            COALESCE((
+                SELECT jsonb_agg(
+                    jsonb_build_object(
+                        'nombreCategoria', cat_group.nombre_categoria,
+                        'productos', cat_group.productos
+                    )
+                    ORDER BY cat_group.nombre_categoria ASC
                 )
-            ) AS "detallesJson"
+                FROM (
+                    SELECT
+                        c.nombre_categoria,
+                        jsonb_agg(
+                            jsonb_build_object(
+                                'nombreProducto', pr.nombre_producto,
+                                'cantProducto', d.cant_producto,
+                                'abreviatura', u.abreviatura,
+                                'idDetallePedido', d.id_detalle_pedido_semana,
+                                'idProducto', pr.id_producto,
+                                'idUnidad', u.id_unidad,
+                                'observacion', d.observacion
+                            )
+                            ORDER BY pr.nombre_producto ASC
+                        ) AS productos
+                    FROM detalle_pedido_semana_bodega d
+                    JOIN producto pr ON pr.id_producto = d.id_producto
+                    JOIN unidad_medida u ON u.id_unidad = pr.id_unidad
+                    JOIN categoria c ON c.id_categoria = pr.id_categoria
+                    WHERE d.id_pedido_semana_bodega = p.id_pedido_semana_bodega
+                    GROUP BY c.nombre_categoria
+                ) cat_group
+            ), '[]'::jsonb) AS "detallesJson"
         FROM pedido_semana_bodega p
-        LEFT JOIN detalle_pedido_semana_bodega d ON d.id_pedido_semana_bodega = p.id_pedido_semana_bodega
-        LEFT JOIN producto pr ON d.id_producto = pr.id_producto
-        LEFT JOIN unidad_medida u ON u.id_unidad = pr.id_unidad
         WHERE p.activo = true
           AND (p.nombre_pedido_semana_bodega ILIKE %:term% OR p.descripcion_pedido_semana_bodega ILIKE %:term%)
           AND p.id_semana = :idSemana
           AND (CAST(:estadoPedido AS text) IS NULL OR p.estado_pedido::text = :estadoPedido)
-        GROUP BY p.id_pedido_semana_bodega, p.nombre_pedido_semana_bodega, p.descripcion_pedido_semana_bodega, p.estado_pedido, p.id_semana, p.id_asignatura
         ORDER BY p.nombre_pedido_semana_bodega ASC
         LIMIT :limit OFFSET :offset
         """, nativeQuery = true)
@@ -263,34 +340,53 @@ public interface PedidoSemanaBodegaRepository extends JpaRepository<PedidoSemana
 
     // ─── QUERIES CON FILTRO POR ASIGNATURA ──────────────────────────────────────
 
-    /** Lista paginada de pedidos semana bodega activos filtrados por idAsignatura, filtrable por estado. */
+    /**
+     * Lista paginada de pedidos semana bodega activos filtrados por idAsignatura, filtrable por estado.
+     * detallesJson agrupa los productos por categoría (ver findAllWithDetailsPaging).
+     */
     @Query(value = """
         SELECT
             p.id_pedido_semana_bodega AS "idPedidoSemanaBodega",
             p.nombre_pedido_semana_bodega AS "nombrePedido",
             p.descripcion_pedido_semana_bodega AS "descripcionPedido",
             p.estado_pedido::text AS "estadoPedido",
-            COUNT(d.id_detalle_pedido_semana) AS "totalDetalles",
+            (SELECT COUNT(*) FROM detalle_pedido_semana_bodega d2 WHERE d2.id_pedido_semana_bodega = p.id_pedido_semana_bodega) AS "totalDetalles",
             p.id_semana AS "idSemana",
             p.id_asignatura AS "idAsignatura",
-            jsonb_agg(
-                jsonb_build_object(
-                    'nombreProducto', pr.nombre_producto,
-                    'cantProducto', d.cant_producto,
-                    'abreviatura', u.abreviatura,
-                    'idDetallePedido', d.id_detalle_pedido_semana,
-                    'idProducto', pr.id_producto,
-                    'idUnidad', u.id_unidad,
-                    'observacion', d.observacion
+            COALESCE((
+                SELECT jsonb_agg(
+                    jsonb_build_object(
+                        'nombreCategoria', cat_group.nombre_categoria,
+                        'productos', cat_group.productos
+                    )
+                    ORDER BY cat_group.nombre_categoria ASC
                 )
-            ) AS "detallesJson"
+                FROM (
+                    SELECT
+                        c.nombre_categoria,
+                        jsonb_agg(
+                            jsonb_build_object(
+                                'nombreProducto', pr.nombre_producto,
+                                'cantProducto', d.cant_producto,
+                                'abreviatura', u.abreviatura,
+                                'idDetallePedido', d.id_detalle_pedido_semana,
+                                'idProducto', pr.id_producto,
+                                'idUnidad', u.id_unidad,
+                                'observacion', d.observacion
+                            )
+                            ORDER BY pr.nombre_producto ASC
+                        ) AS productos
+                    FROM detalle_pedido_semana_bodega d
+                    JOIN producto pr ON pr.id_producto = d.id_producto
+                    JOIN unidad_medida u ON u.id_unidad = pr.id_unidad
+                    JOIN categoria c ON c.id_categoria = pr.id_categoria
+                    WHERE d.id_pedido_semana_bodega = p.id_pedido_semana_bodega
+                    GROUP BY c.nombre_categoria
+                ) cat_group
+            ), '[]'::jsonb) AS "detallesJson"
         FROM pedido_semana_bodega p
-        LEFT JOIN detalle_pedido_semana_bodega d ON d.id_pedido_semana_bodega = p.id_pedido_semana_bodega
-        LEFT JOIN producto pr ON d.id_producto = pr.id_producto
-        LEFT JOIN unidad_medida u ON u.id_unidad = pr.id_unidad
         WHERE p.activo = true AND p.id_asignatura = :idAsignatura
           AND (CAST(:estadoPedido AS text) IS NULL OR p.estado_pedido::text = :estadoPedido)
-        GROUP BY p.id_pedido_semana_bodega, p.nombre_pedido_semana_bodega, p.descripcion_pedido_semana_bodega, p.estado_pedido, p.id_semana, p.id_asignatura
         ORDER BY p.nombre_pedido_semana_bodega ASC
         LIMIT :limit OFFSET :offset
         """, nativeQuery = true)
@@ -309,34 +405,53 @@ public interface PedidoSemanaBodegaRepository extends JpaRepository<PedidoSemana
     long countByActivoTrueAndIdAsignatura(@Param("idAsignatura") Integer idAsignatura,
                                           @Param("estadoPedido") String estadoPedido);
 
-    /** Lista paginada de pedidos semana bodega activos filtrados por idSemana e idAsignatura, filtrable por estado. */
+    /**
+     * Lista paginada de pedidos semana bodega activos filtrados por idSemana e idAsignatura, filtrable por estado.
+     * detallesJson agrupa los productos por categoría (ver findAllWithDetailsPaging).
+     */
     @Query(value = """
         SELECT
             p.id_pedido_semana_bodega AS "idPedidoSemanaBodega",
             p.nombre_pedido_semana_bodega AS "nombrePedido",
             p.descripcion_pedido_semana_bodega AS "descripcionPedido",
             p.estado_pedido::text AS "estadoPedido",
-            COUNT(d.id_detalle_pedido_semana) AS "totalDetalles",
+            (SELECT COUNT(*) FROM detalle_pedido_semana_bodega d2 WHERE d2.id_pedido_semana_bodega = p.id_pedido_semana_bodega) AS "totalDetalles",
             p.id_semana AS "idSemana",
             p.id_asignatura AS "idAsignatura",
-            jsonb_agg(
-                jsonb_build_object(
-                    'nombreProducto', pr.nombre_producto,
-                    'cantProducto', d.cant_producto,
-                    'abreviatura', u.abreviatura,
-                    'idDetallePedido', d.id_detalle_pedido_semana,
-                    'idProducto', pr.id_producto,
-                    'idUnidad', u.id_unidad,
-                    'observacion', d.observacion
+            COALESCE((
+                SELECT jsonb_agg(
+                    jsonb_build_object(
+                        'nombreCategoria', cat_group.nombre_categoria,
+                        'productos', cat_group.productos
+                    )
+                    ORDER BY cat_group.nombre_categoria ASC
                 )
-            ) AS "detallesJson"
+                FROM (
+                    SELECT
+                        c.nombre_categoria,
+                        jsonb_agg(
+                            jsonb_build_object(
+                                'nombreProducto', pr.nombre_producto,
+                                'cantProducto', d.cant_producto,
+                                'abreviatura', u.abreviatura,
+                                'idDetallePedido', d.id_detalle_pedido_semana,
+                                'idProducto', pr.id_producto,
+                                'idUnidad', u.id_unidad,
+                                'observacion', d.observacion
+                            )
+                            ORDER BY pr.nombre_producto ASC
+                        ) AS productos
+                    FROM detalle_pedido_semana_bodega d
+                    JOIN producto pr ON pr.id_producto = d.id_producto
+                    JOIN unidad_medida u ON u.id_unidad = pr.id_unidad
+                    JOIN categoria c ON c.id_categoria = pr.id_categoria
+                    WHERE d.id_pedido_semana_bodega = p.id_pedido_semana_bodega
+                    GROUP BY c.nombre_categoria
+                ) cat_group
+            ), '[]'::jsonb) AS "detallesJson"
         FROM pedido_semana_bodega p
-        LEFT JOIN detalle_pedido_semana_bodega d ON d.id_pedido_semana_bodega = p.id_pedido_semana_bodega
-        LEFT JOIN producto pr ON d.id_producto = pr.id_producto
-        LEFT JOIN unidad_medida u ON u.id_unidad = pr.id_unidad
         WHERE p.activo = true AND p.id_semana = :idSemana AND p.id_asignatura = :idAsignatura
           AND (CAST(:estadoPedido AS text) IS NULL OR p.estado_pedido::text = :estadoPedido)
-        GROUP BY p.id_pedido_semana_bodega, p.nombre_pedido_semana_bodega, p.descripcion_pedido_semana_bodega, p.estado_pedido, p.id_semana, p.id_asignatura
         ORDER BY p.nombre_pedido_semana_bodega ASC
         LIMIT :limit OFFSET :offset
         """, nativeQuery = true)
@@ -357,36 +472,55 @@ public interface PedidoSemanaBodegaRepository extends JpaRepository<PedidoSemana
                                                      @Param("idAsignatura") Integer idAsignatura,
                                                      @Param("estadoPedido") String estadoPedido);
 
-    /** Lista paginada de pedidos semana bodega activos filtrados por búsqueda e idAsignatura, filtrable por estado. */
+    /**
+     * Lista paginada de pedidos semana bodega activos filtrados por búsqueda e idAsignatura, filtrable por estado.
+     * detallesJson agrupa los productos por categoría (ver findAllWithDetailsPaging).
+     */
     @Query(value = """
         SELECT
             p.id_pedido_semana_bodega AS "idPedidoSemanaBodega",
             p.nombre_pedido_semana_bodega AS "nombrePedido",
             p.descripcion_pedido_semana_bodega AS "descripcionPedido",
             p.estado_pedido::text AS "estadoPedido",
-            COUNT(d.id_detalle_pedido_semana) AS "totalDetalles",
+            (SELECT COUNT(*) FROM detalle_pedido_semana_bodega d2 WHERE d2.id_pedido_semana_bodega = p.id_pedido_semana_bodega) AS "totalDetalles",
             p.id_semana AS "idSemana",
             p.id_asignatura AS "idAsignatura",
-            jsonb_agg(
-                jsonb_build_object(
-                    'nombreProducto', pr.nombre_producto,
-                    'cantProducto', d.cant_producto,
-                    'abreviatura', u.abreviatura,
-                    'idDetallePedido', d.id_detalle_pedido_semana,
-                    'idProducto', pr.id_producto,
-                    'idUnidad', u.id_unidad,
-                    'observacion', d.observacion
+            COALESCE((
+                SELECT jsonb_agg(
+                    jsonb_build_object(
+                        'nombreCategoria', cat_group.nombre_categoria,
+                        'productos', cat_group.productos
+                    )
+                    ORDER BY cat_group.nombre_categoria ASC
                 )
-            ) AS "detallesJson"
+                FROM (
+                    SELECT
+                        c.nombre_categoria,
+                        jsonb_agg(
+                            jsonb_build_object(
+                                'nombreProducto', pr.nombre_producto,
+                                'cantProducto', d.cant_producto,
+                                'abreviatura', u.abreviatura,
+                                'idDetallePedido', d.id_detalle_pedido_semana,
+                                'idProducto', pr.id_producto,
+                                'idUnidad', u.id_unidad,
+                                'observacion', d.observacion
+                            )
+                            ORDER BY pr.nombre_producto ASC
+                        ) AS productos
+                    FROM detalle_pedido_semana_bodega d
+                    JOIN producto pr ON pr.id_producto = d.id_producto
+                    JOIN unidad_medida u ON u.id_unidad = pr.id_unidad
+                    JOIN categoria c ON c.id_categoria = pr.id_categoria
+                    WHERE d.id_pedido_semana_bodega = p.id_pedido_semana_bodega
+                    GROUP BY c.nombre_categoria
+                ) cat_group
+            ), '[]'::jsonb) AS "detallesJson"
         FROM pedido_semana_bodega p
-        LEFT JOIN detalle_pedido_semana_bodega d ON d.id_pedido_semana_bodega = p.id_pedido_semana_bodega
-        LEFT JOIN producto pr ON d.id_producto = pr.id_producto
-        LEFT JOIN unidad_medida u ON u.id_unidad = pr.id_unidad
         WHERE p.activo = true
           AND (p.nombre_pedido_semana_bodega ILIKE %:term% OR p.descripcion_pedido_semana_bodega ILIKE %:term%)
           AND p.id_asignatura = :idAsignatura
           AND (CAST(:estadoPedido AS text) IS NULL OR p.estado_pedido::text = :estadoPedido)
-        GROUP BY p.id_pedido_semana_bodega, p.nombre_pedido_semana_bodega, p.descripcion_pedido_semana_bodega, p.estado_pedido, p.id_semana, p.id_asignatura
         ORDER BY p.nombre_pedido_semana_bodega ASC
         LIMIT :limit OFFSET :offset
         """, nativeQuery = true)
@@ -409,37 +543,56 @@ public interface PedidoSemanaBodegaRepository extends JpaRepository<PedidoSemana
                                         @Param("idAsignatura") Integer idAsignatura,
                                         @Param("estadoPedido") String estadoPedido);
 
-    /** Lista paginada de pedidos semana bodega activos filtrados por búsqueda, idSemana e idAsignatura, filtrable por estado. */
+    /**
+     * Lista paginada de pedidos semana bodega activos filtrados por búsqueda, idSemana e idAsignatura, filtrable por estado.
+     * detallesJson agrupa los productos por categoría (ver findAllWithDetailsPaging).
+     */
     @Query(value = """
         SELECT
             p.id_pedido_semana_bodega AS "idPedidoSemanaBodega",
             p.nombre_pedido_semana_bodega AS "nombrePedido",
             p.descripcion_pedido_semana_bodega AS "descripcionPedido",
             p.estado_pedido::text AS "estadoPedido",
-            COUNT(d.id_detalle_pedido_semana) AS "totalDetalles",
+            (SELECT COUNT(*) FROM detalle_pedido_semana_bodega d2 WHERE d2.id_pedido_semana_bodega = p.id_pedido_semana_bodega) AS "totalDetalles",
             p.id_semana AS "idSemana",
             p.id_asignatura AS "idAsignatura",
-            jsonb_agg(
-                jsonb_build_object(
-                    'nombreProducto', pr.nombre_producto,
-                    'cantProducto', d.cant_producto,
-                    'abreviatura', u.abreviatura,
-                    'idDetallePedido', d.id_detalle_pedido_semana,
-                    'idProducto', pr.id_producto,
-                    'idUnidad', u.id_unidad,
-                    'observacion', d.observacion
+            COALESCE((
+                SELECT jsonb_agg(
+                    jsonb_build_object(
+                        'nombreCategoria', cat_group.nombre_categoria,
+                        'productos', cat_group.productos
+                    )
+                    ORDER BY cat_group.nombre_categoria ASC
                 )
-            ) AS "detallesJson"
+                FROM (
+                    SELECT
+                        c.nombre_categoria,
+                        jsonb_agg(
+                            jsonb_build_object(
+                                'nombreProducto', pr.nombre_producto,
+                                'cantProducto', d.cant_producto,
+                                'abreviatura', u.abreviatura,
+                                'idDetallePedido', d.id_detalle_pedido_semana,
+                                'idProducto', pr.id_producto,
+                                'idUnidad', u.id_unidad,
+                                'observacion', d.observacion
+                            )
+                            ORDER BY pr.nombre_producto ASC
+                        ) AS productos
+                    FROM detalle_pedido_semana_bodega d
+                    JOIN producto pr ON pr.id_producto = d.id_producto
+                    JOIN unidad_medida u ON u.id_unidad = pr.id_unidad
+                    JOIN categoria c ON c.id_categoria = pr.id_categoria
+                    WHERE d.id_pedido_semana_bodega = p.id_pedido_semana_bodega
+                    GROUP BY c.nombre_categoria
+                ) cat_group
+            ), '[]'::jsonb) AS "detallesJson"
         FROM pedido_semana_bodega p
-        LEFT JOIN detalle_pedido_semana_bodega d ON d.id_pedido_semana_bodega = p.id_pedido_semana_bodega
-        LEFT JOIN producto pr ON d.id_producto = pr.id_producto
-        LEFT JOIN unidad_medida u ON u.id_unidad = pr.id_unidad
         WHERE p.activo = true
           AND (p.nombre_pedido_semana_bodega ILIKE %:term% OR p.descripcion_pedido_semana_bodega ILIKE %:term%)
           AND p.id_semana = :idSemana
           AND p.id_asignatura = :idAsignatura
           AND (CAST(:estadoPedido AS text) IS NULL OR p.estado_pedido::text = :estadoPedido)
-        GROUP BY p.id_pedido_semana_bodega, p.nombre_pedido_semana_bodega, p.descripcion_pedido_semana_bodega, p.estado_pedido, p.id_semana, p.id_asignatura
         ORDER BY p.nombre_pedido_semana_bodega ASC
         LIMIT :limit OFFSET :offset
         """, nativeQuery = true)
