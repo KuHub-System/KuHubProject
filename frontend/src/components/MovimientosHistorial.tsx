@@ -194,68 +194,77 @@ const MovimientosHistorial: React.FC<MovimientosHistorialProps> = ({ active, ini
 
   return (
     <div className="px-4 space-y-6">
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4 items-end">
-        <Input
-          label="Producto"
-          placeholder="Buscar por producto..."
-          value={movNombreProducto}
-          onValueChange={setMovNombreProducto}
-          variant="bordered"
-          startContent={<Icon icon="lucide:package" className="text-default-400" />}
-          isClearable
-          onClear={() => setMovNombreProducto('')}
-        />
+      <Card className="shadow-sm bg-white dark:bg-content1 border border-default-200 dark:border-default-100">
+        <CardBody className="p-4">
+          <div className="flex flex-wrap gap-4 items-end">
+            <Input
+              label="Producto"
+              placeholder="Buscar por producto..."
+              value={movNombreProducto}
+              onValueChange={setMovNombreProducto}
+              variant="bordered"
+              startContent={<Icon icon="lucide:package" className="text-default-400" />}
+              isClearable
+              onClear={() => setMovNombreProducto('')}
+              className="flex-1 min-w-[220px]"
+            />
 
-        <Input
-          label="Responsable"
-          placeholder="Buscar por responsable..."
-          value={movNombreResponsable}
-          onValueChange={setMovNombreResponsable}
-          variant="bordered"
-          startContent={<Icon icon="lucide:user" className="text-default-400" />}
-          isClearable
-          onClear={() => setMovNombreResponsable('')}
-        />
+            <Input
+              label="Responsable"
+              placeholder="Buscar por responsable..."
+              value={movNombreResponsable}
+              onValueChange={setMovNombreResponsable}
+              variant="bordered"
+              startContent={<Icon icon="lucide:user" className="text-default-400" />}
+              isClearable
+              onClear={() => setMovNombreResponsable('')}
+              className="flex-1 min-w-[220px]"
+            />
 
-        <Select
-          label="Tipo de Movimiento"
-          selectedKeys={[movTipoMovimiento]}
-          onChange={e => setMovTipoMovimiento(e.target.value as IMotionFilterRequest['tipoMovimiento'])}
-          variant="bordered"
-        >
-          <SelectItem key="TODOS" startContent={<Icon icon="lucide:layers" className="text-default-400" />}>Todos</SelectItem>
-          <SelectItem key="ENTRADA_INVENTARIO" startContent={<Icon icon="lucide:arrow-down-circle" className="text-success" />}>Entrada Inventario</SelectItem>
-          <SelectItem key="ENTRADA_BODEGA" startContent={<Icon icon="lucide:arrow-down-circle" className="text-success" />}>Entrada Bodega</SelectItem>
-          <SelectItem key="SALIDA_INVENTARIO" startContent={<Icon icon="lucide:arrow-up-circle" className="text-warning" />}>Salida Inventario</SelectItem>
-          <SelectItem key="SALIDA_BODEGA" startContent={<Icon icon="lucide:arrow-up-circle" className="text-warning" />}>Salida Bodega</SelectItem>
-          <SelectItem key="TRASLADO" startContent={<Icon icon="lucide:truck" className="text-primary" />}>Traslado</SelectItem>
-          <SelectItem key="DEVOLUCION" startContent={<Icon icon="lucide:undo-2" className="text-default-500" />}>Devolución</SelectItem>
-          <SelectItem key="MERMA_INVENTARIO" startContent={<Icon icon="lucide:alert-circle" className="text-danger" />}>Merma Inventario</SelectItem>
-          <SelectItem key="MERMA_BODEGA" startContent={<Icon icon="lucide:alert-circle" className="text-danger" />}>Merma Bodega</SelectItem>
-          <SelectItem key="AJUSTE_INVENTARIO" startContent={<Icon icon="lucide:sliders-horizontal" className="text-secondary" />}>Ajuste Inventario</SelectItem>
-          <SelectItem key="AJUSTE_BODEGA" startContent={<Icon icon="lucide:sliders-horizontal" className="text-secondary" />}>Ajuste Bodega</SelectItem>
-        </Select>
+            <Select
+              label="Tipo de Movimiento"
+              selectedKeys={[movTipoMovimiento]}
+              onChange={e => setMovTipoMovimiento(e.target.value as IMotionFilterRequest['tipoMovimiento'])}
+              variant="bordered"
+              className="flex-1 min-w-[200px]"
+            >
+              <SelectItem key="TODOS" startContent={<Icon icon="lucide:layers" className="text-default-400" />}>Todos</SelectItem>
+              <SelectItem key="ENTRADA_INVENTARIO" startContent={<Icon icon="lucide:arrow-down-circle" className="text-success" />}>Entrada Inventario</SelectItem>
+              <SelectItem key="ENTRADA_BODEGA" startContent={<Icon icon="lucide:arrow-down-circle" className="text-success" />}>Entrada Bodega</SelectItem>
+              <SelectItem key="SALIDA_INVENTARIO" startContent={<Icon icon="lucide:arrow-up-circle" className="text-warning" />}>Salida Inventario</SelectItem>
+              <SelectItem key="SALIDA_BODEGA" startContent={<Icon icon="lucide:arrow-up-circle" className="text-warning" />}>Salida Bodega</SelectItem>
+              <SelectItem key="TRASLADO" startContent={<Icon icon="lucide:truck" className="text-primary" />}>Traslado</SelectItem>
+              <SelectItem key="DEVOLUCION" startContent={<Icon icon="lucide:undo-2" className="text-default-500" />}>Devolución</SelectItem>
+              <SelectItem key="MERMA_INVENTARIO" startContent={<Icon icon="lucide:alert-circle" className="text-danger" />}>Merma Inventario</SelectItem>
+              <SelectItem key="MERMA_BODEGA" startContent={<Icon icon="lucide:alert-circle" className="text-danger" />}>Merma Bodega</SelectItem>
+              <SelectItem key="AJUSTE_INVENTARIO" startContent={<Icon icon="lucide:sliders-horizontal" className="text-secondary" />}>Ajuste Inventario</SelectItem>
+              <SelectItem key="AJUSTE_BODEGA" startContent={<Icon icon="lucide:sliders-horizontal" className="text-secondary" />}>Ajuste Bodega</SelectItem>
+            </Select>
 
-        <Select
-          label="Orden"
-          selectedKeys={[movOrden]}
-          onChange={e => setMovOrden(e.target.value as IMotionFilterRequest['orden'])}
-          variant="bordered"
-        >
-          <SelectItem key="MAS_RECIENTES">Más Recientes</SelectItem>
-          <SelectItem key="MAS_ANTIGUOS">Más Antiguos</SelectItem>
-          <SelectItem key="MENOR_CANTIDAD">Menor Cantidad</SelectItem>
-          <SelectItem key="MAYOR_CANTIDAD">Mayor Cantidad</SelectItem>
-        </Select>
+            <Select
+              label="Orden"
+              selectedKeys={[movOrden]}
+              onChange={e => setMovOrden(e.target.value as IMotionFilterRequest['orden'])}
+              variant="bordered"
+              className="flex-1 min-w-[180px]"
+            >
+              <SelectItem key="MAS_RECIENTES">Más Recientes</SelectItem>
+              <SelectItem key="MAS_ANTIGUOS">Más Antiguos</SelectItem>
+              <SelectItem key="MENOR_CANTIDAD">Menor Cantidad</SelectItem>
+              <SelectItem key="MAYOR_CANTIDAD">Mayor Cantidad</SelectItem>
+            </Select>
 
-        <DateRangePicker
-          label="Rango de fechas"
-          variant="bordered"
-          maxValue={today(getLocalTimeZone())}
-          value={movDateRangeValue}
-          onChange={setMovDateRangeValue}
-        />
-      </div>
+            <DateRangePicker
+              label="Rango de fechas"
+              variant="bordered"
+              maxValue={today(getLocalTimeZone())}
+              value={movDateRangeValue}
+              onChange={setMovDateRangeValue}
+              className="flex-1 min-w-[260px]"
+            />
+          </div>
+        </CardBody>
+      </Card>
 
       <p className="text-default-400 text-sm">
         {movimientos.length} movimiento(s) cargado(s)
@@ -263,7 +272,7 @@ const MovimientosHistorial: React.FC<MovimientosHistorialProps> = ({ active, ini
 
       <Card className="shadow-sm border border-default-200 dark:border-default-100 bg-white dark:bg-content1">
         <CardBody className="p-0">
-          <div ref={movTableScrollRef} className="overflow-auto custom-scrollbar max-h-[calc(100vh-280px)] min-h-[300px] rounded-xl">
+          <div ref={movTableScrollRef} className="overflow-x-scroll overflow-y-scroll custom-scrollbar max-h-[calc(100vh-280px)] min-h-[300px] rounded-xl">
           <div className="min-w-[960px] w-full">
           <Table
             aria-label="Tabla de movimientos"
