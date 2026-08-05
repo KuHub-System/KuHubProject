@@ -41,6 +41,7 @@ import BookPageLoader from '../components/BookPageLoader';
 // IMPORTAR TIPOS Y SERVICIOS
 import { IPedidoSemanaBodega, IIngrediente, IPedidoSemanaBodegaWithDetailsCreateDTO, IPedidoSemanaBodegaWithDetailsUpdateDTO, IResultadoItemExcel, IImportarExcelResultado, IAsignatura } from '../types/pedido/pedidoSemanaBodega.types';
 import { parallelWithLimit } from '../utils/request-throttle';
+import { fmtCL } from '../utils/format-numbers';
 import {
   obtenerPedidoSemanaBodegasPaginadasService,
   crearPedidoSemanaBodegaService,
@@ -184,7 +185,7 @@ const exportarExcelPedidoSemanal = (
     grupo.productos.forEach(detalle => {
       ws[ec({ r: R, c: 0 })] = { v: detalle.nombreProducto, t: 's', s: styleData };
       ws[ec({ r: R, c: 1 })] = { v: detalle.abreviatura, t: 's', s: styleDataCenter };
-      ws[ec({ r: R, c: 2 })] = { v: detalle.cantProducto, t: 'n', s: styleDataCenter };
+      ws[ec({ r: R, c: 2 })] = { v: fmtCL(detalle.cantProducto), t: 's', s: styleDataCenter };
       ws[ec({ r: R, c: 3 })] = { v: detalle.observacion || '', t: 's', s: styleData };
       R++;
     });
@@ -1219,7 +1220,7 @@ const DetallePedidoSemanaBodega: React.FC<DetallePedidoSemanaBodegaProps> = ({ p
                     </p>
                     <div className="flex flex-wrap gap-3 mt-1">
                       {item.cantidad != null && (
-                        <span className="text-xs text-default-500">Cant: <span className="font-medium text-foreground">{item.cantidad}</span></span>
+                        <span className="text-xs text-default-500">Cant: <span className="font-medium text-foreground">{fmtCL(item.cantidad)}</span></span>
                       )}
                       {item.observacion && (
                         <span className="text-xs text-default-500">Obs: <span className="font-medium text-foreground">{item.observacion}</span></span>
@@ -1412,7 +1413,7 @@ const VistaPedidoSemanaBodega: React.FC<VistaPedidoSemanaBodegaProps> = ({ pedid
                           <span className="font-medium text-sm text-secondary dark:text-foreground">{detalle.nombreProducto}</span>
                         </div>
                         <Chip variant="faded" size="sm" className="shrink-0 bg-default-100 border-default-200">
-                          <span className="font-bold text-foreground">{detalle.cantProducto}</span>
+                          <span className="font-bold text-foreground">{fmtCL(detalle.cantProducto)}</span>
                           <span className="ml-1" style={{ opacity: 0.7 }}>{detalle.abreviatura}</span>
                         </Chip>
                       </div>
