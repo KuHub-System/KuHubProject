@@ -22,6 +22,7 @@ import { obtenerAbastecimientoConfirmadoService, marcarEntregadosMasivoService }
 import { IOrdenAbastecimiento, ICategoriaEntregaAbastecimiento } from '../../types/proveedor/proveedor.types';
 import { ItemPedidoMasivo } from './constants';
 import { CardSkeleton } from '../../components/SkeletonLoader';
+import { useSistemaConfig } from '../../contexts/sistema-config-context';
 
 /**
  * Interfaz para las propiedades del modal de pedido masivo
@@ -42,6 +43,7 @@ interface PedidoMasivoModalProps {
  */
 const PedidoMasivoModal: React.FC<PedidoMasivoModalProps> = ({ onClose, onNuevoProducto, onProcessComplete, initialItems, puedeAccederAbastBodega = false, puedeAccederAbastProv = false, onOpenGestionAbastecimiento }) => {
   const toast = useToast();
+  const { disponibleObligatorio } = useSistemaConfig();
   const [itemsPedido, setItemsPedido] = React.useState<ItemPedidoMasivo[]>(initialItems ?? []);
   const [productoSeleccionado, setProductoSeleccionado] = React.useState<string>('');
   const [stockInput, setStockInput] = React.useState<string>('');
@@ -140,6 +142,9 @@ const PedidoMasivoModal: React.FC<PedidoMasivoModalProps> = ({ onClose, onNuevoP
               marcaProducto: prod.marcaProducto ?? null,
               idOrdenPedido: orden.idOrdenPedido,
               idPedido: orden.idPedido,
+              // Baseline para la detección de disponibles: si luego se suma más cantidad a mano
+              // a este mismo ítem, cargadoAbastecimiento no cambia y el excedente queda expuesto.
+              cargadoAbastecimiento: prod.cantidadSolicitada,
             };
             todosItems.push(item);
             if (prod.entregado) {
@@ -526,8 +531,12 @@ const PedidoMasivoModal: React.FC<PedidoMasivoModalProps> = ({ onClose, onNuevoP
     setItemsPedido([]);
   };
 
+  // Detección de disponibles: junta dos casos de sobrante que se registran como stock
+  // disponible del inventario, no asociado a ningún pedido o solicitud.
   const detectarDisponibles = (): IRegistrarDisponibleDTO[] => {
-    return itemsPedido
+    // Caso A — TRASLADO cuya cantidad enviada es menor a la solicitada: el remanente se queda
+    // en Inventario sin gestionar.
+    const porTraslado = itemsPedido
       .filter(i =>
         i.motivo === 'TRASLADO' &&
         i.idDetalleSolicitud != null &&
@@ -539,6 +548,21 @@ const PedidoMasivoModal: React.FC<PedidoMasivoModalProps> = ({ onClose, onNuevoP
         idSolicitud: i.idSolicitud,
         cantidad: parseFloat((i.cantidadOriginal! - i.delta).toFixed(3)),
       }));
+
+    // Caso B — ENTRADA_INVENTARIO por sobre lo efectivamente cargado desde Abastecimiento de
+    // Proveedores (o el total, si se tecleó a mano sin pasar por Abastecimiento): es una
+    // "entrada falsa", stock que ya estaba en la institución y se devuelve a su lugar, no
+    // mercadería nueva.
+    const porEntradaInventario = itemsPedido
+      .filter(i => i.motivo === 'ENTRADA_INVENTARIO')
+      .map(i => ({ item: i, extra: i.delta - (i.cargadoAbastecimiento ?? 0) }))
+      .filter(x => x.extra > 0.001)
+      .map(x => ({
+        idProducto: x.item.producto.idProducto,
+        cantidad: parseFloat(x.extra.toFixed(3)),
+      }));
+
+    return [...porTraslado, ...porEntradaInventario];
   };
 
   const ejecutarProcesoTraslado = async () => {
@@ -641,18 +665,23 @@ const PedidoMasivoModal: React.FC<PedidoMasivoModalProps> = ({ onClose, onNuevoP
     await ejecutarProcesoTraslado();
   };
 
-  const handleDisponiblesNo = async () => {
+  // Aborta todo el proceso: cierra el modal y deja los ítems tal cual en la lista para que el
+  // usuario los revise o corrija.
+  const handleDisponiblesCancelar = () => {
     setIsDisponiblesOpen(false);
-    await ejecutarProcesoTraslado();
   };
 
   const procesarPedido = async () => {
     if (itemsPedido.length === 0) return;
-    const candidatos = detectarDisponibles();
-    if (candidatos.length > 0) {
-      setDisponiblesPendientes(candidatos);
-      setIsDisponiblesOpen(true);
-      return;
+    // Con la config "Registro de disponible obligatorio" apagada (default/opcional), no se
+    // pregunta nada: traslados/entradas se procesan directo, sin registrar disponible.
+    if (disponibleObligatorio) {
+      const candidatos = detectarDisponibles();
+      if (candidatos.length > 0) {
+        setDisponiblesPendientes(candidatos);
+        setIsDisponiblesOpen(true);
+        return;
+      }
     }
     await ejecutarProcesoTraslado();
   };
@@ -1582,9 +1611,10 @@ const PedidoMasivoModal: React.FC<PedidoMasivoModalProps> = ({ onClose, onNuevoP
           </ModalHeader>
           <ModalBody className="space-y-4 pb-2">
             <p className="text-sm text-default-600">
-              Se identificó que los siguientes productos serán trasladados en una cantidad{' '}
-              <strong>menor a la solicitada</strong>. Esto puede indicar que hay sobrantes en{' '}
-              bodega de tránsito no gestionados. ¿Desea registrarlos como{' '}
+              Se identificaron los siguientes productos como posible sobrante: un{' '}
+              <strong>traslado</strong> que se enviará en una cantidad menor a la solicitada, o
+              una <strong>entrada</strong> al inventario que no proviene de una orden de{' '}
+              Abastecimiento de Proveedores. ¿Desea registrarlos como{' '}
               <strong>disponibles en Inventario</strong> no asociados a un pedido o solicitud?
             </p>
             <div className="rounded-lg border border-default-200 overflow-hidden">
@@ -1606,7 +1636,11 @@ const PedidoMasivoModal: React.FC<PedidoMasivoModalProps> = ({ onClose, onNuevoP
                           {item?.producto.nombreProducto ?? `Producto #${d.idProducto}`}
                         </td>
                         <td className="py-2 px-3 text-center font-semibold text-default-600 tabular-nums">
-                          {d.cantidad} {item?.producto.detalles}
+                          {/* item.producto.detalles es una unidad limpia (abreviatura) solo para
+                              ítems de Traslado; para ítems agregados a mano al Control Masivo es
+                              un caption largo ("Stock: N Unidad") pensado para el buscador de
+                              productos, no una unidad — no se muestra en ese caso. */}
+                          {d.cantidad}{item?.motivo === 'TRASLADO' && item?.producto.detalles ? ` ${item.producto.detalles}` : ''}
                         </td>
                       </tr>
                     );
@@ -1615,12 +1649,13 @@ const PedidoMasivoModal: React.FC<PedidoMasivoModalProps> = ({ onClose, onNuevoP
               </table>
             </div>
             <p className="text-xs text-warning-600 dark:text-warning-400 italic">
-              En caso de No, el sistema no contará con trazabilidad de estos productos sobrantes.
+              El registro de stock disponible es obligatorio para este tipo de entrada.
+              "Cancelar" no procesa nada: vuelve a la lista para revisar o corregir los ítems.
             </p>
           </ModalBody>
           <ModalFooter className="border-t border-default-100 gap-2">
-            <Button variant="ghost" onPress={handleDisponiblesNo} className="font-medium">
-              No
+            <Button variant="ghost" onPress={handleDisponiblesCancelar} className="font-medium">
+              Cancelar
             </Button>
             <Button
               color="success"

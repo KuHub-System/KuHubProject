@@ -21,6 +21,7 @@ import ConfirmarDisponibleBodegaModal, { ConfirmarDisponibleBodegaItem } from '.
 import ConfirmarSalidaDisponibleModal, { ConfirmarSalidaDisponibleItem } from '../../components/modals/ConfirmarSalidaDisponibleModal';
 import { ItemBodegaMasivo, MOTIVOS_BODEGA, MOTIVO_LABEL } from './constants';
 import { CardSkeleton } from '../../components/SkeletonLoader';
+import { useSistemaConfig } from '../../contexts/sistema-config-context';
 
 interface ControlMasivoBodegaModalProps {
   onClose: () => void;
@@ -32,6 +33,7 @@ interface ControlMasivoBodegaModalProps {
 
 const ControlMasivoBodegaModal: React.FC<ControlMasivoBodegaModalProps> = ({ onClose, initialItems, onProcessComplete, puedeAccederAbastecimiento = false, onOpenGestionAbastecimiento }) => {
   const toast = useToast();
+  const { disponibleObligatorio } = useSistemaConfig();
 
   // Estados para modal de abastecimiento de proveedores (OPs CONFIRMADA)
   const { isOpen: isAbastecimientoOpen, onOpen: onAbastecimientoOpen, onOpenChange: onAbastecimientoOpenChange } = useDisclosure();
@@ -559,11 +561,15 @@ const ControlMasivoBodegaModal: React.FC<ControlMasivoBodegaModalProps> = ({ onC
 
   const procesarMasivo = async () => {
     if (itemsPedido.length === 0) return;
-    const disponibles = detectarDisponiblesMasivo();
-    if (disponibles.length > 0) {
-      setDisponiblesMasivo(disponibles);
-      setIsDisponibleMasivoOpen(true);
-      return;
+    // Con la config "Registro de disponible obligatorio" apagada (default/opcional), no se
+    // pregunta nada: las entradas se procesan directo, sin registrar disponible.
+    if (disponibleObligatorio) {
+      const disponibles = detectarDisponiblesMasivo();
+      if (disponibles.length > 0) {
+        setDisponiblesMasivo(disponibles);
+        setIsDisponibleMasivoOpen(true);
+        return;
+      }
     }
     await continuarConSalidaMasivo();
   };
@@ -598,9 +604,10 @@ const ControlMasivoBodegaModal: React.FC<ControlMasivoBodegaModalProps> = ({ onC
     await continuarConSalidaMasivo();
   };
 
-  const handleCancelarDisponibleMasivo = async () => {
+  // Aborta todo: no procesa nada y deja los ítems tal cual en la lista para que el usuario los
+  // revise o corrija.
+  const handleCancelarDisponibleMasivo = () => {
     setIsDisponibleMasivoOpen(false);
-    await continuarConSalidaMasivo();
   };
 
   const handleConfirmarSalidaDisponibleMasivo = async () => {
@@ -961,6 +968,7 @@ const ControlMasivoBodegaModal: React.FC<ControlMasivoBodegaModalProps> = ({ onC
       <ConfirmarDisponibleBodegaModal
         isOpen={isDisponibleMasivoOpen}
         items={disponiblesMasivo}
+        contexto="bodega"
         isLoading={processState !== 'idle'}
         onCancelar={handleCancelarDisponibleMasivo}
         onConfirmar={handleConfirmarDisponibleMasivo}

@@ -2,6 +2,7 @@ import api from '../../config/Axios';
 
 export interface IGestionSistemaConfig {
   solicitudesEnPedido: boolean;
+  disponibleObligatorio: boolean;
 }
 
 /**

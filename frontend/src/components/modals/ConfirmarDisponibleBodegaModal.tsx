@@ -21,9 +21,11 @@ interface ConfirmarDisponibleBodegaModalProps {
     items: ConfirmarDisponibleBodegaItem[];
     /** Muestra el spinner en "Confirmar" mientras se procesa la operación. */
     isLoading?: boolean;
-    /** Procesa la entrada normalmente SIN registrar como stock disponible. */
+    /** 'bodega' (default, texto original) o 'inventario' — ajusta el copy del diálogo. */
+    contexto?: 'inventario' | 'bodega';
+    /** Aborta todo el proceso: no guarda nada, cierra el modal y vuelve al formulario/lista. */
     onCancelar: () => void;
-    /** Procesa la entrada normalmente Y registra como stock disponible (BODEGA_TRANSITO). */
+    /** Procesa la entrada normalmente Y registra como stock disponible. */
     onConfirmar: () => void;
 }
 
@@ -31,18 +33,23 @@ const fmtCantidad = (n: number): string =>
     Number(n).toLocaleString('es-CL', { minimumFractionDigits: 0, maximumFractionDigits: 3 });
 
 /**
- * Diálogo de confirmación reutilizable para bodega de tránsito.
- * Aparece cuando el usuario realiza una ENTRADA (individual o masiva) y pregunta
- * si los productos ingresados deben registrarse también como stock disponible
- * (excedente no asociado a un pedido o solicitud). No puede cerrarse por ESC ni X.
+ * Diálogo de confirmación reutilizable para bodega de tránsito e inventario.
+ * Solo se abre cuando la config global "Registro de disponible obligatorio"
+ * (Administración del Sistema › Gestión del Sistema) está activada — con la config apagada
+ * (default), la entrada se guarda directo sin preguntar nada. Aparece cuando el usuario
+ * realiza una ENTRADA (individual o masiva) que no proviene de una orden de Abastecimiento de
+ * Proveedores, y pregunta si los productos ingresados deben registrarse también como stock
+ * disponible (excedente no asociado a un pedido o solicitud). No puede cerrarse por ESC ni X.
  */
 const ConfirmarDisponibleBodegaModal: React.FC<ConfirmarDisponibleBodegaModalProps> = ({
     isOpen,
     items,
     isLoading = false,
+    contexto = 'bodega',
     onCancelar,
     onConfirmar,
 }) => {
+    const nombreDestino = contexto === 'inventario' ? 'inventario' : 'bodega de tránsito';
     return (
         <Modal
             isOpen={isOpen}
@@ -65,9 +72,10 @@ const ConfirmarDisponibleBodegaModal: React.FC<ConfirmarDisponibleBodegaModalPro
                 </ModalHeader>
                 <ModalBody className="space-y-4 pb-2">
                     <p className="text-sm text-default-600">
-                        Estás registrando una entrada a <strong>bodega de tránsito</strong>. ¿Deseas
-                        registrar también estos productos como <strong>stock disponible de bodega de
-                        tránsito</strong> (excedente no asociado a ningún pedido o solicitud)?
+                        Estás registrando una entrada a <strong>{nombreDestino}</strong> que no proviene
+                        de una orden de <strong>Abastecimiento de Proveedores</strong>. ¿Deseas
+                        registrar también estos productos como <strong>stock disponible de {nombreDestino}</strong> (excedente
+                        no asociado a ningún pedido o solicitud)?
                     </p>
                     <div className="rounded-lg border border-default-200 overflow-hidden">
                         <table className="w-full text-xs" style={{ tableLayout: 'fixed' }}>
@@ -90,8 +98,8 @@ const ConfirmarDisponibleBodegaModal: React.FC<ConfirmarDisponibleBodegaModalPro
                         </table>
                     </div>
                     <p className="text-xs text-warning-600 dark:text-warning-400 italic">
-                        Si cancelas, la entrada se realizará igualmente, pero el sistema no contará con
-                        trazabilidad de estos productos como stock disponible.
+                        El registro de stock disponible es obligatorio para este tipo de entrada.
+                        "Cancelar" no guarda nada.
                     </p>
                 </ModalBody>
                 <ModalFooter className="border-t border-default-100 gap-2">
@@ -104,7 +112,7 @@ const ConfirmarDisponibleBodegaModal: React.FC<ConfirmarDisponibleBodegaModalPro
                         isLoading={isLoading}
                         startContent={!isLoading ? <Icon icon="lucide:check-circle-2" width={16} /> : undefined}
                     >
-                        Confirmar
+                        Sí, registrar disponibles
                     </Button>
                 </ModalFooter>
               </div>

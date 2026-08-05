@@ -1284,6 +1284,9 @@ const SeccionGestionDelSistema: React.FC = () => {
   // Valor guardado en BD para detectar cambios sin guardar
   const [solicitudesEnPedidoGuardado, setSolicitudesEnPedidoGuardado] = React.useState(false);
 
+  const [disponibleObligatorio, setDisponibleObligatorio] = React.useState(false);
+  const [disponibleObligatorioGuardado, setDisponibleObligatorioGuardado] = React.useState(false);
+
   const [isLoadingConfig, setIsLoadingConfig] = React.useState(true);
   const [isSaving, setIsSaving] = React.useState(false);
   const [isRestoring, setIsRestoring] = React.useState(false);
@@ -1296,6 +1299,8 @@ const SeccionGestionDelSistema: React.FC = () => {
         const config = await getConfiguracionSistema();
         setSolicitudesEnPedido(config.solicitudesEnPedido);
         setSolicitudesEnPedidoGuardado(config.solicitudesEnPedido);
+        setDisponibleObligatorio(config.disponibleObligatorio);
+        setDisponibleObligatorioGuardado(config.disponibleObligatorio);
       } catch (error: any) {
         toast.error(error?.response?.data?.message || error.message || 'Error al cargar la configuración del sistema');
       } finally {
@@ -1306,7 +1311,9 @@ const SeccionGestionDelSistema: React.FC = () => {
   }, []);
 
   // ── Detectar cambios sin guardar ──
-  const hayCambiosSinGuardar = solicitudesEnPedido !== solicitudesEnPedidoGuardado;
+  const hayCambiosSinGuardar =
+    solicitudesEnPedido !== solicitudesEnPedidoGuardado ||
+    disponibleObligatorio !== disponibleObligatorioGuardado;
 
   // ── Guardar cambios (PATCH) ──
   const handleGuardar = async () => {
@@ -1314,9 +1321,12 @@ const SeccionGestionDelSistema: React.FC = () => {
     try {
       const updated = await patchConfiguracionSistema({
         solicitudesEnPedido,
+        disponibleObligatorio,
       });
       setSolicitudesEnPedido(updated.solicitudesEnPedido);
       setSolicitudesEnPedidoGuardado(updated.solicitudesEnPedido);
+      setDisponibleObligatorio(updated.disponibleObligatorio);
+      setDisponibleObligatorioGuardado(updated.disponibleObligatorio);
       await refreshConfig();
       toast.success('Configuración guardada correctamente');
     } catch (error: any) {
@@ -1333,6 +1343,8 @@ const SeccionGestionDelSistema: React.FC = () => {
       const restored = await restaurarConfiguracionSistema();
       setSolicitudesEnPedido(restored.solicitudesEnPedido);
       setSolicitudesEnPedidoGuardado(restored.solicitudesEnPedido);
+      setDisponibleObligatorio(restored.disponibleObligatorio);
+      setDisponibleObligatorioGuardado(restored.disponibleObligatorio);
       await refreshConfig();
       toast.success('Configuración restablecida a los valores predeterminados');
     } catch (error: any) {
@@ -1418,6 +1430,59 @@ const SeccionGestionDelSistema: React.FC = () => {
                         }
                       >
                         {solicitudesEnPedido ? 'Activado' : 'Desactivado'}
+                      </Chip>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <Divider />
+
+              {/* Sección 2: Registro de disponible obligatorio */}
+              <div className="space-y-4">
+                <div className="flex items-center gap-2">
+                  <div className="p-1.5 rounded-lg bg-warning-50 dark:bg-warning-900/20 text-warning-600">
+                    <Icon icon="lucide:package-check" width={16} />
+                  </div>
+                  <h4 className="font-semibold text-sm text-secondary dark:text-foreground">Stock Disponible</h4>
+                </div>
+
+                {/* Checkbox */}
+                <div
+                  className={`flex items-start gap-3 px-4 py-3 rounded-lg border transition-colors cursor-pointer ${disponibleObligatorio
+                    ? 'bg-success-50 dark:bg-success-900/15 border-success-200 dark:border-success-700 hover:bg-success-100 dark:hover:bg-success-900/25'
+                    : 'bg-default-50 dark:bg-default-50/50 border-default-100 dark:border-default-100/50 hover:bg-default-100 dark:hover:bg-default-50'
+                    }`}
+                  onClick={() => setDisponibleObligatorio((prev) => !prev)}
+                >
+                  <Checkbox
+                    isSelected={disponibleObligatorio}
+                    onChange={(e) => setDisponibleObligatorio(e.target.checked)}
+                    color="success"
+                    classNames={{ wrapper: 'mt-0.5' }}
+                    onClick={(e) => e.stopPropagation()}
+                  />
+                  <div className="flex-1 space-y-1">
+                    <label className="text-sm font-semibold text-secondary dark:text-foreground cursor-pointer select-none">
+                      Hacer obligatorio el registro de stock disponible en entradas sin Abastecimiento
+                    </label>
+                    <p className="text-xs text-default-500 leading-relaxed">
+                      Al realizar una entrada manual a Inventario o Bodega de Tránsito (Control de Inventario o Control de Stock Masivo) que no proviene de una orden de Abastecimiento de Proveedores, el sistema pregunta si esa cantidad debe registrarse como stock disponible. Si está activado, se retira la opción "Continuar sin registrar": solo se puede cancelar la operación o registrar el disponible.
+                    </p>
+                    {/* Badge de estado actual */}
+                    <div className="pt-1">
+                      <Chip
+                        size="sm"
+                        variant="flat"
+                        color={disponibleObligatorio ? 'success' : 'default'}
+                        startContent={
+                          <Icon
+                            icon={disponibleObligatorio ? 'lucide:check-circle' : 'lucide:circle'}
+                            width={12}
+                          />
+                        }
+                      >
+                        {disponibleObligatorio ? 'Obligatorio' : 'Opcional'}
                       </Chip>
                     </div>
                   </div>
