@@ -51,7 +51,6 @@ import {
 } from '../services/inventario/producto-service';
 import { useToast, useConfirmDelete } from '../hooks/useToast';
 import { logger } from '../utils/logger';
-import { useAuth } from '../contexts/auth-context';
 import { useModulePermission } from '../contexts/permission-context';
 import { obtenerCategorias, obtenerUnidades } from '../services/shared/storage-service';
 import { TableSkeleton, TableSkeletonColumn } from '../components/SkeletonLoader';
@@ -167,8 +166,6 @@ export const __resetInventarioFiltrosCache = () => { _inventarioFiltrosCache = n
 const InventarioPage: React.FC = () => {
   const toast = useToast();
   const confirmDelete = useConfirmDelete();
-  const { user } = useAuth();
-  const esAdministrador = user?.rol === 'Administrador';
   // ── Permisos granulares del módulo INVENTARIO ──
   const { canDelete: invPuedeEliminar } = useModulePermission('INVENTARIO');
   const { canRead: invEditarProducto }  = useModulePermission('INV_EDITAR_PRODUCTO');
@@ -183,6 +180,9 @@ const InventarioPage: React.FC = () => {
   const { canRead: invSyncExcel }      = useModulePermission('INV_SYNC_EXCEL');
   const { canRead: invAbastecimiento } = useModulePermission('INV_ABASTECIMIENTO');
   const { canRead: invStockDisponible }= useModulePermission('INV_STOCK_DISPONIBLE');
+  // Abre el modal "Control de Inventario" por fila: Editar Producto habilita los datos básicos,
+  // Control Masivo habilita el movimiento individual (Flujo de Stock) — cualquiera de los dos da acceso.
+  const puedeAbrirControlInventario = invEditarProducto || invControlMasivo;
   const [productos, setProductos] = React.useState<IProducto[]>([]);
   const [filteredProductos, setFilteredProductos] = React.useState<IProducto[]>([]);
   const [categoriasFull, setCategoriasFull] = React.useState<{ id: number, nombre: string }[]>([]);
@@ -666,11 +666,6 @@ const InventarioPage: React.FC = () => {
   };
 
   const handleEliminarProducto = async (producto: IProducto) => {
-    if (!esAdministrador) {
-      toast.warning('Solo el rol Administrador puede eliminar productos.');
-      return;
-    }
-
     // No se puede eliminar si hay stock
     if (producto.stock > 0) {
       setProductoParaEliminar(producto);
@@ -1387,15 +1382,15 @@ const InventarioPage: React.FC = () => {
             {paginatedProductos.map((producto) => (
               <TableRow
                 key={producto.id}
-                className={`${invEditarProducto ? 'cursor-pointer' : 'cursor-default'} hover:bg-default-50 dark:hover:bg-default-100/50 transition-colors duration-200 border-b border-default-50 dark:border-default-50/10`}
+                className={`${puedeAbrirControlInventario ? 'cursor-pointer' : 'cursor-default'} hover:bg-default-50 dark:hover:bg-default-100/50 transition-colors duration-200 border-b border-default-50 dark:border-default-50/10`}
                 style={{
                   contentVisibility: 'auto',
                   containIntrinsicSize: '70px 70px'
                 } as any}
-                onClick={() => invEditarProducto && handleEditarProducto(producto)}
+                onClick={() => puedeAbrirControlInventario && handleEditarProducto(producto)}
               >
                 <TableCell>
-                  <Tooltip content={invEditarProducto ? "Control de Inventario" : undefined} isDisabled={!invEditarProducto} color="primary" delay={100} closeDelay={0}>
+                  <Tooltip content={puedeAbrirControlInventario ? "Control de Inventario" : undefined} isDisabled={!puedeAbrirControlInventario} color="primary" delay={100} closeDelay={0}>
                     <div className="w-full overflow-hidden text-center flex flex-col items-center">
                       <span className="font-semibold text-secondary dark:text-foreground block truncate w-full">{producto.nombre}</span>
                       {producto.descripcion && (
@@ -1405,7 +1400,7 @@ const InventarioPage: React.FC = () => {
                   </Tooltip>
                 </TableCell>
                 <TableCell className="text-center">
-                  <Tooltip content={invEditarProducto ? "Control de Inventario" : undefined} isDisabled={!invEditarProducto} color="primary" delay={100} closeDelay={0}>
+                  <Tooltip content={puedeAbrirControlInventario ? "Control de Inventario" : undefined} isDisabled={!puedeAbrirControlInventario} color="primary" delay={100} closeDelay={0}>
                     <div className="flex justify-center w-full">
                       <Chip size="sm" variant="flat" className="bg-default-100 dark:bg-default-100/50 text-default-600 dark:text-default-300">
                         {producto.categoria}
@@ -1414,24 +1409,24 @@ const InventarioPage: React.FC = () => {
                   </Tooltip>
                 </TableCell>
                 <TableCell className="text-center">
-                  <Tooltip content={invEditarProducto ? "Control de Inventario" : undefined} isDisabled={!invEditarProducto} color="primary" delay={100} closeDelay={0}>
+                  <Tooltip content={puedeAbrirControlInventario ? "Control de Inventario" : undefined} isDisabled={!puedeAbrirControlInventario} color="primary" delay={100} closeDelay={0}>
                     <span className={`font-bold block text-center ${producto.stock <= producto.stockMinimo ? 'text-danger' : 'text-default-700 dark:text-default-300'}`}>
                       {fmtCL(producto.stock)}
                     </span>
                   </Tooltip>
                 </TableCell>
                 <TableCell className="text-center">
-                  <Tooltip content={invEditarProducto ? "Control de Inventario" : undefined} isDisabled={!invEditarProducto} color="primary" delay={100} closeDelay={0}>
+                  <Tooltip content={puedeAbrirControlInventario ? "Control de Inventario" : undefined} isDisabled={!puedeAbrirControlInventario} color="primary" delay={100} closeDelay={0}>
                     <span className="block text-center">{fmtCL(producto.stockMinimo)}</span>
                   </Tooltip>
                 </TableCell>
                 <TableCell className="text-center">
-                  <Tooltip content={invEditarProducto ? "Control de Inventario" : undefined} isDisabled={!invEditarProducto} color="primary" delay={100} closeDelay={0}>
+                  <Tooltip content={puedeAbrirControlInventario ? "Control de Inventario" : undefined} isDisabled={!puedeAbrirControlInventario} color="primary" delay={100} closeDelay={0}>
                     <span className="text-default-500 block text-center">{producto.unidadMedida}</span>
                   </Tooltip>
                 </TableCell>
                 <TableCell>
-                  <Tooltip content={invEditarProducto ? "Control de Inventario" : undefined} isDisabled={!invEditarProducto} color="primary" delay={100} closeDelay={0} className="w-full">
+                  <Tooltip content={puedeAbrirControlInventario ? "Control de Inventario" : undefined} isDisabled={!puedeAbrirControlInventario} color="primary" delay={100} closeDelay={0} className="w-full">
                     <div className="w-full h-full text-center flex justify-center">{renderStockStatus(producto)}</div>
                   </Tooltip>
                 </TableCell>
@@ -1500,6 +1495,8 @@ const InventarioPage: React.FC = () => {
                     categorias={categoriasActivas}
                     unidades={unidadesActivas}
                     onConflictSync={handleConflictSync}
+                    puedeEditarDatos={modalMode === 'crear' ? true : invEditarProducto}
+                    puedeControlMasivo={modalMode === 'crear' ? true : invControlMasivo}
                   />
                 </ModalBody>
               </div>

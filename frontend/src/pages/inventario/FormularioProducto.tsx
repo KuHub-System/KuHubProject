@@ -21,6 +21,7 @@ interface FormularioProductoProps {
   onConflictSync?: (producto: IProducto) => void;
   origenContext?: 'inventario' | 'bodega';
   puedeEditarDatos?: boolean;
+  puedeControlMasivo?: boolean;
 }
 
 /**
@@ -29,7 +30,7 @@ interface FormularioProductoProps {
  * @param {FormularioProductoProps} props - Propiedades del componente.
  * @returns {JSX.Element} El formulario de producto.
  */
-const FormularioProducto: React.FC<FormularioProductoProps> = ({ producto, onClose, mode, categorias, unidades, onConflictSync, origenContext = 'inventario', puedeEditarDatos = true }) => {
+const FormularioProducto: React.FC<FormularioProductoProps> = ({ producto, onClose, mode, categorias, unidades, onConflictSync, origenContext = 'inventario', puedeEditarDatos = true, puedeControlMasivo = true }) => {
   const toast = useToast();
   const [nombre, setNombre] = React.useState(producto?.nombre || '');
   const [codProducto, setCodProducto] = React.useState((producto as any)?.codProducto || '');
@@ -527,7 +528,7 @@ const FormularioProducto: React.FC<FormularioProductoProps> = ({ producto, onClo
               isIconOnly
               size="sm"
               variant="flat"
-              color="warning"
+              color="primary"
               onPress={() => setEditandoDatosBasicos(!editandoDatosBasicos)}
               title={editandoDatosBasicos ? "Cerrar campos" : "Habilitar edición de campos básicos"}
               className="shadow-sm"
@@ -641,7 +642,7 @@ const FormularioProducto: React.FC<FormularioProductoProps> = ({ producto, onClo
         )}
       </AnimatePresence>
 
-      {mode === 'editar' && (
+      {mode === 'editar' && puedeControlMasivo && (
         <div className="pt-2">
           {motivoDescripcion ? (
             <motion.div
@@ -664,15 +665,15 @@ const FormularioProducto: React.FC<FormularioProductoProps> = ({ producto, onClo
         </div>
       )}
 
-      {mode === 'editar' && (
+      {mode === 'editar' && puedeControlMasivo && (
         <p className="text-xs text-default-500 px-0.5 mb-1">
           Stock Actual: <span className="font-semibold text-secondary">{fmtCL(originalStockVal)}</span>
         </p>
       )}
 
-      <div className={`grid grid-cols-1 ${mode === 'editar' ? 'md:grid-cols-3' : 'md:grid-cols-2'} gap-4`}>
+      <div className={`grid grid-cols-1 ${mode === 'editar' && puedeControlMasivo ? 'md:grid-cols-3' : mode === 'crear' ? 'md:grid-cols-2' : 'md:grid-cols-1'} gap-4`}>
 
-        {mode === 'editar' && (() => {
+        {mode === 'editar' && puedeControlMasivo && (() => {
           const opcionesMotivo = origenContext === 'bodega'
             ? [
                 { key: 'ENTRADA_BODEGA', label: 'Entrada' },
@@ -710,7 +711,7 @@ const FormularioProducto: React.FC<FormularioProductoProps> = ({ producto, onClo
           );
         })()}
 
-        {mode === 'editar' ? (
+        {mode === 'editar' && puedeControlMasivo ? (
           <Input
             type="number"
             label={isAjusteEdit ? 'Nuevo Stock' : 'Cantidad'}
@@ -735,7 +736,7 @@ const FormularioProducto: React.FC<FormularioProductoProps> = ({ producto, onClo
             variant="bordered"
             classNames={{ inputWrapper: 'bg-white dark:bg-default-100/50' }}
           />
-        ) : (
+        ) : mode === 'crear' ? (
           <Input
             type="number"
             label="Stock"
@@ -753,7 +754,7 @@ const FormularioProducto: React.FC<FormularioProductoProps> = ({ producto, onClo
             variant="bordered"
             classNames={{ inputWrapper: "bg-white dark:bg-default-100/50" }}
           />
-        )}
+        ) : null}
 
         <Input
           type="number"
