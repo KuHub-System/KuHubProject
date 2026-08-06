@@ -4185,7 +4185,10 @@ BEGIN
             LIMIT 1;
 
             -- Cantidad aleatoria entre 0.100 y 2.500
-            v_cant := ROUND(CAST(RANDOM() * 2.4 + 0.1 AS NUMERIC), 3);
+            -- v_cant := ROUND(CAST(RANDOM() * 2.4 + 0.1 AS NUMERIC), 3);
+
+            -- Cantidad aleatoria de 2 a 3 dígitos (entre 10.000 y 999.999)
+            v_cant := ROUND(CAST(RANDOM() * 989.999 + 10.0 AS NUMERIC), 3);
 
             -- Insertar detalle (usando INSERT IGNORE lógico con ON CONFLICT para no romper el script)
             INSERT INTO detalle_pedido_semana_bodega (id_pedido_semana_bodega, id_producto, cant_producto)
