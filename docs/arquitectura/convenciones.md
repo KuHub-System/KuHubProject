@@ -214,3 +214,43 @@ con banners sin `<ModalHeader>` real, porque ahora el scroll nunca depende de `<
 El detalle completo (con el código exacto) está documentado en `frontend/CLAUDE.md`, sección
 "Modales estándar (circulares)" — esa guía técnica vive en el repo junto al código y es la referencia
 a seguir al escribir un modal nuevo.
+
+## Invalidación de caché tras mutaciones (POST/PUT) — evitar que haga falta F5
+
+**Norma:** `inventario.tsx` y `bodega-transito.tsx` mantienen caché local en memoria, independiente de
+cualquier librería de fetching: `cacheRef` (caché por página para el listado con scroll infinito) más
+un caché de módulo con TTL para categorías/unidades/config de abastecimiento. Ese caché **no se
+invalida solo**. Cualquier POST/PUT nuevo que cambie datos ya reflejados ahí tiene que invalidarlo
+explícitamente en su success handler — si no, la vista se queda mostrando el valor viejo hasta que el
+usuario le da F5.
+
+Dos patrones ya establecidos en el código, a elegir según lo que devuelva el endpoint:
+
+- **Parche directo:** si la respuesta del endpoint ya trae el valor fresco por id (ej. stock
+  resultante de cada item), parchear `productos`/`filteredProductos`/`cacheRef` directamente por id,
+  sin pedir nada de nuevo al backend. Ejemplo real: `aplicarStocksProcesados` /
+  `aplicarStocksProcesadosBodega`, usado por Control de Stock Masivo, Abastecimiento de Bodega y
+  Abastecimiento de Proveedores.
+
+- **Evento global + refetch:** si no hay un id claro para parchear (alta, baja, o cualquier mutación
+  cuya respuesta no trae el dato fresco), disparar `window.dispatchEvent(new Event('productosActualizados'))`.
+  Ambas páginas ya escuchan ese evento y, al recibirlo, limpian el caché y vuelven a pedir la página
+  actual. Ejemplo real: crear/editar producto en `FormularioProducto.tsx`.
+
+```tsx
+// Tras un POST/PUT que cambia stock/datos ya visibles en el listado:
+await miServicioDeGuardado(payload);
+window.dispatchEvent(new Event('productosActualizados')); // dispara el refetch en ambas páginas
+```
+
+Para modales de configuración/catálogo (`GestionCategoriasModal`, `GestionUnidadesModal`,
+`GestionAbastecimientoModal`) que reciben un `onRefresh` desde la página padre, ese `onRefresh` tiene
+que limpiar el caché de productos **y** volver a pedir tanto el listado paginado como los filtros —
+nunca alcanza con refrescar solo uno de los dos. Un `onRefresh` que solo recarga los filtros deja
+cualquier dato de producto derivado de esa config ("horneado" en la caché paginada) desactualizado
+hasta el F5 — este bug concreto ya se dio con `GestionAbastecimientoModal` en ambas páginas y quedó
+corregido como referencia.
+
+El detalle completo, con los tres patrones, ejemplos reales por archivo/línea y el checklist a seguir
+al implementar un POST/PUT nuevo, está documentado en `frontend/CLAUDE.md`, sección 16
+("Invalidación de caché tras mutaciones (POST/PUT)").
