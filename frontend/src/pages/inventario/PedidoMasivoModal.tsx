@@ -15,14 +15,16 @@ import {
   bulkUpdateInventoryStockService, IBulkProcessResult,
 } from '../../services/inventario/inventario-service';
 import {
-  obtenerAbastecimientoBodegaService, marcarEnviadoBodegaService,
-  registrarDisponiblesService, ISolicitudBodegaItem, IDetalleBodegaItem, IRegistrarDisponibleDTO,
+  obtenerAbastecimientoBodegaService,
+  ISolicitudBodegaItem, IDetalleBodegaItem,
 } from '../../services/solicitud/solicitud-service';
 import { obtenerAbastecimientoConfirmadoService, marcarEntregadosMasivoService } from '../../services/proveedor/proveedor-service';
 import { IOrdenAbastecimiento, ICategoriaEntregaAbastecimiento } from '../../types/proveedor/proveedor.types';
 import { ItemPedidoMasivo } from './constants';
 import { CardSkeleton } from '../../components/SkeletonLoader';
-import { useSistemaConfig } from '../../contexts/sistema-config-context';
+
+/** Colores del theme usados para el color-coding de los motivos de movimiento. */
+type ChipColor = 'success' | 'warning' | 'primary' | 'danger' | 'secondary';
 
 /**
  * Interfaz para las propiedades del modal de pedido masivo
@@ -35,15 +37,16 @@ interface PedidoMasivoModalProps {
   onProcessComplete?: (data: IBulkProcessResult, retryItems: ItemPedidoMasivo[]) => void;
   puedeAccederAbastBodega?: boolean;
   puedeAccederAbastProv?: boolean;
+  /** Permiso de escritura sobre "Inventario · Gestión Abastecimiento" (INV_ABASTECIMIENTO) — controla si se muestra el acceso a Gestión de Abastecimiento dentro del modal de Abastecimiento de Proveedores. */
+  puedeGestionarAbastecimiento?: boolean;
   onOpenGestionAbastecimiento?: () => void;
 }
 
 /**
  * Modal para realizar pedidos masivos hacia bodega de tránsito
  */
-const PedidoMasivoModal: React.FC<PedidoMasivoModalProps> = ({ onClose, onNuevoProducto, onProcessComplete, initialItems, puedeAccederAbastBodega = false, puedeAccederAbastProv = false, onOpenGestionAbastecimiento }) => {
+const PedidoMasivoModal: React.FC<PedidoMasivoModalProps> = ({ onClose, onNuevoProducto, onProcessComplete, initialItems, puedeAccederAbastBodega = false, puedeAccederAbastProv = false, puedeGestionarAbastecimiento = false, onOpenGestionAbastecimiento }) => {
   const toast = useToast();
-  const { disponibleObligatorio } = useSistemaConfig();
   const [itemsPedido, setItemsPedido] = React.useState<ItemPedidoMasivo[]>(initialItems ?? []);
   const [productoSeleccionado, setProductoSeleccionado] = React.useState<string>('');
   const [stockInput, setStockInput] = React.useState<string>('');
@@ -51,6 +54,7 @@ const PedidoMasivoModal: React.FC<PedidoMasivoModalProps> = ({ onClose, onNuevoP
 
   // Estados para modal de Abastecimiento de Bodega
   const { isOpen: isBodegaOpen, onOpen: onBodegaOpen, onOpenChange: onBodegaOpenChange } = useDisclosure();
+  const { isOpen: isBodegaInfoOpen, onOpen: onBodegaInfoOpen, onOpenChange: onBodegaInfoOpenChange } = useDisclosure();
   const [dateRangeBodega, setDateRangeBodega] = React.useState<{ start: CalendarDate; end: CalendarDate } | null>(null);
   const [solicitudesBodega, setSolicitudesBodega] = React.useState<ISolicitudBodegaItem[]>([]);
   const [solicitudesSeleccionadas, setSolicitudesSeleccionadas] = React.useState<Set<number>>(new Set());
@@ -58,10 +62,6 @@ const PedidoMasivoModal: React.FC<PedidoMasivoModalProps> = ({ onClose, onNuevoP
   const [cargadoBodega, setCargadoBodega] = React.useState(false);
   const [agruparPorDia, setAgruparPorDia] = React.useState(false);
   const bodegaSearchTimerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  // Estados para modal de Disponibles (sobrantes detectados en TRASLADO)
-  const [isDisponiblesOpen, setIsDisponiblesOpen] = React.useState(false);
-  const [disponiblesPendientes, setDisponiblesPendientes] = React.useState<IRegistrarDisponibleDTO[]>([]);
 
   // Estados para modal de abastecimiento de proveedores (OPs CONFIRMADA)
   const { isOpen: isAbastecimientoOpen, onOpen: onAbastecimientoOpen, onOpenChange: onAbastecimientoOpenChange } = useDisclosure();
@@ -142,8 +142,6 @@ const PedidoMasivoModal: React.FC<PedidoMasivoModalProps> = ({ onClose, onNuevoP
               marcaProducto: prod.marcaProducto ?? null,
               idOrdenPedido: orden.idOrdenPedido,
               idPedido: orden.idPedido,
-              // Baseline para la detección de disponibles: si luego se suma más cantidad a mano
-              // a este mismo ítem, cargadoAbastecimiento no cambia y el excedente queda expuesto.
               cargadoAbastecimiento: prod.cantidadSolicitada,
             };
             todosItems.push(item);
@@ -476,12 +474,94 @@ const PedidoMasivoModal: React.FC<PedidoMasivoModalProps> = ({ onClose, onNuevoP
     });
   };
 
+  // ── Cobertura contra el stock físico de bodega de tránsito ──
+  // El stock que ya está en bodega no pertenece a nadie hasta que se reparte: se asigna a las
+  // solicitudes por orden cronológico (fecha + hora de inicio), o sea la clase más próxima consume
+  // primero. Lo que queda cubierto NO se vuelve a enviar; solo se traslada el faltante.
+  // cubiertoPool es la parte fungible (stock que ya estaba en bodega, sin envío explícito para
+  // esta solicitud); cubierto es el total ya resuelto (lo enviado explícitamente + cubiertoPool).
+  type CoberturaDetalle = { cubierto: number; cubiertoPool: number; faltante: number };
+
+  const round3 = (n: number) => Math.round(n * 1000) / 1000;
+
+  const coberturaBodega = React.useMemo(() => {
+    const porDetalle = new Map<number, CoberturaDetalle>();
+    const cubiertas = new Set<number>();
+    const pool = new Map<number, number>();
+
+    const orden = [...solicitudesBodega].sort((a, b) => {
+      const porFecha = a.fechaSolicitada.localeCompare(b.fechaSolicitada);
+      if (porFecha !== 0) return porFecha;
+      const porHora = (a.horaInicio ?? '').localeCompare(b.horaInicio ?? '');
+      if (porHora !== 0) return porHora;
+      return a.idSolicitud - b.idSolicitud;
+    });
+
+    for (const sol of orden) {
+      let tienePendiente = false;
+      let todoCubierto = true;
+      for (const det of sol.detalles) {
+        if (!pool.has(det.idProducto)) pool.set(det.idProducto, det.stockBodegaTransito ?? 0);
+        let disponible = pool.get(det.idProducto)!;
+
+        // Lo ya trasladado explícitamente para ESTA solicitud (suma real de movimientos TRASLADO,
+        // cantidadEnviadaBodega) reserva el pool antes que el resto: ese stock físico ya está
+        // comprometido con esta solicitud puntual. Si no lo descontáramos primero, el mismo stock
+        // se contaría dos veces y una solicitud posterior aparecería como cubierta por error.
+        const enviado = round3(Math.min(det.cantidadEnviadaBodega ?? 0, disponible));
+        disponible = round3(disponible - enviado);
+
+        const necesidadRestante = round3(det.cantidadSolicitada - enviado);
+        if (necesidadRestante > 0) tienePendiente = true;
+
+        const cubiertoPool = necesidadRestante > 0 ? round3(Math.min(necesidadRestante, disponible)) : 0;
+        disponible = round3(disponible - cubiertoPool);
+        pool.set(det.idProducto, disponible);
+
+        const cubierto = round3(enviado + cubiertoPool);
+        const faltante = round3(det.cantidadSolicitada - cubierto);
+        porDetalle.set(det.idDetalleSolicitud, { cubierto, cubiertoPool, faltante });
+        if (faltante > 0) todoCubierto = false;
+      }
+      if (tienePendiente && todoCubierto) cubiertas.add(sol.idSolicitud);
+    }
+    return { porDetalle, cubiertas };
+  }, [solicitudesBodega]);
+
+  const getCobertura = (det: IDetalleBodegaItem): CoberturaDetalle =>
+    coberturaBodega.porDetalle.get(det.idDetalleSolicitud)
+    ?? { cubierto: 0, cubiertoPool: 0, faltante: det.cantidadSolicitada };
+
+  /** Cantidad que realmente hay que trasladar: descuenta lo ya enviado y lo que bodega cubre. */
+  const getFaltante = (det: IDetalleBodegaItem): number => getCobertura(det).faltante;
+
+  /**
+   * Estado del envío para el check visual. Se apoya en el `faltante` real (getCobertura), no solo
+   * en el histórico de movimientos TRASLADO: un producto puede tener `cantidadEnviadaBodega` igual
+   * a lo solicitado y aun así seguir con faltante > 0 si ese stock ya no está físicamente en bodega
+   * de tránsito (ej. una merma posterior al traslado) — en ese caso no puede mostrarse como
+   * "completo", porque igual hay que reponerlo.
+   */
+  const getEstadoEnvio = (det: IDetalleBodegaItem): 'ninguno' | 'parcial' | 'completo' | 'perdido' => {
+    const enviadoHistorico = det.cantidadEnviadaBodega ?? 0;
+    if (enviadoHistorico <= 0) return 'ninguno';
+    const { faltante } = getCobertura(det);
+    if (faltante <= 0) return 'completo';
+    return enviadoHistorico >= det.cantidadSolicitada ? 'perdido' : 'parcial';
+  };
+
+  /** Solicitudes con algo pendiente de trasladar (las cubiertas por bodega no cuentan). */
+  const tieneFaltante = (sol: ISolicitudBodegaItem): boolean =>
+    sol.detalles.some(d => getFaltante(d) > 0);
+
   const cargarSolicitudesSeleccionadas = () => {
     const nuevosItems: ItemPedidoMasivo[] = [];
     for (const sol of solicitudesBodega) {
       if (!solicitudesSeleccionadas.has(sol.idSolicitud)) continue;
       for (const det of sol.detalles) {
-        if (det.enviadoBodegaTransito) continue;
+        const faltante = getFaltante(det);
+        // Se salta lo ya enviado y lo que bodega de tránsito ya cubre.
+        if (faltante <= 0) continue;
         nuevosItems.push({
           id: `bodega-${det.idDetalleSolicitud}-${Date.now()}-${Math.random()}`,
           producto: {
@@ -492,10 +572,12 @@ const PedidoMasivoModal: React.FC<PedidoMasivoModalProps> = ({ onClose, onNuevoP
             stock: det.stock,
             esFraccionario: det.esFraccionario,
           },
-          delta: det.cantidadSolicitada,
+          delta: faltante,
           motivo: 'TRASLADO',
           idDetalleSolicitud: det.idDetalleSolicitud,
-          cantidadOriginal: det.cantidadSolicitada,
+          // La cantidad de referencia para detectar sobrantes es el faltante, no lo solicitado:
+          // la parte cubierta por bodega no es un sobrante del traslado.
+          cantidadOriginal: faltante,
           idSolicitud: sol.idSolicitud,
         });
       }
@@ -531,40 +613,6 @@ const PedidoMasivoModal: React.FC<PedidoMasivoModalProps> = ({ onClose, onNuevoP
     setItemsPedido([]);
   };
 
-  // Detección de disponibles: junta dos casos de sobrante que se registran como stock
-  // disponible del inventario, no asociado a ningún pedido o solicitud.
-  const detectarDisponibles = (): IRegistrarDisponibleDTO[] => {
-    // Caso A — TRASLADO cuya cantidad enviada es menor a la solicitada: el remanente se queda
-    // en Inventario sin gestionar.
-    const porTraslado = itemsPedido
-      .filter(i =>
-        i.motivo === 'TRASLADO' &&
-        i.idDetalleSolicitud != null &&
-        i.cantidadOriginal != null &&
-        (i.cantidadOriginal - i.delta) > 0.001
-      )
-      .map(i => ({
-        idProducto: i.producto.idProducto,
-        idSolicitud: i.idSolicitud,
-        cantidad: parseFloat((i.cantidadOriginal! - i.delta).toFixed(3)),
-      }));
-
-    // Caso B — ENTRADA_INVENTARIO por sobre lo efectivamente cargado desde Abastecimiento de
-    // Proveedores (o el total, si se tecleó a mano sin pasar por Abastecimiento): es una
-    // "entrada falsa", stock que ya estaba en la institución y se devuelve a su lugar, no
-    // mercadería nueva.
-    const porEntradaInventario = itemsPedido
-      .filter(i => i.motivo === 'ENTRADA_INVENTARIO')
-      .map(i => ({ item: i, extra: i.delta - (i.cargadoAbastecimiento ?? 0) }))
-      .filter(x => x.extra > 0.001)
-      .map(x => ({
-        idProducto: x.item.producto.idProducto,
-        cantidad: parseFloat(x.extra.toFixed(3)),
-      }));
-
-    return [...porTraslado, ...porEntradaInventario];
-  };
-
   const ejecutarProcesoTraslado = async () => {
     setProcessState('procesando');
     try {
@@ -577,13 +625,16 @@ const PedidoMasivoModal: React.FC<PedidoMasivoModalProps> = ({ onClose, onNuevoP
         MERMA_INVENTARIO: 5, MERMA_BODEGA: 5,
       };
 
-      // Agrupa por (idInventario, motivo, idDetalleOrdenPedido) sumando deltas. Se incluye el
-      // detalle en la clave para NO colapsar distintas líneas/fechas de la misma OP: así cada
-      // detalle genera su propio movimiento con su id_detalle_orden_pedido (mapeo exacto de la
-      // entrega real). Los ítems manuales (sin detalle) comparten clave y se suman como antes.
+      // Agrupa por (idInventario, motivo, idDetalleOrdenPedido, idSolicitud) sumando deltas. Se
+      // incluye el detalle/la solicitud en la clave para NO colapsar distintas líneas/fechas de la
+      // misma OP, ni distintas solicitudes que pidan el mismo producto en el mismo lote de
+      // Abastecimiento de Bodega: así cada uno genera su propio movimiento TRASLADO con su
+      // id_solicitud (mapeo exacto de cuánto se envió por solicitud, que luego se lee de vuelta
+      // desde la tabla movimiento — ver findAbastecimientoBodegaJson). Los ítems manuales (sin
+      // detalle ni solicitud) comparten clave y se suman como antes.
       const agregado = new Map<string, { idInventario: number; delta: number; stockEnVista: number; tipoMovimiento: string; idSolicitud?: number; idPedido?: number; idOrdenPedido?: number; idDetalleOrdenPedido?: number }>();
       for (const item of itemsPedido) {
-        const key = `${item.producto.idInventario}__${item.motivo}__${item.idDetalleOrdenPedido ?? 'manual'}`;
+        const key = `${item.producto.idInventario}__${item.motivo}__${item.idDetalleOrdenPedido ?? 'manual'}__${item.idSolicitud ?? 'manual'}`;
         const existing = agregado.get(key);
         if (existing) {
           existing.delta += item.delta;
@@ -617,13 +668,9 @@ const PedidoMasivoModal: React.FC<PedidoMasivoModalProps> = ({ onClose, onNuevoP
       if (idsEntregados.length > 0) {
         marcarEntregadosMasivoService(idsEntregados).catch(e => logger.warn('marcarEntregados failed', e));
       }
-
-      const idsEnviadosBodega = itemsPedido
-        .filter(i => i.idDetalleSolicitud != null && exitososSet.has(i.producto.idInventario))
-        .map(i => i.idDetalleSolicitud!);
-      if (idsEnviadosBodega.length > 0) {
-        marcarEnviadoBodegaService(idsEnviadosBodega).catch(e => logger.warn('marcarEnviadoBodega failed', e));
-      }
+      // Los envíos a bodega de tránsito ya no se "marcan" aparte: el propio movimiento TRASLADO
+      // creado arriba (con su id_solicitud) es la prueba del envío — ver cantidadEnviadaBodega en
+      // findAbastecimientoBodegaJson, que lo lee de vuelta desde la tabla movimiento.
 
       // Build retry items for recoverable errors (product exists, stock insufficient)
       const retryItems: ItemPedidoMasivo[] = result.errores
@@ -654,35 +701,8 @@ const PedidoMasivoModal: React.FC<PedidoMasivoModalProps> = ({ onClose, onNuevoP
     }
   };
 
-  const handleDisponiblesSi = async () => {
-    try {
-      await registrarDisponiblesService(disponiblesPendientes);
-      toast.success('Disponibles registrados correctamente');
-    } catch {
-      toast.warning('No se pudieron registrar los disponibles, pero el traslado continuará');
-    }
-    setIsDisponiblesOpen(false);
-    await ejecutarProcesoTraslado();
-  };
-
-  // Aborta todo el proceso: cierra el modal y deja los ítems tal cual en la lista para que el
-  // usuario los revise o corrija.
-  const handleDisponiblesCancelar = () => {
-    setIsDisponiblesOpen(false);
-  };
-
   const procesarPedido = async () => {
     if (itemsPedido.length === 0) return;
-    // Con la config "Registro de disponible obligatorio" apagada (default/opcional), no se
-    // pregunta nada: traslados/entradas se procesan directo, sin registrar disponible.
-    if (disponibleObligatorio) {
-      const candidatos = detectarDisponibles();
-      if (candidatos.length > 0) {
-        setDisponiblesPendientes(candidatos);
-        setIsDisponiblesOpen(true);
-        return;
-      }
-    }
     await ejecutarProcesoTraslado();
   };
 
@@ -702,16 +722,37 @@ const PedidoMasivoModal: React.FC<PedidoMasivoModalProps> = ({ onClose, onNuevoP
   const opcionesMotivoList = opcionesMotivoMap[context];
 
   // ── Helpers para "Agrupar por día" en modal Abastecimiento de Bodega ──
-  type DetalleDia = IDetalleBodegaItem & { cantidadTotal: number };
+  type DetalleDia = IDetalleBodegaItem & {
+    cantidadTotal: number;
+    /** Suma de las solicitudes del día para este producto que ya fueron enviadas. */
+    cantidadEntregada: number;
+    /** Suma que el stock actual de bodega de tránsito ya cubre (no se vuelve a enviar). */
+    cantidadCubierta: number;
+    /** Suma que falta trasladar: ni enviada antes, ni cubierta por el stock de bodega. */
+    cantidadPendiente: number;
+  };
 
   const getProductosDia = (solicitudes: ISolicitudBodegaItem[]): DetalleDia[] => {
     const mapa = new Map<number, DetalleDia>();
     for (const sol of solicitudes) {
       for (const det of sol.detalles) {
-        if (mapa.has(det.idProducto)) {
-          mapa.get(det.idProducto)!.cantidadTotal += det.cantidadSolicitada;
+        const entregada = det.cantidadEnviadaBodega ?? 0;
+        const cubierta  = getCobertura(det).cubiertoPool;
+        const pendiente = getFaltante(det);
+        const existente = mapa.get(det.idProducto);
+        if (existente) {
+          existente.cantidadTotal     += det.cantidadSolicitada;
+          existente.cantidadEntregada += entregada;
+          existente.cantidadCubierta  += cubierta;
+          existente.cantidadPendiente += pendiente;
         } else {
-          mapa.set(det.idProducto, { ...det, cantidadTotal: det.cantidadSolicitada });
+          mapa.set(det.idProducto, {
+            ...det,
+            cantidadTotal: det.cantidadSolicitada,
+            cantidadEntregada: entregada,
+            cantidadCubierta: cubierta,
+            cantidadPendiente: pendiente,
+          });
         }
       }
     }
@@ -734,7 +775,7 @@ const PedidoMasivoModal: React.FC<PedidoMasivoModalProps> = ({ onClose, onNuevoP
     const grupo = solicitudesPorDia.find(g => g.fecha === fecha);
     if (!grupo) return;
     const idsConPendientes = grupo.solicitudes
-      .filter(s => s.detalles.some(d => !d.enviadoBodegaTransito))
+      .filter(tieneFaltante)
       .map(s => s.idSolicitud);
     const todosMarcados = idsConPendientes.length > 0 && idsConPendientes.every(id => solicitudesSeleccionadas.has(id));
     setSolicitudesSeleccionadas(prev => {
@@ -744,24 +785,71 @@ const PedidoMasivoModal: React.FC<PedidoMasivoModalProps> = ({ onClose, onNuevoP
     });
   };
 
+  // Metadata visual por motivo (color, icono y descripción). Se comparte entre el banner
+  // informativo del formulario y las filas del listado para que el color-coding sea el mismo
+  // en toda la vista: verde = entra stock, rojo = sale stock, ámbar = traslado, amarillo Duoc
+  // = ajuste, gris = devolución.
+  const MOTIVO_META: Record<string, { color: ChipColor; icon: string; texto: string }> = {
+    ENTRADA_INVENTARIO: { color: 'success', icon: 'lucide:arrow-down-to-line', texto: 'Entrada de insumos al inventario' },
+    ENTRADA_BODEGA: { color: 'success', icon: 'lucide:arrow-down-to-line', texto: 'Entrada de insumos a la bodega de tránsito' },
+    SALIDA_INVENTARIO: { color: 'danger', icon: 'lucide:arrow-up-from-line', texto: 'Salida de insumos del inventario' },
+    SALIDA_BODEGA: { color: 'danger', icon: 'lucide:arrow-up-from-line', texto: 'Salida de insumos de la bodega de tránsito' },
+    TRASLADO: { color: 'warning', icon: 'lucide:arrow-left-right', texto: 'Mover hacia la bodega de tránsito' },
+    AJUSTE_INVENTARIO: { color: 'primary', icon: 'lucide:sliders-horizontal', texto: 'Ajustar stock actual' },
+    AJUSTE_BODEGA: { color: 'primary', icon: 'lucide:sliders-horizontal', texto: 'Ajustar stock actual' },
+    MERMA_INVENTARIO: { color: 'danger', icon: 'lucide:trending-down', texto: 'Salida de insumos por daño/pérdida' },
+    MERMA_BODEGA: { color: 'danger', icon: 'lucide:trending-down', texto: 'Salida de insumos por daño/pérdida' },
+    DEVOLUCION: { color: 'secondary', icon: 'lucide:undo-2', texto: 'Registrar devolución de insumos al inventario' },
+  };
+
+  // Clases estáticas por color: Tailwind no puede generar `bg-${color}-50` en tiempo de
+  // ejecución (purga las clases que no aparecen literales en el código fuente).
+  const MOTIVO_CLASES: Record<ChipColor, { banner: string; barra: string; icono: string }> = {
+    success: { banner: 'bg-success-50 border-success-200 dark:bg-success/10 dark:border-success/25', barra: 'bg-success', icono: 'text-success-600 dark:text-success' },
+    danger: { banner: 'bg-danger-50 border-danger-200 dark:bg-danger/10 dark:border-danger/25', barra: 'bg-danger', icono: 'text-danger-600 dark:text-danger' },
+    warning: { banner: 'bg-warning-50 border-warning-200 dark:bg-warning/10 dark:border-warning/25', barra: 'bg-warning', icono: 'text-warning-600 dark:text-warning' },
+    primary: { banner: 'bg-primary-50 border-primary-200 dark:bg-primary/10 dark:border-primary/25', barra: 'bg-primary', icono: 'text-primary-700 dark:text-primary' },
+    secondary: { banner: 'bg-default-100 border-default-200 dark:bg-default-50 dark:border-default-100', barra: 'bg-secondary', icono: 'text-secondary dark:text-foreground' },
+  };
+
+  const metaMotivoActual = motivo ? MOTIVO_META[motivo] : undefined;
+
+  // Grilla del listado: la MISMA definición para el encabezado y para las filas. El
+  // encabezado y las filas son dos grids independientes, así que cualquier columna
+  // dimensionada por contenido (`auto`) se resuelve distinto en cada uno y descalza las
+  // columnas — "Acción" (texto) mide más que el botón de basura, y ese sobrante se le
+  // restaba a las columnas `fr` solo en el encabezado. Por eso la última columna va con
+  // ancho fijo y las flexibles con `minmax(0,...)`: así ninguna depende de su contenido.
+  const GRID_LISTADO =
+    'grid grid-cols-[minmax(0,2.4fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1.2fr)_72px] gap-3 pl-5 pr-4';
+
   return (
     <>
     <div className="max-h-[75vh] overflow-y-scroll custom-scrollbar">
       <ModalHeader className="flex flex-col gap-3 border-b border-default-100 dark:border-default-50 bg-white dark:bg-content2 px-6 py-4">
-        <div className="flex-1">
-          <h2 className="text-xl font-bold text-secondary dark:text-foreground">Control de Stock Masivo</h2>
-          <p className="text-sm font-medium text-default-500 mt-1">
-            Registre entradas, salidas, mermas, ajustes o traslados de múltiples productos de forma estructurada.
-          </p>
+        <div className="flex items-start gap-3 min-w-0 pr-8">
+          <div className="hidden sm:flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/15 text-primary-700 dark:text-primary">
+            <Icon icon="lucide:layers" width={20} />
+          </div>
+          <div className="min-w-0">
+            <h2 className="text-xl font-bold text-secondary dark:text-foreground leading-tight">Control de Stock Masivo</h2>
+            <p className="text-sm font-medium text-default-500 mt-0.5">
+              Registre entradas, salidas, mermas, ajustes o traslados de múltiples productos de forma estructurada.
+            </p>
+          </div>
         </div>
         <div className="flex flex-wrap items-center gap-2">
+          <span className="text-tiny font-semibold uppercase tracking-wider text-default-400">
+            Cargar desde
+          </span>
           <Tooltip content={puedeAccederAbastBodega ? "Ver solicitudes EN_PEDIDO de bodega" : "Sin permisos"} color="foreground" className="text-xs">
             <Button
               variant="flat"
               color="primary"
-              size="md"
+              size="sm"
               className="font-semibold"
-              startContent={<Icon icon="lucide:warehouse" width={18} />}
+              startContent={<Icon icon="lucide:warehouse" width={16} />}
+              endContent={<Icon icon="lucide:chevron-right" width={14} className="opacity-50" />}
               onPress={onBodegaOpen}
               isDisabled={!puedeAccederAbastBodega}
             >
@@ -772,9 +860,10 @@ const PedidoMasivoModal: React.FC<PedidoMasivoModalProps> = ({ onClose, onNuevoP
             <Button
               variant="flat"
               color="secondary"
-              size="md"
+              size="sm"
               className="font-semibold"
-              startContent={<Icon icon="lucide:truck" width={18} />}
+              startContent={<Icon icon="lucide:truck" width={16} />}
+              endContent={<Icon icon="lucide:chevron-right" width={14} className="opacity-50" />}
               onPress={() => { onAbastecimientoOpen(); cargarAbastecimiento('semana'); }}
               isDisabled={!puedeAccederAbastProv}
             >
@@ -795,11 +884,17 @@ const PedidoMasivoModal: React.FC<PedidoMasivoModalProps> = ({ onClose, onNuevoP
               >
           {/* Sección para agregar productos */}
           <div className="p-3 border border-default-200 dark:border-default-100 rounded-xl bg-default-50 dark:bg-content2">
-            {productoActual && (
-              <p className="text-xs text-default-500 px-0.5 mb-1.5">
-                Stock Actual: <span className="font-semibold text-secondary">{fmtCL(originalStock)}</span>
-              </p>
-            )}
+            <div className="flex items-center justify-between gap-2 mb-2 px-0.5">
+              <span className="flex items-center gap-1.5 text-tiny font-semibold uppercase tracking-wider text-default-400">
+                <Icon icon="lucide:package-plus" width={14} />
+                Agregar producto
+              </span>
+              {productoActual && (
+                <Chip size="sm" variant="flat" color="default" className="text-tiny">
+                  Stock actual: <span className="font-semibold text-secondary dark:text-foreground ml-1">{fmtCL(originalStock)}</span>
+                </Chip>
+              )}
+            </div>
             <div className="grid grid-cols-1 md:grid-cols-[2fr_1fr_1fr_auto] gap-3 items-start">
               {/* Buscador de producto */}
               <div className="relative" ref={inputWrapperRef}>
@@ -884,20 +979,26 @@ const PedidoMasivoModal: React.FC<PedidoMasivoModalProps> = ({ onClose, onNuevoP
                 isRequired
               />
 
-              {/* Botón agregar */}
-              <Button
-                isIconOnly
-                color="warning"
-                variant="solid"
-                radius="full"
-                size="lg"
-                onPress={agregarProducto}
-                isDisabled={!isFormValid}
-                title="Agregar al listado"
-                className="shadow-md"
-              >
-                <Icon icon="lucide:plus" width={22} />
-              </Button>
+              {/* Botón agregar — alineado al centro de los inputs (56px de alto) */}
+              <div className="flex items-center justify-end md:h-14">
+                <Tooltip content={isFormValid ? 'Agregar al listado' : 'Complete producto, acción y cantidad'} color="foreground" className="text-xs">
+                  <span>
+                    <Button
+                      isIconOnly
+                      color="warning"
+                      variant="solid"
+                      radius="full"
+                      size="lg"
+                      onPress={agregarProducto}
+                      isDisabled={!isFormValid}
+                      aria-label="Agregar al listado"
+                      className="shadow-md transition-transform data-[hover=true]:scale-105"
+                    >
+                      <Icon icon="lucide:plus" width={22} />
+                    </Button>
+                  </span>
+                </Tooltip>
+              </div>
             </div>
           </div>
               </motion.div>
@@ -912,52 +1013,70 @@ const PedidoMasivoModal: React.FC<PedidoMasivoModalProps> = ({ onClose, onNuevoP
                 exit={{ opacity: 0, y: -6 }}
                 transition={{ duration: 0.2 }}
               >
-                <div className="p-3 bg-secondary/5 rounded-medium border border-secondary/10 dark:bg-white/5 dark:border-white/10">
-                  <p className="text-secondary dark:text-foreground text-sm font-medium flex items-start gap-2">
-                    <Icon icon="lucide:info" width={16} className="text-secondary shrink-0 mt-0.5" />
-                    <span>{(() => {
-                      switch (motivo) {
-                        case 'ENTRADA_INVENTARIO': return 'Entrada de insumos al inventario';
-                        case 'ENTRADA_BODEGA': return 'Entrada de insumos a la bodega de tránsito';
-                        case 'SALIDA_INVENTARIO': return 'Salida de insumos del inventario';
-                        case 'SALIDA_BODEGA': return 'Salida de insumos de la bodega de tránsito';
-                        case 'TRASLADO': return 'Mover hacia la bodega de tránsito';
-                        case 'AJUSTE_INVENTARIO':
-                        case 'AJUSTE_BODEGA': return 'Ajustar stock actual';
-                        case 'MERMA_INVENTARIO':
-                        case 'MERMA_BODEGA': return 'Salida de insumos por daño/pérdida';
-                        case 'DEVOLUCION': return 'Registrar devolución de insumos al inventario';
-                        default: return 'Seleccione un motivo para ver detalles de la operación.';
-                      }
-                    })()}</span>
-                  </p>
+                <div
+                  className={`flex items-center gap-2.5 px-3 py-2 rounded-medium border ${
+                    metaMotivoActual
+                      ? MOTIVO_CLASES[metaMotivoActual.color].banner
+                      : 'bg-default-100 border-default-200 dark:bg-default-50 dark:border-default-100'
+                  }`}
+                >
+                  <Icon
+                    icon={metaMotivoActual?.icon ?? 'lucide:info'}
+                    width={16}
+                    className={`shrink-0 ${metaMotivoActual ? MOTIVO_CLASES[metaMotivoActual.color].icono : 'text-default-500'}`}
+                  />
+                  <span className="text-sm font-medium text-secondary dark:text-foreground">
+                    {metaMotivoActual?.texto ?? 'Seleccione un motivo para ver detalles de la operación.'}
+                  </span>
                 </div>
               </motion.div>
             )}
           </AnimatePresence>
+
+          {/* Estado vacío — evita el hueco entre el formulario y el pie del modal */}
+          {itemsPedido.length === 0 && (
+            <div className="flex flex-col items-center justify-center gap-2 py-10 px-4 border border-dashed border-default-200 dark:border-default-100 rounded-xl text-center">
+              <div className="flex h-11 w-11 items-center justify-center rounded-full bg-default-100 dark:bg-default-50 text-default-400">
+                <Icon icon="lucide:clipboard-list" width={22} />
+              </div>
+              <p className="text-sm font-semibold text-default-600 dark:text-default-500">
+                Aún no hay productos en el listado
+              </p>
+              <p className="text-xs text-default-400 max-w-sm">
+                Busque un producto y presione <span className="font-semibold text-warning-600 dark:text-warning">+</span> para agregarlo,
+                o cárguelos desde Abastecimiento de Bodega o de Proveedores.
+              </p>
+            </div>
+          )}
 
           {/* Lista en tabla editable */}
           {itemsPedido.length > 0 && (
             <div className="space-y-3">
               <button
                 type="button"
-                className="w-full flex items-center gap-2 font-bold text-secondary hover:text-secondary/80 transition-colors cursor-pointer"
+                className="w-full flex items-center gap-2 font-bold text-secondary dark:text-foreground hover:text-secondary/80 dark:hover:text-foreground/80 transition-colors cursor-pointer"
                 onClick={() => setListadoExpandido(v => !v)}
+                aria-expanded={listadoExpandido}
               >
                 <Icon icon="lucide:list" width={18} />
-                Listado ({itemsPedido.length} producto{itemsPedido.length !== 1 ? 's' : ''})
-                <Icon
-                  icon={listadoExpandido ? 'lucide:chevron-up' : 'lucide:chevron-down'}
-                  width={16}
-                  className="ml-auto text-default-400"
-                />
+                Listado
+                <Chip size="sm" variant="flat" color="warning" className="font-semibold">
+                  {itemsPedido.length} producto{itemsPedido.length !== 1 ? 's' : ''}
+                </Chip>
+                <span className="ml-auto flex items-center gap-1 text-xs font-medium text-default-400">
+                  {listadoExpandido ? 'Contraer' : 'Expandir'}
+                  <Icon
+                    icon={listadoExpandido ? 'lucide:chevron-up' : 'lucide:chevron-down'}
+                    width={16}
+                  />
+                </span>
               </button>
 
-              <div className={`transition-all duration-300 ${listadoExpandido ? 'max-h-[65vh]' : 'max-h-[420px]'} overflow-y-auto custom-scrollbar`}>
-                <div className="border border-default-200 dark:border-default-100 rounded-xl overflow-hidden bg-white dark:bg-content2">
-                  {/* Encabezados */}
-                  <div className="grid grid-cols-[2fr_1fr_1fr_1fr_auto] gap-3 px-4 py-3 bg-default-100 dark:bg-default-50 font-semibold text-sm text-default-600 border-b border-default-200 dark:border-default-100">
-                    <div>Producto</div>
+              <div className="border border-default-200 dark:border-default-100 rounded-xl overflow-hidden bg-white dark:bg-content2 shadow-sm">
+                <div className={`transition-all duration-300 ${listadoExpandido ? 'max-h-[65vh]' : 'max-h-[420px]'} overflow-y-scroll custom-scrollbar`}>
+                  {/* Encabezados — sticky para no perder las columnas al scrollear */}
+                  <div className={`sticky top-0 z-10 ${GRID_LISTADO} py-2.5 bg-default-100 dark:bg-default-50 font-semibold text-tiny uppercase tracking-wider text-default-500 border-b border-default-200 dark:border-default-100`}>
+                    <div className="text-left">Producto</div>
                     <div className="text-center">Stock Actual</div>
                     <div className="text-center">Cantidad</div>
                     <div className="text-center">Stock Final</div>
@@ -975,24 +1094,27 @@ const PedidoMasivoModal: React.FC<PedidoMasivoModalProps> = ({ onClose, onNuevoP
                           ? item.producto.stock - item.delta
                           : item.producto.stock + item.delta;
 
-                      const chipColorMap: Record<string, 'success' | 'warning' | 'primary' | 'danger' | 'secondary'> = {
-                        ENTRADA_INVENTARIO: 'success', ENTRADA_BODEGA: 'success',
-                        TRASLADO: 'warning',
-                        AJUSTE_INVENTARIO: 'primary', AJUSTE_BODEGA: 'primary',
-                        SALIDA_INVENTARIO: 'danger', SALIDA_BODEGA: 'danger',
-                        MERMA_INVENTARIO: 'danger', MERMA_BODEGA: 'danger',
-                        DEVOLUCION: 'secondary',
-                      };
-
                       const simbolo = isSalida ? '-' : isAjuste ? '=' : '+';
-                      const chipColor = chipColorMap[item.motivo] ?? 'default';
+                      const meta = MOTIVO_META[item.motivo];
+                      const chipColor = meta?.color ?? 'default';
+                      const clases = meta ? MOTIVO_CLASES[meta.color] : undefined;
 
                       return (
-                        <div key={item.id} className="grid grid-cols-[2fr_1fr_1fr_1fr_auto] gap-3 px-4 py-3 items-center hover:bg-default-50 dark:hover:bg-default-100/50 transition-colors">
+                        <div key={item.id} className={`relative ${GRID_LISTADO} py-3 items-center hover:bg-default-50 dark:hover:bg-default-100/50 transition-colors group`}>
+                          {/* Barra lateral con el color del motivo — refuerza el tipo de
+                              movimiento sin gastar una columna de la grilla */}
+                          <span
+                            aria-hidden
+                            className={`absolute left-0 top-0 bottom-0 w-1 ${clases?.barra ?? 'bg-default-300'}`}
+                          />
+
                           {/* Producto */}
                           <div className="min-w-0">
-                            <p className="font-medium text-sm text-default-800 dark:text-foreground truncate">{item.producto.nombreProducto}</p>
-                            <p className="text-xs text-default-400">
+                            <p className="font-medium text-sm text-default-800 dark:text-foreground truncate" title={item.producto.nombreProducto}>
+                              {item.producto.nombreProducto}
+                            </p>
+                            <p className="text-xs text-default-400 truncate">
+                              <Icon icon={meta?.icon ?? 'lucide:package'} width={12} className="inline-block mr-1 -mt-0.5" />
                               {item.producto.detalles}
                               {item.marcaProducto && <span className="ml-1.5 italic text-default-400">{item.marcaProducto}</span>}
                             </p>
@@ -1000,20 +1122,14 @@ const PedidoMasivoModal: React.FC<PedidoMasivoModalProps> = ({ onClose, onNuevoP
 
                           {/* Stock Actual */}
                           <div className="text-center">
-                            <span className="font-semibold text-sm">{fmtCL(item.producto.stock)}</span>
+                            <span className="font-semibold text-sm tabular-nums text-default-600 dark:text-default-500">
+                              {fmtCL(item.producto.stock)}
+                            </span>
                           </div>
 
-                          {/* Cantidad Editable con +/- */}
-                          <div className="flex items-center justify-center gap-1">
-                            <Button
-                              isIconOnly
-                              variant="light"
-                              size="sm"
-                              onPress={() => decrementarDelta(item.id)}
-                              className="h-6 w-6 min-w-6"
-                            >
-                              <Icon icon="lucide:minus" width={14} />
-                            </Button>
+                          {/* Cantidad editable — el input nativo ya trae sus flechas de
+                              incremento, no hace falta un stepper propio ocupando ancho */}
+                          <div className="flex justify-center">
                             <Input
                               type="number"
                               value={item.delta.toString()}
@@ -1022,75 +1138,92 @@ const PedidoMasivoModal: React.FC<PedidoMasivoModalProps> = ({ onClose, onNuevoP
                                 if (!isNaN(num)) actualizarDeltaItem(item.id, num);
                               }}
                               step={item.producto.esFraccionario ? "0.5" : "1"}
-                              className="w-16 text-center"
+                              aria-label="Cantidad"
                               size="sm"
                               variant="bordered"
-                              classNames={{ input: "text-center text-xs h-6" }}
+                              classNames={{
+                                base: "w-24",
+                                inputWrapper: "h-8 min-h-8",
+                                input: "text-center text-sm font-semibold tabular-nums",
+                              }}
                             />
-                            <Button
-                              isIconOnly
-                              variant="light"
-                              size="sm"
-                              onPress={() => incrementarDelta(item.id)}
-                              className="h-6 w-6 min-w-6"
-                            >
-                              <Icon icon="lucide:plus" width={14} />
-                            </Button>
                           </div>
 
-                          {/* Stock Final */}
-                          <div className="text-center">
+                          {/* Stock Final — el resultado manda visualmente; el delta queda
+                              como línea secundaria. Un resultado negativo se marca en rojo
+                              con alerta, porque significa que la operación deja stock en
+                              negativo y antes se perdía entre dos números parecidos. */}
+                          <div className="flex flex-col items-center leading-tight">
+                            <span
+                              className={`text-base font-bold tabular-nums ${
+                                stockFinal < 0
+                                  ? 'text-danger'
+                                  : 'text-secondary dark:text-foreground'
+                              }`}
+                            >
+                              {stockFinal < 0 && (
+                                <Icon icon="lucide:alert-triangle" width={14} className="inline-block mr-1 -mt-0.5" />
+                              )}
+                              {fmtCL(stockFinal)}
+                            </span>
                             <Chip
                               size="sm"
                               color={chipColor}
                               variant="flat"
-                              className="text-xs"
+                              classNames={{
+                                base: "h-5 mt-0.5",
+                                content: "px-1.5 text-tiny font-semibold tabular-nums",
+                              }}
                             >
-                              {simbolo}{fmtCL(item.delta)} → {fmtCL(stockFinal)}
+                              {isAjuste ? 'ajuste' : `${simbolo}${fmtCL(item.delta)}`}
                             </Chip>
                           </div>
 
                           {/* Eliminar */}
                           <div className="text-center">
-                            <Button
-                              isIconOnly
-                              variant="light"
-                              size="sm"
-                              onPress={() => eliminarItem(item.id)}
-                              className="text-default-400 hover:text-danger"
-                            >
-                              <Icon icon="lucide:trash-2" width={16} />
-                            </Button>
+                            <Tooltip content="Quitar del listado" color="danger" className="text-xs">
+                              <Button
+                                isIconOnly
+                                variant="light"
+                                size="sm"
+                                onPress={() => eliminarItem(item.id)}
+                                aria-label={`Quitar ${item.producto.nombreProducto} del listado`}
+                                className="text-default-300 group-hover:text-default-500 hover:!text-danger transition-colors"
+                              >
+                                <Icon icon="lucide:trash-2" width={16} />
+                              </Button>
+                            </Tooltip>
                           </div>
                         </div>
                       );
                     })}
                   </div>
                 </div>
-              </div>
 
-              <div className="flex justify-between items-center px-1">
-                <span className="text-sm text-default-500">Total de productos:</span>
-                <span className="font-bold text-secondary">{itemsPedido.length}</span>
+                {/* Resumen — dentro del bloque de la tabla, no flotando debajo */}
+                <div className="flex justify-between items-center px-4 py-2.5 bg-default-50 dark:bg-default-50/50 border-t border-default-200 dark:border-default-100">
+                  <span className="text-xs font-medium text-default-500">Total de productos</span>
+                  <span className="text-sm font-bold text-secondary dark:text-foreground tabular-nums">{itemsPedido.length}</span>
+                </div>
               </div>
             </div>
           )}
       </ModalBody>
 
-      <ModalFooter className="bg-default-50 border-t border-default-100 flex justify-between items-center w-full gap-2">
+      <ModalFooter className="bg-default-50 dark:bg-content2 border-t border-default-100 dark:border-default-50 flex justify-between items-center w-full gap-2 px-6 py-3">
         <Button
-          variant="flat"
+          variant="light"
           color="danger"
           size="sm"
-          startContent={<Icon icon="lucide:trash-2" width={15} />}
+          startContent={<Icon icon="lucide:eraser" width={15} />}
           onPress={() => setItemsPedido([])}
           isDisabled={itemsPedido.length === 0 || processState !== 'idle'}
           className="font-medium"
         >
           Limpiar todo
         </Button>
-        <div className="flex gap-2">
-          <Button variant="ghost" onPress={onClose} className="font-medium">
+        <div className="flex items-center gap-2">
+          <Button variant="light" onPress={onClose} className="font-medium text-default-500">
             Cancelar
           </Button>
           <Button
@@ -1099,6 +1232,7 @@ const PedidoMasivoModal: React.FC<PedidoMasivoModalProps> = ({ onClose, onNuevoP
             isDisabled={itemsPedido.length === 0 || processState !== 'idle'}
             isLoading={processState !== 'idle'}
             startContent={processState === 'idle' && <Icon icon="lucide:send" width={18} />}
+            className="font-semibold shadow-md"
           >
             {processState === 'idle' ? `Ctrl. Masivo (${itemsPedido.length})`
               : processState === 'sincronizando' ? 'Sincronizando...'
@@ -1133,7 +1267,7 @@ const PedidoMasivoModal: React.FC<PedidoMasivoModalProps> = ({ onClose, onNuevoP
                     <Icon icon="lucide:info" width={14} className="text-warning shrink-0" />
                     <p className="text-xs text-warning-700 dark:text-warning">Se visualizan todas las categorías asignadas al abastecimiento.</p>
                   </div>
-                  {onOpenGestionAbastecimiento && (
+                  {onOpenGestionAbastecimiento && puedeGestionarAbastecimiento && (
                     <Button
                       size="sm"
                       variant="light"
@@ -1374,25 +1508,28 @@ const PedidoMasivoModal: React.FC<PedidoMasivoModalProps> = ({ onClose, onNuevoP
           {(onBodegaClose) => (
             <div className="max-h-[75vh] overflow-y-scroll custom-scrollbar">
               <ModalHeader className="flex flex-col gap-1">
-                <h2 className="text-lg font-bold text-secondary dark:text-foreground">Abastecimiento de Bodega</h2>
-                <p className="text-xs text-default-500 font-normal">Solicitudes EN_PEDIDO con productos de categorías INVENTARIO → TRASLADO a bodega de tránsito</p>
-                <div className="flex items-center justify-between gap-2 bg-warning/10 border border-warning/30 rounded-lg px-3 py-2 mt-1">
-                  <div className="flex items-center gap-2">
-                    <Icon icon="lucide:info" width={14} className="text-warning shrink-0" />
-                    <p className="text-xs text-warning-700 dark:text-warning">Se visualizan todas las categorías asignadas al abastecimiento.</p>
-                  </div>
-                  {onOpenGestionAbastecimiento && (
-                    <Button
-                      size="sm"
-                      variant="light"
-                      color="warning"
-                      className="text-xs shrink-0 h-7 px-2"
-                      onPress={onOpenGestionAbastecimiento}
-                      startContent={<Icon icon="lucide:settings-2" width={12} />}
+                <div className="flex items-center gap-1.5">
+                  <h2 className="text-lg font-bold text-secondary dark:text-foreground">Abastecimiento de Bodega</h2>
+                  <Tooltip content="Cómo funciona esta vista">
+                    <button
+                      type="button"
+                      onClick={onBodegaInfoOpen}
+                      className="text-default-400 hover:text-primary transition-colors cursor-pointer"
+                      aria-label="Cómo funciona Abastecimiento de Bodega"
                     >
-                      Gestión de Abastecimiento
-                    </Button>
-                  )}
+                      <Icon icon="lucide:info" width={18} />
+                    </button>
+                  </Tooltip>
+                </div>
+                <p className="text-xs text-default-500 font-normal">Solicitudes EN_PEDIDO con productos de categorías INVENTARIO → TRASLADO a bodega de tránsito</p>
+                <p className="text-xs text-default-500 font-normal">
+                  El stock que ya está en <strong>bodega de tránsito</strong> se reparte entre las solicitudes por
+                  orden de fecha y hora: la clase más próxima consume primero. Lo que queda cubierto no se envía
+                  de nuevo — solo se traslada el faltante.
+                </p>
+                <div className="flex items-center gap-2 bg-warning/10 border border-warning/30 rounded-lg px-3 py-2 mt-1">
+                  <Icon icon="lucide:info" width={14} className="text-warning shrink-0" />
+                  <p className="text-xs text-warning-700 dark:text-warning">Se visualizan todas las categorías asignadas al abastecimiento.</p>
                 </div>
               </ModalHeader>
               <ModalBody className="space-y-4">
@@ -1431,7 +1568,14 @@ const PedidoMasivoModal: React.FC<PedidoMasivoModalProps> = ({ onClose, onNuevoP
                 {!loadingBodega && solicitudesBodega.length > 0 && (
                   <div className="space-y-3">
                     <div className="flex items-center justify-between flex-wrap gap-2">
-                      <span className="text-sm text-default-600">{solicitudesBodega.length} solicitud(es) encontrada(s)</span>
+                      <div className="flex flex-col">
+                        <span className="text-sm text-default-600">{solicitudesBodega.length} solicitud(es) encontrada(s)</span>
+                        {coberturaBodega.cubiertas.size > 0 && (
+                          <span className="text-xs text-default-500">
+                            {coberturaBodega.cubiertas.size} ya cubierta(s) por el stock actual de bodega de tránsito
+                          </span>
+                        )}
+                      </div>
                       <div className="flex gap-2 flex-wrap">
                         <Button
                           size="sm"
@@ -1442,7 +1586,7 @@ const PedidoMasivoModal: React.FC<PedidoMasivoModalProps> = ({ onClose, onNuevoP
                         >
                           Agrupar por día
                         </Button>
-                        <Button size="sm" variant="flat" onPress={() => setSolicitudesSeleccionadas(new Set(solicitudesBodega.map(s => s.idSolicitud)))}>
+                        <Button size="sm" variant="flat" onPress={() => setSolicitudesSeleccionadas(new Set(solicitudesBodega.filter(tieneFaltante).map(s => s.idSolicitud)))}>
                           Seleccionar todas
                         </Button>
                         <Button size="sm" variant="flat" onPress={() => setSolicitudesSeleccionadas(new Set())}>
@@ -1455,7 +1599,7 @@ const PedidoMasivoModal: React.FC<PedidoMasivoModalProps> = ({ onClose, onNuevoP
                     {agruparPorDia && solicitudesPorDia.map(({ fecha, solicitudes }) => {
                       const productosDia = getProductosDia(solicitudes);
                       const idsConPendientes = solicitudes
-                        .filter(s => s.detalles.some(d => !d.enviadoBodegaTransito))
+                        .filter(tieneFaltante)
                         .map(s => s.idSolicitud);
                       const todosMarcados = idsConPendientes.length > 0 && idsConPendientes.every(id => solicitudesSeleccionadas.has(id));
                       return (
@@ -1479,22 +1623,77 @@ const PedidoMasivoModal: React.FC<PedidoMasivoModalProps> = ({ onClose, onNuevoP
                               </span>
                             </div>
                             {idsConPendientes.length === 0 && (
-                              <span className="text-xs text-success flex items-center gap-1">
-                                <Icon icon="lucide:check-circle-2" width={12} /> Todos enviados
-                              </span>
+                              productosDia.some(p => p.cantidadCubierta > 0)
+                                ? <span className="text-xs font-bold text-default-500 flex items-center gap-1">
+                                    <Icon icon="lucide:warehouse" width={12} /> Cubierto en bodega de tránsito
+                                  </span>
+                                : <span className="text-xs text-success flex items-center gap-1">
+                                    <Icon icon="lucide:check-circle-2" width={12} /> Todos enviados
+                                  </span>
                             )}
                           </div>
                           <div className="border-t border-default-100 divide-y divide-default-100">
-                            {productosDia.map((det) => (
-                              <div key={det.idProducto} className={`flex items-center gap-3 px-4 py-2 text-sm ${det.enviadoBodegaTransito ? 'opacity-50' : ''}`}>
-                                {det.enviadoBodegaTransito
-                                  ? <Icon icon="lucide:check-circle-2" className="text-success shrink-0" width={16} />
-                                  : <Icon icon="lucide:circle" className="text-default-300 shrink-0" width={16} />
-                                }
-                                <span className="flex-1">{det.nombreProducto}</span>
-                                <span className="text-default-500 tabular-nums">{det.cantidadTotal} {det.abreviatura}</span>
-                              </div>
-                            ))}
+                            {productosDia.map((det) => {
+                              // Tres orígenes posibles para la cantidad del día: ya enviada antes,
+                              // cubierta por el stock actual de bodega, o pendiente de trasladar.
+                              const esMixto = [det.cantidadEntregada, det.cantidadCubierta, det.cantidadPendiente]
+                                .filter(v => v > 0).length > 1;
+                              if (!esMixto) {
+                                const soloCubierto = det.cantidadCubierta > 0 && det.cantidadPendiente === 0 && det.cantidadEntregada === 0;
+                                // Si es la única cantidad no-nula y no queda pendiente, la suma del día
+                                // fue enviada completa (un envío parcial siempre convive con "cubierta"
+                                // o "pendiente" > 0, así que cae en la rama mixta de abajo).
+                                const soloEnviado = det.cantidadEntregada > 0 && det.cantidadPendiente === 0 && det.cantidadCubierta === 0;
+                                const apagado = soloEnviado || soloCubierto;
+                                return (
+                                  <div key={det.idProducto} className={`flex items-center gap-3 px-4 py-2 text-sm ${apagado ? 'opacity-50' : ''}`}>
+                                    {soloEnviado
+                                      ? <Icon icon="lucide:check-circle-2" className="text-success shrink-0" width={16} />
+                                      : soloCubierto
+                                        ? <Icon icon="lucide:warehouse" className="text-default-500 shrink-0" width={16} />
+                                        : <Icon icon="lucide:circle" className="text-default-300 shrink-0" width={16} />
+                                    }
+                                    <span className="flex-1">{det.nombreProducto}</span>
+                                    {soloCubierto && (
+                                      <span className="text-xs font-bold text-default-500">Cubierto en bodega de tránsito</span>
+                                    )}
+                                    <span className="text-default-500 tabular-nums">{det.cantidadTotal} {det.abreviatura}</span>
+                                  </div>
+                                );
+                              }
+                              // Mixto: las solicitudes del día que piden este producto no están todas
+                              // en el mismo estado — se desglosa para no mostrar el total combinado
+                              // como si fuera una única cantidad pendiente de enviar.
+                              return (
+                                <div key={det.idProducto} className="px-4 py-2 text-sm">
+                                  <span className="block mb-1">{det.nombreProducto}</span>
+                                  <div className="flex items-center gap-4 pl-1 flex-wrap">
+                                    {det.cantidadEntregada > 0 && (
+                                      <span className="flex items-center gap-1.5 opacity-50">
+                                        <Icon
+                                          icon="lucide:check-circle-2"
+                                          className={`${det.cantidadEntregada < det.cantidadTotal ? 'text-warning' : 'text-success'} shrink-0`}
+                                          width={14}
+                                        />
+                                        <span className="text-xs tabular-nums">Entregado: {det.cantidadEntregada} {det.abreviatura}</span>
+                                      </span>
+                                    )}
+                                    {det.cantidadCubierta > 0 && (
+                                      <span className="flex items-center gap-1.5 opacity-60">
+                                        <Icon icon="lucide:warehouse" className="text-default-500 shrink-0" width={14} />
+                                        <span className="text-xs font-bold text-default-500 tabular-nums">Cubierto en bodega: {det.cantidadCubierta} {det.abreviatura}</span>
+                                      </span>
+                                    )}
+                                    {det.cantidadPendiente > 0 && (
+                                      <span className="flex items-center gap-1.5">
+                                        <Icon icon="lucide:circle" className="text-default-300 shrink-0" width={14} />
+                                        <span className="text-xs text-default-500 tabular-nums">Pendiente: {det.cantidadPendiente} {det.abreviatura}</span>
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+                              );
+                            })}
                           </div>
                         </div>
                       );
@@ -1503,15 +1702,22 @@ const PedidoMasivoModal: React.FC<PedidoMasivoModalProps> = ({ onClose, onNuevoP
                     {/* Vista NORMAL — por solicitud */}
                     {!agruparPorDia && solicitudesBodega.map((sol) => {
                       const seleccionada = solicitudesSeleccionadas.has(sol.idSolicitud);
-                      const pendientes = sol.detalles.filter(d => !d.enviadoBodegaTransito).length;
+                      const pendientes = sol.detalles.filter(d => getFaltante(d) > 0).length;
+                      const cubiertaEnBodega = coberturaBodega.cubiertas.has(sol.idSolicitud);
                       return (
                         <div
                           key={sol.idSolicitud}
-                          className={`border rounded-lg overflow-hidden transition-all ${seleccionada ? 'border-primary/50 bg-primary/5' : 'border-default-200'}`}
+                          className={`border rounded-lg overflow-hidden transition-all ${
+                            cubiertaEnBodega
+                              ? 'border-default-200 bg-default-100/60 dark:bg-default-100/10'
+                              : seleccionada
+                                ? 'border-primary/50 bg-primary/5'
+                                : 'border-default-200'
+                          }`}
                         >
                           {/* Header solicitud */}
                           <div
-                            className="flex items-center gap-3 p-3 cursor-pointer hover:bg-default-100"
+                            className={`flex items-center gap-3 p-3 ${pendientes > 0 ? 'cursor-pointer hover:bg-default-100' : ''} ${cubiertaEnBodega ? 'opacity-60' : ''}`}
                             onClick={() => { if (pendientes > 0) toggleSolicitudBodega(sol.idSolicitud); }}
                           >
                             <input
@@ -1537,34 +1743,78 @@ const PedidoMasivoModal: React.FC<PedidoMasivoModalProps> = ({ onClose, onNuevoP
                                   <span className="text-xs text-default-400">{sol.horaInicio.slice(0,5)}–{sol.horaFin.slice(0,5)}</span>
                                 )}
                               </div>
-                              <div className="flex items-center gap-2 mt-0.5">
+                              <div className="flex items-center gap-2 mt-0.5 flex-wrap">
                                 <span className="text-xs text-default-400">{sol.fechaSolicitada}</span>
-                                {pendientes === 0 && (
+                                {cubiertaEnBodega && (
+                                  <span className="text-xs font-bold text-default-500 flex items-center gap-1">
+                                    <Icon icon="lucide:warehouse" width={12} /> Cubierto en bodega de tránsito
+                                  </span>
+                                )}
+                                {!cubiertaEnBodega && pendientes === 0 && (
                                   <span className="text-xs text-success flex items-center gap-1">
                                     <Icon icon="lucide:check-circle-2" width={12} /> Todos enviados
                                   </span>
                                 )}
+                                {pendientes > 0 && sol.detalles.some(d => getEstadoEnvio(d) === 'ninguno' && getCobertura(d).cubiertoPool > 0) && (
+                                  <span className="text-xs font-bold text-default-500 flex items-center gap-1">
+                                    <Icon icon="lucide:warehouse" width={12} /> Parcialmente cubierto en bodega de tránsito
+                                  </span>
+                                )}
                               </div>
                             </div>
-                            <span className="text-xs text-default-400 shrink-0">{sol.detalles.length} producto(s)</span>
+                            <span className="text-xs text-default-400 shrink-0">
+                              {pendientes > 0 ? `${pendientes} de ${sol.detalles.length} por enviar` : `${sol.detalles.length} producto(s)`}
+                            </span>
                           </div>
 
                           {/* Detalles productos */}
                           <div className="border-t border-default-100 divide-y divide-default-100">
-                            {sol.detalles.map((det: IDetalleBodegaItem) => (
-                              <div
-                                key={det.idDetalleSolicitud}
-                                className={`flex items-center gap-3 px-4 py-2 text-sm ${det.enviadoBodegaTransito ? 'opacity-50' : ''}`}
-                              >
-                                {det.enviadoBodegaTransito
-                                  ? <Icon icon="lucide:check-circle-2" className="text-success shrink-0" width={16} />
-                                  : <Icon icon="lucide:circle" className="text-default-300 shrink-0" width={16} />
-                                }
-                                <span className="flex-1">{det.nombreProducto}</span>
-                                <span className="text-default-500">{det.cantidadSolicitada} {det.abreviatura}</span>
-                                <span className="text-xs text-default-400 w-20 text-right">Stock: {det.stock}</span>
-                              </div>
-                            ))}
+                            {sol.detalles.map((det: IDetalleBodegaItem) => {
+                              const { cubierto } = getCobertura(det);
+                              const faltante = getFaltante(det);
+                              const estadoEnvio = getEstadoEnvio(det);
+                              const cubiertoTotal   = estadoEnvio === 'ninguno' && faltante === 0 && cubierto > 0;
+                              const cubiertoParcial = estadoEnvio === 'ninguno' && faltante > 0 && cubierto > 0;
+                              const apagado = estadoEnvio === 'completo' || cubiertoTotal;
+                              return (
+                                <div
+                                  key={det.idDetalleSolicitud}
+                                  className={`flex items-center gap-3 px-4 py-2 text-sm ${apagado ? 'opacity-50' : ''}`}
+                                >
+                                  {estadoEnvio === 'completo'
+                                    ? <Icon icon="lucide:check-circle-2" className="text-success shrink-0" width={16} />
+                                    : estadoEnvio === 'parcial'
+                                      ? <Icon icon="lucide:check-circle-2" className="text-warning shrink-0" width={16} />
+                                      : estadoEnvio === 'perdido'
+                                        ? <Icon icon="lucide:alert-triangle" className="text-danger shrink-0" width={16} />
+                                        : cubiertoTotal
+                                          ? <Icon icon="lucide:warehouse" className="text-default-500 shrink-0" width={16} />
+                                          : <Icon icon="lucide:circle" className="text-default-300 shrink-0" width={16} />
+                                  }
+                                  <span className="flex-1">{det.nombreProducto}</span>
+                                  {estadoEnvio === 'parcial' && (
+                                    <span className="text-xs font-bold text-warning tabular-nums">
+                                      Enviado: {det.cantidadEnviadaBodega} · Falta: {faltante} {det.abreviatura}
+                                    </span>
+                                  )}
+                                  {estadoEnvio === 'perdido' && (
+                                    <span className="text-xs font-bold text-danger tabular-nums">
+                                      Se envió {det.cantidadEnviadaBodega} pero ya no está en bodega de tránsito · Falta: {faltante} {det.abreviatura}
+                                    </span>
+                                  )}
+                                  {cubiertoTotal && (
+                                    <span className="text-xs font-bold text-default-500">Cubierto en bodega de tránsito</span>
+                                  )}
+                                  {cubiertoParcial && (
+                                    <span className="text-xs font-bold text-default-500 tabular-nums">
+                                      En bodega: {cubierto} · Falta: {faltante} {det.abreviatura}
+                                    </span>
+                                  )}
+                                  <span className="text-default-500 tabular-nums">{det.cantidadSolicitada} {det.abreviatura}</span>
+                                  <span className="text-xs text-default-400 w-20 text-right">Stock: {det.stock}</span>
+                                </div>
+                              );
+                            })}
                           </div>
                         </div>
                       );
@@ -1590,82 +1840,133 @@ const PedidoMasivoModal: React.FC<PedidoMasivoModalProps> = ({ onClose, onNuevoP
         </ModalContent>
       </Modal>
 
-      {/* Modal de Disponibles — sobrantes detectados en TRASLADO */}
+      {/* Modal indicador — explica el funcionamiento de Abastecimiento de Bodega */}
       <Modal
-        isOpen={isDisponiblesOpen}
-        isDismissable={false}
-        hideCloseButton
-        size="lg"
+        isOpen={isBodegaInfoOpen}
+        onOpenChange={onBodegaInfoOpenChange}
+        size="xl"
         backdrop="blur"
         radius="lg"
         scrollBehavior="normal"
-        classNames={{ base: 'rounded-2xl overflow-hidden max-h-[75vh]' }}
+        classNames={{ base: 'rounded-2xl overflow-hidden max-h-[75vh]', closeButton: 'hover:bg-default-100 cursor-pointer' }}
       >
         <ModalContent>
-        <div className="max-h-[75vh] overflow-y-scroll custom-scrollbar">
-          <ModalHeader>
-            <div className="flex items-center gap-2">
-              <Icon icon="lucide:alert-triangle" width={20} className="text-warning" />
-              <span className="text-base font-bold">Productos sobrantes detectados</span>
+          {(onInfoClose) => (
+            <div className="max-h-[75vh] overflow-y-scroll custom-scrollbar">
+              <ModalHeader className="flex flex-col gap-1">
+                <div className="flex items-center gap-2">
+                  <Icon icon="lucide:info" width={20} className="text-primary" />
+                  <h2 className="text-lg font-bold text-secondary dark:text-foreground">Cómo funciona Abastecimiento de Bodega</h2>
+                </div>
+                <p className="text-xs text-default-500 font-normal">
+                  Traslada productos desde Inventario hacia Bodega de Tránsito para cubrir las solicitudes
+                  de docentes/secciones que ya están en estado EN_PEDIDO.
+                </p>
+              </ModalHeader>
+              <ModalBody className="space-y-5 pb-6">
+                <div className="space-y-2">
+                  <h3 className="text-sm font-bold text-secondary dark:text-foreground">¿Cómo se calcula el faltante?</h3>
+                  <p className="text-sm text-default-600">
+                    El faltante es la cantidad que aún debe trasladarse a la bodega de tránsito para
+                    completar una solicitud. Se obtiene restando de la cantidad solicitada:
+                  </p>
+                  <ul className="text-sm text-default-600 list-disc pl-5 space-y-1">
+                    <li>Los productos ya enviados mediante movimientos de tipo TRASLADO.</li>
+                    <li>El stock disponible en Bodega de Tránsito que aún no ha sido asignado a otra solicitud. Este stock se distribuye automáticamente según el orden de fecha y hora de la clase, priorizando las más próximas.</li>
+                  </ul>
+                  <p className="text-sm text-default-600">
+                    Por este motivo, una solicitud puede aparecer sin faltantes aunque nunca haya recibido
+                    un traslado, si el stock existente en la bodega de tránsito ya es suficiente para cubrirla.
+                  </p>
+                </div>
+
+                <div className="space-y-2">
+                  <h3 className="text-sm font-bold text-secondary dark:text-foreground">Estados de los productos</h3>
+                  <div className="space-y-2.5">
+                    <div className="flex items-start gap-2.5">
+                      <Icon icon="lucide:circle" className="text-default-300 shrink-0 mt-0.5" width={16} />
+                      <p className="text-sm text-default-600">
+                        <strong>Pendiente</strong> — no existen traslados ni stock suficiente en bodega de
+                        tránsito. Debe trasladarse toda la cantidad solicitada.
+                      </p>
+                    </div>
+                    <div className="flex items-start gap-2.5">
+                      <Icon icon="lucide:warehouse" className="text-default-500 shrink-0 mt-0.5" width={16} />
+                      <p className="text-sm text-default-600">
+                        <strong>Cubierto en bodega de tránsito</strong> — la solicitud queda cubierta con el
+                        stock existente en bodega, sin necesidad de realizar un nuevo traslado. Si la
+                        cobertura es parcial, se muestra "En bodega: X · Falta: Y".
+                      </p>
+                    </div>
+                    <div className="flex items-start gap-2.5">
+                      <Icon icon="lucide:check-circle-2" className="text-warning shrink-0 mt-0.5" width={16} />
+                      <p className="text-sm text-default-600">
+                        <strong className="text-warning-700 dark:text-warning">Enviado parcial</strong> — solo
+                        se trasladó una parte de la cantidad solicitada. Se muestra "Enviado: X · Falta: Y".
+                        El faltante puede ser 0 si el resto se completa con el stock existente en bodega de tránsito.
+                      </p>
+                    </div>
+                    <div className="flex items-start gap-2.5">
+                      <Icon icon="lucide:check-circle-2" className="text-success shrink-0 mt-0.5" width={16} />
+                      <p className="text-sm text-default-600">
+                        <strong className="text-success">Enviado completo</strong> — se trasladó una cantidad
+                        igual o superior a la solicitada y ese stock sigue disponible en bodega de tránsito.
+                        No existen cantidades pendientes para ese producto.
+                      </p>
+                    </div>
+                    <div className="flex items-start gap-2.5">
+                      <Icon icon="lucide:alert-triangle" className="text-danger shrink-0 mt-0.5" width={16} />
+                      <p className="text-sm text-default-600">
+                        <strong className="text-danger">Se envió pero ya no está en bodega</strong> — se
+                        trasladó la cantidad completa en su momento, pero bodega de tránsito ya no tiene ese
+                        stock (por ejemplo, se perdió por una merma posterior). Vuelve a aparecer como
+                        pendiente con "Falta: Y" porque hay que reponerlo.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <h3 className="text-sm font-bold text-secondary dark:text-foreground">Estados de la solicitud</h3>
+                  <p className="text-sm text-default-600">
+                    Cada solicitud resume el estado de todos sus productos mediante los badges:
+                  </p>
+                  <ul className="text-sm text-default-600 list-disc pl-5 space-y-1">
+                    <li><strong>Cubierto en bodega de tránsito</strong> — todos los productos fueron cubiertos con el stock existente.</li>
+                    <li><strong className="text-success">Todos enviados</strong> — todos los productos fueron trasladados o ya quedaron completamente cubiertos.</li>
+                    <li><strong>Parcialmente cubierto en bodega de tránsito</strong> — parte de los productos ya está cubierta, pero aún existen cantidades pendientes por trasladar.</li>
+                  </ul>
+                </div>
+
+                <div className="space-y-2">
+                  <h3 className="text-sm font-bold text-secondary dark:text-foreground">Agrupar por día</h3>
+                  <p className="text-sm text-default-600">
+                    Agrupa los productos de todas las solicitudes de un mismo día en una sola fila. Si un
+                    mismo producto tiene solicitudes con estados diferentes (por ejemplo, una enviada, otra
+                    pendiente y otra cubierta por bodega), el sistema muestra cada cantidad por separado
+                    para evitar totales que puedan resultar engañosos.
+                  </p>
+                </div>
+
+                <div className="space-y-2">
+                  <h3 className="text-sm font-bold text-secondary dark:text-foreground">¿Por qué no aparece cierto producto?</h3>
+                  <p className="text-sm text-default-600">
+                    Solo se listan productos de categorías que Gestión Administrativa configuró para
+                    abastecerse en <strong>Inventario</strong> (panel "Gestión de Abastecimiento") — esas
+                    son las que primero se abastecen ahí y después necesitan este traslado a bodega de
+                    tránsito. Si el abastecimiento de Proveedores de una categoría se configuró directo en{' '}
+                    <strong>Bodega de Tránsito</strong>, sus productos nunca pasan por Inventario y no
+                    necesitan este paso de Abastecimiento de Bodega.
+                  </p>
+                </div>
+              </ModalBody>
+              <ModalFooter>
+                <Button color="primary" variant="flat" onPress={onInfoClose} className="font-medium">
+                  Entendido
+                </Button>
+              </ModalFooter>
             </div>
-          </ModalHeader>
-          <ModalBody className="space-y-4 pb-2">
-            <p className="text-sm text-default-600">
-              Se identificaron los siguientes productos como posible sobrante: un{' '}
-              <strong>traslado</strong> que se enviará en una cantidad menor a la solicitada, o
-              una <strong>entrada</strong> al inventario que no proviene de una orden de{' '}
-              Abastecimiento de Proveedores. ¿Desea registrarlos como{' '}
-              <strong>disponibles en Inventario</strong> no asociados a un pedido o solicitud?
-            </p>
-            <div className="rounded-lg border border-default-200 overflow-hidden">
-              <table className="w-full text-xs" style={{ tableLayout: 'fixed' }}>
-                <thead className="bg-default-100 dark:bg-default-50">
-                  <tr>
-                    <th className="py-2 px-3 font-medium text-left">Producto</th>
-                    <th className="py-2 px-3 font-medium text-center w-36">Disponible estimado</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {disponiblesPendientes.map((d, idx) => {
-                    const item = itemsPedido.find(
-                      i => i.producto.idProducto === d.idProducto && i.idSolicitud === d.idSolicitud
-                    );
-                    return (
-                      <tr key={idx} className="border-t border-default-100">
-                        <td className="py-2 px-3 text-default-700">
-                          {item?.producto.nombreProducto ?? `Producto #${d.idProducto}`}
-                        </td>
-                        <td className="py-2 px-3 text-center font-semibold text-default-600 tabular-nums">
-                          {/* item.producto.detalles es una unidad limpia (abreviatura) solo para
-                              ítems de Traslado; para ítems agregados a mano al Control Masivo es
-                              un caption largo ("Stock: N Unidad") pensado para el buscador de
-                              productos, no una unidad — no se muestra en ese caso. */}
-                          {d.cantidad}{item?.motivo === 'TRASLADO' && item?.producto.detalles ? ` ${item.producto.detalles}` : ''}
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-            <p className="text-xs text-warning-600 dark:text-warning-400 italic">
-              El registro de stock disponible es obligatorio para este tipo de entrada.
-              "Cancelar" no procesa nada: vuelve a la lista para revisar o corregir los ítems.
-            </p>
-          </ModalBody>
-          <ModalFooter className="border-t border-default-100 gap-2">
-            <Button variant="ghost" onPress={handleDisponiblesCancelar} className="font-medium">
-              Cancelar
-            </Button>
-            <Button
-              color="success"
-              onPress={handleDisponiblesSi}
-              startContent={<Icon icon="lucide:check-circle-2" width={16} />}
-            >
-              Sí, registrar disponibles
-            </Button>
-          </ModalFooter>
-        </div>
+          )}
         </ModalContent>
       </Modal>
 
