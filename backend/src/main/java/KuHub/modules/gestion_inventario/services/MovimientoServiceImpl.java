@@ -223,16 +223,7 @@ public class MovimientoServiceImpl implements MovimientoService {
                             HttpStatus.BAD_REQUEST);
                 }
 
-                int rowsAffected = bodegaTransitoRepository.addStockInTransit(
-                        oldInventory.getIdInventario(), delta);
-
-                if (rowsAffected == 0) {
-                    BodegaTransito newWarehouse = new BodegaTransito();
-                    newWarehouse.setInventario(oldInventory);
-                    newWarehouse.setStock(delta);
-                    newWarehouse.setStockLimit(oldInventory.getStockLimit());
-                    bodegaTransitoRepository.save(newWarehouse);
-                }
+                sumarStockEnTransito(oldInventory, delta);
 
                 calculatedAmount = delta;
                 description      = "Traslado a bodega de tránsito: "
@@ -319,9 +310,7 @@ public class MovimientoServiceImpl implements MovimientoService {
                 nuevoStock = stockActual.subtract(delta);
                 if (nuevoStock.compareTo(BigDecimal.ZERO) < 0) return BulkMovementResult.error("Stock insuficiente para traslado");
 
-                // Lógica de Bodega de Tránsito (Se mantiene igual)
-                bodegaTransitoRepository.addStockInTransit(oldInventory.getIdInventario(), delta);
-                // Nota: Aquí podrías querer manejar el caso de 'rowsAffected == 0' como hacías antes
+                sumarStockEnTransito(oldInventory, delta);
 
                 description = "Traslado masivo: " + oldInventory.getProducto().getNombreProducto();
             }
@@ -422,6 +411,33 @@ public class MovimientoServiceImpl implements MovimientoService {
 
         movimientoRepository.save(newMotion);
         return true;
+    }
+
+    /**
+     * Suma stock a la bodega de tránsito de un inventario (usado por TRASLADO, individual y
+     * masivo). addStockInTransit solo actualiza una fila ACTIVA; si no afectó ninguna, puede ser
+     * porque el inventario nunca tuvo bodega de tránsito (se crea una nueva) o porque la tiene
+     * pero inactiva por un soft-delete previo (se reactiva sumando el stock). Insertar una fila
+     * nueva en este segundo caso violaría el UNIQUE (id_inventario) de bodega_transito.
+     */
+    private void sumarStockEnTransito(Inventario inventario, BigDecimal delta) {
+        int rowsAffected = bodegaTransitoRepository.addStockInTransit(inventario.getIdInventario(), delta);
+        if (rowsAffected > 0) return;
+
+        BodegaTransito existente = bodegaTransitoRepository
+                .findByInventario_IdInventario(inventario.getIdInventario())
+                .orElse(null);
+        if (existente != null) {
+            existente.setActivo(true);
+            existente.setStock(existente.getStock().add(delta));
+            bodegaTransitoRepository.save(existente);
+        } else {
+            BodegaTransito newWarehouse = new BodegaTransito();
+            newWarehouse.setInventario(inventario);
+            newWarehouse.setStock(delta);
+            newWarehouse.setStockLimit(inventario.getStockLimit());
+            bodegaTransitoRepository.save(newWarehouse);
+        }
     }
 
     /** Mapea una fila de la consulta dinámica al DTO de historial de movimientos. */

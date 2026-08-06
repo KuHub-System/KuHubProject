@@ -7,7 +7,6 @@ import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -495,23 +494,43 @@ public interface SolicitudRepository extends JpaRepository<Solicitud, Integer> {
      * Retorna solicitudes EN_PEDIDO en el rango de fechas, agrupando sus detalles por solicitud.
      * Solo incluye productos cuya categoría esté configurada como INVENTARIO en categoria_abastecimiento.
      * Incluye información de sección, asignatura y horario (reserva_sala + bloque_horario).
-     * JSON: { solicitudes: [ { idSolicitud, ..., detalles: [..., enviadoBodegaTransito] } ] }
+     * Cada detalle trae stockBodegaTransito (stock físico actual en bodega de tránsito) para que el
+     * front pueda repartirlo cronológicamente entre las solicitudes y saber cuáles ya están cubiertas.
+     * Las solicitudes vienen ordenadas por fecha y hora de inicio ASC: ese orden ES el orden de
+     * consumo del stock de bodega (la clase más próxima consume primero).
+     * cantidadEnviadaBodega reemplaza al viejo boolean enviado_bodega_transito: es la suma real de
+     * movimiento.stock_movimiento (tipo_movimiento = TRASLADO) agrupada por (id_solicitud, id_producto),
+     * es decir cuánto se trasladó efectivamente a bodega de tránsito para ESA solicitud puntual — a
+     * diferencia del boolean, distingue envío parcial de envío completo y no depende de un flag que
+     * había que marcar aparte (el propio movimiento ya es la prueba del envío).
+     * JSON: { solicitudes: [ { idSolicitud, ..., detalles: [..., stockBodegaTransito, cantidadEnviadaBodega] } ] }
      */
     @Query(value = """
-        WITH detalles_por_solicitud AS (
+        WITH traslados_por_solicitud_producto AS (
+            SELECT
+                m.id_solicitud,
+                inv_m.id_producto,
+                SUM(m.stock_movimiento) AS cantidad_enviada
+            FROM movimiento m
+            INNER JOIN inventario inv_m ON inv_m.id_inventario = m.id_inventario
+            WHERE m.tipo_movimiento = 'TRASLADO' AND m.id_solicitud IS NOT NULL
+            GROUP BY m.id_solicitud, inv_m.id_producto
+        ),
+        detalles_por_solicitud AS (
             SELECT
                 ds.id_solicitud,
                 jsonb_agg(
                     jsonb_build_object(
-                        'idDetalleSolicitud',    ds.id_detalle_solicitud,
-                        'idProducto',            p.id_producto,
-                        'nombreProducto',        p.nombre_producto,
-                        'abreviatura',           um.abreviatura,
-                        'esFraccionario',        um.es_fraccionario,
-                        'cantidadSolicitada',    ds.cant_producto_solicitud,
-                        'idInventario',          inv.id_inventario,
-                        'stock',                 inv.stock,
-                        'enviadoBodegaTransito', ds.enviado_bodega_transito
+                        'idDetalleSolicitud',     ds.id_detalle_solicitud,
+                        'idProducto',              p.id_producto,
+                        'nombreProducto',          p.nombre_producto,
+                        'abreviatura',             um.abreviatura,
+                        'esFraccionario',          um.es_fraccionario,
+                        'cantidadSolicitada',      ds.cant_producto_solicitud,
+                        'idInventario',            inv.id_inventario,
+                        'stock',                   inv.stock,
+                        'stockBodegaTransito',     COALESCE(bt.stock, 0),
+                        'cantidadEnviadaBodega',   COALESCE(tp.cantidad_enviada, 0)
                     ) ORDER BY p.nombre_producto ASC
                 ) AS detalles_json
             FROM detalle_solicitud ds
@@ -520,6 +539,10 @@ public interface SolicitudRepository extends JpaRepository<Solicitud, Integer> {
             INNER JOIN inventario inv ON inv.id_producto = p.id_producto AND inv.activo = TRUE
             INNER JOIN categoria_abastecimiento ca
                 ON ca.id_categoria = p.id_categoria AND ca.tipo_abastecimiento = 'INVENTARIO'
+            LEFT  JOIN bodega_transito bt
+                ON bt.id_inventario = inv.id_inventario AND bt.activo = TRUE
+            LEFT  JOIN traslados_por_solicitud_producto tp
+                ON tp.id_solicitud = ds.id_solicitud AND tp.id_producto = p.id_producto
             GROUP BY ds.id_solicitud
         )
         SELECT jsonb_build_object(
@@ -535,7 +558,7 @@ public interface SolicitudRepository extends JpaRepository<Solicitud, Integer> {
                         'horaInicio',       CAST(bh.hora_inicio AS TEXT),
                         'horaFin',          CAST(bh.hora_fin AS TEXT),
                         'detalles',         dp.detalles_json
-                    ) ORDER BY s.fecha_solicitada ASC, s.id_solicitud ASC
+                    ) ORDER BY s.fecha_solicitada ASC, bh.hora_inicio ASC NULLS LAST, s.id_solicitud ASC
                 ),
             '[]'::jsonb)
         ) AS resultado
@@ -550,11 +573,5 @@ public interface SolicitudRepository extends JpaRepository<Solicitud, Integer> {
         """, nativeQuery = true)
     String findAbastecimientoBodegaJson(@Param("fechaInicio") LocalDate fechaInicio,
                                         @Param("fechaFin") LocalDate fechaFin);
-
-    /** Marca como enviados a bodega de tránsito los detalles de solicitud indicados. */
-    @Modifying
-    @Transactional
-    @Query("UPDATE DetalleSolicitud d SET d.enviadoBodegaTransito = true WHERE d.idDetalleSolicitud IN :ids")
-    int marcarEnviadosBodegaByIds(@Param("ids") List<Integer> ids);
 
 }

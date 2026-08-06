@@ -28,5 +28,4 @@ public interface SolicitudService {
     boolean changeMassiveStatus(ChangeSolicitationStatus request);
     boolean rechazarSolicitudEnPedido(RejectEnPedidoDTO request);
     AbastecimientoBodegaDTO obtenerAbastecimientoBodega(DateRangeDTO request);
-    int marcarEnviadosBodega(List<Integer> ids);
 }

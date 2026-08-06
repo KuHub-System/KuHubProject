@@ -36,9 +36,6 @@ public class DetalleSolicitud {
     @Column(name = "observacion", columnDefinition = "TEXT")
     private String observacion;
 
-    @Column(name = "enviado_bodega_transito", nullable = false)
-    private Boolean enviadoBodegaTransito = false;
-
     // ----------- Métodos Helper para asignación por ID -----------
 
     public void setIdProducto(Integer id) {

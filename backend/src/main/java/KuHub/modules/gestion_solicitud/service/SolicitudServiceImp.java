@@ -494,7 +494,7 @@ public class SolicitudServiceImp implements SolicitudService {
 
     /**
      * Retorna solicitudes EN_PEDIDO en el rango de fechas con sus productos de categorías INVENTARIO,
-     * incluyendo el boolean enviadoBodegaTransito por detalle.
+     * incluyendo cantidadEnviadaBodega (suma de movimientos TRASLADO) por detalle.
      * Usado por Abastecimiento de Bodega en Control de Stock Masivo (TRASLADO inventario → bodega).
      */
     @Transactional(readOnly = true)
@@ -529,16 +529,6 @@ public class SolicitudServiceImp implements SolicitudService {
             log.error("Error parseando JSON abastecimiento bodega. JSON={} | Error={}", jsonRaw, e.getMessage());
             return new AbastecimientoBodegaDTO(new ArrayList<>());
         }
-    }
-
-    /**
-     * Marca como enviados a bodega de tránsito los DetalleSolicitud con los IDs indicados.
-     */
-    @Transactional
-    @Override
-    public int marcarEnviadosBodega(List<Integer> ids) {
-        if (ids == null || ids.isEmpty()) return 0;
-        return solicitudRepository.marcarEnviadosBodegaByIds(ids);
     }
 
 }

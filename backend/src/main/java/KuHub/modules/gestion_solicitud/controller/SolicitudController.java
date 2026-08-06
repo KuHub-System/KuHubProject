@@ -188,26 +188,4 @@ public class SolicitudController {
         }
     }
 
-    /**
-     * Marca los DetalleSolicitud indicados como enviadoBodegaTransito = true.
-     * ✅ En uso: Consumido por marcarEnviadoBodegaService en solicitud-service.ts.
-     * Requiere permiso de ESCRITURA en el módulo INVENTARIO.
-     */
-    @PatchMapping("/detalles/marcar-enviado-bodega")
-    public ResponseEntity<?> marcarEnviadosBodega(
-            @RequestBody List<Integer> ids,
-            Authentication authentication) {
-        try {
-            if (!dynamicPermissionService.check(authentication, "INVENTARIO", "write")) {
-                return ResponseEntity.status(HttpStatus.FORBIDDEN)
-                        .body(Map.of("message", "No tiene permisos para marcar abastecimiento de bodega"));
-            }
-            int updated = solicitudService.marcarEnviadosBodega(ids);
-            return ResponseEntity.status(200).body(updated);
-        } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(Map.of("error", "Error al marcar enviados a bodega", "message", e.getMessage()));
-        }
-    }
-
 }
