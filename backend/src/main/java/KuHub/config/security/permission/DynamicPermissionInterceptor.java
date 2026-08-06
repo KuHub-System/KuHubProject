@@ -114,7 +114,7 @@ public class DynamicPermissionInterceptor implements HandlerInterceptor {
         mod("/api/v*/unidad-medida/**", List.of("GESTION_UNIDADES"), P, PU, PA, D),
         mod("/api/v*/movimiento/**", List.of("HISTORIAL_MOVIMIENTOS"), P, PU, PA, D),
         mod("/api/v*/bodega-transito/**", List.of("BODEGA_TRANSITO"), P, PU, PA, D),
-        mod("/api/v*/stock-disponible/**", List.of("BODEGA_TRANSITO"), P, PU, PA, D),
+        // stock-disponible ya no tiene endpoints de escritura (solo GETs, que este interceptor no gobierna).
 
         // ── Pedido semanal a bodega (antiguas pedidoSemanaBodegas) ──
         // Acciones GRANULARES: el padre PEDIDO_SEMANAL_BODEGA es solo acceso de página (lectura);

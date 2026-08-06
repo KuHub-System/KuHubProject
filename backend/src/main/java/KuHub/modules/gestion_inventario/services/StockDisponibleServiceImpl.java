@@ -1,78 +1,23 @@
 package KuHub.modules.gestion_inventario.services;
 
-import KuHub.modules.gestion_inventario.dtos.request.RegistrarDisponibleDTO;
-import KuHub.modules.gestion_inventario.dtos.request.RestarDisponibleDTO;
+import KuHub.modules.gestion_inventario.dtos.response.record.DisponibleInventarioPage;
 import KuHub.modules.gestion_inventario.dtos.response.record.DisponibleRealPage;
-import KuHub.modules.gestion_inventario.dtos.response.record.RestarDisponibleResult;
-import KuHub.modules.gestion_inventario.dtos.response.record.StockDisponiblePage;
-import KuHub.modules.gestion_inventario.entity.Producto;
-import KuHub.modules.gestion_inventario.entity.StockDisponible;
-import KuHub.modules.gestion_inventario.repository.ProductoRepository;
+import KuHub.modules.gestion_inventario.dtos.response.record.SobranteBodegaPeriodoPage;
 import KuHub.modules.gestion_inventario.repository.StockDisponibleRepository;
-import KuHub.modules.gestion_usuario.entity.Usuario;
-import KuHub.modules.gestion_usuario.service.UsuarioService;
 import KuHub.utils.PaginationUtils;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.math.BigDecimal;
-import java.util.ArrayList;
-import java.util.LinkedHashMap;
+import java.time.LocalDate;
 import java.util.List;
-import java.util.Map;
 
-@Slf4j
 @Service
 public class StockDisponibleServiceImpl implements StockDisponibleService {
 
     /**Repositories*/
     @Autowired
     private StockDisponibleRepository stockDisponibleRepository;
-
-    @Autowired
-    private ProductoRepository productoRepository;
-
-    /**Services*/
-    @Autowired
-    private UsuarioService usuarioService;
-
-    @Override
-    @Transactional
-    public void registrar(List<RegistrarDisponibleDTO> items) {
-        Usuario usuarioActual = usuarioService.findUserByToken();
-        List<StockDisponible> entidades = new ArrayList<>();
-        for (RegistrarDisponibleDTO dto : items) {
-            Producto producto = productoRepository.findById(dto.idProducto())
-                    .orElseThrow(() -> new RuntimeException("Producto no encontrado: " + dto.idProducto()));
-            StockDisponible sd = new StockDisponible();
-            sd.setProducto(producto);
-            sd.setIdSolicitud(dto.idSolicitud());
-            sd.setIdPedido(dto.idPedido());
-            sd.setCantidad(dto.cantidad());
-            sd.setUsuario(usuarioActual);
-            // Si no viene tipo, la entidad conserva su default 'INVENTARIO'.
-            if (dto.tipoDisponible() != null && !dto.tipoDisponible().isBlank()) {
-                sd.setTipoDisponible(dto.tipoDisponible());
-            }
-            entidades.add(sd);
-        }
-        stockDisponibleRepository.saveAll(entidades);
-        log.info("StockDisponible: {} registro(s) guardado(s) por usuario {}", entidades.size(), usuarioActual.getIdUsuario());
-    }
-
-    @Override
-    @Transactional(readOnly = true)
-    public StockDisponiblePage listarInventario(int page, Integer idCategoria, boolean agrupado, String busqueda) {
-        return listarPorTipo("INVENTARIO", page, idCategoria, agrupado, busqueda);
-    }
-
-    @Override
-    @Transactional(readOnly = true)
-    public StockDisponiblePage listarBodegaTransito(int page, Integer idCategoria, boolean agrupado, String busqueda) {
-        return listarPorTipo("BODEGA_TRANSITO", page, idCategoria, agrupado, busqueda);
-    }
 
     @Override
     @Transactional(readOnly = true)
@@ -86,91 +31,22 @@ public class StockDisponibleServiceImpl implements StockDisponibleService {
 
     @Override
     @Transactional(readOnly = true)
-    public Map<Integer, BigDecimal> consultarDisponiblePorProductos(List<Integer> idsProducto, String tipo) {
-        Map<Integer, BigDecimal> resultado = new LinkedHashMap<>();
-        if (idsProducto == null || idsProducto.isEmpty()) {
-            return resultado;
-        }
-        String tipoFinal = (tipo != null && !tipo.isBlank()) ? tipo : "INVENTARIO";
-        List<Object[]> rows = stockDisponibleRepository.sumDisponibleByProductosAndTipo(idsProducto, tipoFinal);
-        for (Object[] row : rows) {
-            Integer idProducto = ((Number) row[0]).intValue();
-            BigDecimal disponible = new BigDecimal(row[1].toString());
-            resultado.put(idProducto, disponible);
-        }
-        return resultado;
+    public DisponibleInventarioPage listarDisponibleInventario(String busqueda, Integer idCategoria, int page) {
+        long total = stockDisponibleRepository.countDisponibleInventario(idCategoria, busqueda);
+        PaginationUtils.PagingResult paging = PaginationUtils.buildPaging(page, total);
+        List<Object[]> rows = stockDisponibleRepository.findDisponibleInventarioPaginado(
+                idCategoria, busqueda, paging.limit(), paging.offset());
+        return DisponibleInventarioPage.of(rows, paging, total);
     }
 
     @Override
-    @Transactional
-    public RestarDisponibleResult restar(List<RestarDisponibleDTO> items) {
-        List<RestarDisponibleResult.ItemResult> resultados = new ArrayList<>();
-
-        for (RestarDisponibleDTO dto : items) {
-            String tipo = (dto.tipoDisponible() != null && !dto.tipoDisponible().isBlank())
-                    ? dto.tipoDisponible() : "INVENTARIO";
-
-            List<StockDisponible> registros =
-                    stockDisponibleRepository.findActivosByProductoAndTipoFifo(dto.idProducto(), tipo);
-
-            BigDecimal disponibleReal = registros.stream()
-                    .map(StockDisponible::getCantidad)
-                    .reduce(BigDecimal.ZERO, BigDecimal::add);
-
-            BigDecimal aRestar = dto.cantidad() != null ? dto.cantidad() : BigDecimal.ZERO;
-
-            // Proceso en paralelo: el disponible real quedó por debajo de lo solicitado → no descontar.
-            if (disponibleReal.compareTo(aRestar) < 0) {
-                log.warn("StockDisponible.restar INSUFICIENTE. Producto: {} | Solicitado: {} | Real: {}",
-                        dto.idProducto(), aRestar, disponibleReal);
-                resultados.add(new RestarDisponibleResult.ItemResult(
-                        dto.idProducto(), "INSUFICIENTE", disponibleReal, BigDecimal.ZERO));
-                continue;
-            }
-
-            // Consumo FIFO de los registros activos.
-            BigDecimal restante = aRestar;
-            List<StockDisponible> modificados = new ArrayList<>();
-            for (StockDisponible sd : registros) {
-                if (restante.compareTo(BigDecimal.ZERO) <= 0) break;
-                BigDecimal cant = sd.getCantidad();
-                if (cant.compareTo(restante) <= 0) {
-                    sd.setCantidad(BigDecimal.ZERO);
-                    sd.setActivo(false);
-                    restante = restante.subtract(cant);
-                } else {
-                    sd.setCantidad(cant.subtract(restante));
-                    restante = BigDecimal.ZERO;
-                }
-                modificados.add(sd);
-            }
-            stockDisponibleRepository.saveAll(modificados);
-
-            // Si el real difería de lo que veía el usuario, avisar que se sincronizó.
-            boolean difiere = dto.disponibleEnVista() != null
-                    && disponibleReal.compareTo(dto.disponibleEnVista()) != 0;
-            String estado = difiere ? "SINCRONIZADO" : "OK";
-            resultados.add(new RestarDisponibleResult.ItemResult(
-                    dto.idProducto(), estado, disponibleReal, aRestar));
-        }
-
-        log.info("StockDisponible.restar: {} producto(s) procesado(s)", resultados.size());
-        return new RestarDisponibleResult(resultados);
-    }
-
-    /**
-     * Arma la página de stock disponible para un tipo (INVENTARIO | BODEGA_TRANSITO), filtrable
-     * por categoría y nombre de producto (búsqueda), en vista agrupada (sumada por producto) o
-     * individual (una fila por registro, con el usuario que lo generó).
-     */
-    private StockDisponiblePage listarPorTipo(String tipo, int page, Integer idCategoria, boolean agrupado, String busqueda) {
-        long total = agrupado
-                ? stockDisponibleRepository.countAgrupadoByTipoAndActivo(tipo, idCategoria, busqueda)
-                : stockDisponibleRepository.countIndividualByTipoAndActivo(tipo, idCategoria, busqueda);
+    @Transactional(readOnly = true)
+    public SobranteBodegaPeriodoPage listarBodegaTransitoPeriodo(
+            LocalDate fechaInicio, LocalDate fechaFin, int page, Integer idCategoria, String busqueda) {
+        long total = stockDisponibleRepository.countSobranteBodegaTransitoPeriodo(fechaInicio, fechaFin, idCategoria, busqueda);
         PaginationUtils.PagingResult paging = PaginationUtils.buildPaging(page, total);
-        List<Object[]> rows = agrupado
-                ? stockDisponibleRepository.findAgrupadoByTipoPaginado(tipo, idCategoria, busqueda, paging.limit(), paging.offset())
-                : stockDisponibleRepository.findIndividualByTipoPaginado(tipo, idCategoria, busqueda, paging.limit(), paging.offset());
-        return StockDisponiblePage.of(rows, paging, total);
+        List<Object[]> rows = stockDisponibleRepository.findSobranteBodegaTransitoPeriodoPaginado(
+                fechaInicio, fechaFin, idCategoria, busqueda, paging.limit(), paging.offset());
+        return SobranteBodegaPeriodoPage.of(rows, paging, total);
     }
 }

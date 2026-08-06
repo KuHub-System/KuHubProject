@@ -1,37 +1,27 @@
 package KuHub.modules.gestion_inventario.services;
 
-import KuHub.modules.gestion_inventario.dtos.request.RegistrarDisponibleDTO;
-import KuHub.modules.gestion_inventario.dtos.request.RestarDisponibleDTO;
+import KuHub.modules.gestion_inventario.dtos.response.record.DisponibleInventarioPage;
 import KuHub.modules.gestion_inventario.dtos.response.record.DisponibleRealPage;
-import KuHub.modules.gestion_inventario.dtos.response.record.RestarDisponibleResult;
-import KuHub.modules.gestion_inventario.dtos.response.record.StockDisponiblePage;
+import KuHub.modules.gestion_inventario.dtos.response.record.SobranteBodegaPeriodoPage;
 
-import java.math.BigDecimal;
-import java.util.List;
-import java.util.Map;
+import java.time.LocalDate;
 
 public interface StockDisponibleService {
-
-    /** Registra una lista de sobrantes detectados en bodega de tránsito. */
-    void registrar(List<RegistrarDisponibleDTO> items);
-
-    /**
-     * Retorna página paginada de stock disponible de Inventario, filtrable por categoría y por
-     * nombre de producto (búsqueda). agrupado=true (default): una fila por producto con la
-     * cantidad sumada de todos sus registros. agrupado=false: una fila por cada evento de
-     * registro individual, con su usuario.
-     */
-    StockDisponiblePage listarInventario(int page, Integer idCategoria, boolean agrupado, String busqueda);
-
-    /** Retorna página paginada de stock disponible de Bodega de Tránsito, filtrable por categoría y búsqueda (ver listarInventario). */
-    StockDisponiblePage listarBodegaTransito(int page, Integer idCategoria, boolean agrupado, String busqueda);
 
     /** Retorna página paginada del disponible real por producto, filtrable por categoría y búsqueda de nombre. */
     DisponibleRealPage listarDisponibleReal(String busqueda, Integer idCategoria, int page);
 
-    /** Suma el disponible activo por producto (solo los que tienen > 0), para un tipo dado. */
-    Map<Integer, BigDecimal> consultarDisponiblePorProductos(List<Integer> idsProducto, String tipo);
+    /**
+     * Disponible EN INVENTARIO por producto, calculado en vivo: del stock que hoy está físicamente
+     * en inventario, cuánto no está comprometido con solicitudes EN_PEDIDO, descontando primero la
+     * parte del compromiso que ya se abasteció a bodega de tránsito (si no, se restaría dos veces).
+     */
+    DisponibleInventarioPage listarDisponibleInventario(String busqueda, Integer idCategoria, int page);
 
-    /** Descuenta disponible por producto (FIFO), aplicando sincronización ante procesos en paralelo. */
-    RestarDisponibleResult restar(List<RestarDisponibleDTO> items);
+    /**
+     * Sobrante en Bodega de Tránsito para un período: stock físico de bodega menos la demanda de
+     * las solicitudes EN_PEDIDO pendientes cuya fecha_solicitada cae dentro del rango.
+     */
+    SobranteBodegaPeriodoPage listarBodegaTransitoPeriodo(
+            LocalDate fechaInicio, LocalDate fechaFin, int page, Integer idCategoria, String busqueda);
 }

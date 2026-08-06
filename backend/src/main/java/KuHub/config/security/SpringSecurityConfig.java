@@ -551,13 +551,10 @@ public class SpringSecurityConfig {
                         .requestMatchers(HttpMethod.DELETE, "/api/v1/orden-pedido/**").authenticated()
 
                         // ========================================
-                        // ENDPOINTS DE STOCK DISPONIBLE (sobrantes bodega)
+                        // ENDPOINTS DE STOCK DISPONIBLE (disponibilidad calculada en vivo)
                         // ========================================
-                        // Lectura: cualquier autenticado — la matriz controla el acceso real
+                        // Solo lectura (GET): cualquier autenticado — la matriz controla el acceso real
                         .requestMatchers(HttpMethod.GET, "/api/v1/stock-disponible/**").authenticated()
-
-                        .requestMatchers(HttpMethod.POST, "/api/v1/stock-disponible/**")
-                        .authenticated() // dinámico (BODEGA_TRANSITO) vía interceptor
 
                         // ========================================
                         // ENDPOINTS DE NOTIFICACIONES (resumen unificado del header)
