@@ -66,3 +66,50 @@ UPDATE gestion_sistema
 
 ALTER TABLE stock_disponible
     ADD COLUMN IF NOT EXISTS id_usuario INTEGER REFERENCES usuario(id_usuario);
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- 2026-08-06 — detalle_solicitud: elimina el boolean enviado_bodega_transito
+-- ─────────────────────────────────────────────────────────────────────────────
+-- Contexto de negocio: enviado_bodega_transito era un flag booleano que se
+-- marcaba en true apenas se despachaba cualquier cantidad de un detalle hacia
+-- bodega de tránsito, sin importar si se había enviado todo lo solicitado ni
+-- si ese stock seguía físicamente disponible después (ej. se perdía por una
+-- merma posterior). Eso generaba falsos positivos de "enviado completo".
+--
+-- Se reemplazó por cantidadEnviadaBodega, calculado en tiempo real como la
+-- suma de movimiento.stock_movimiento (tipo_movimiento = TRASLADO) agrupada
+-- por (id_solicitud, id_producto) — ver SolicitudRepository.findAbastecimientoBodegaJson
+-- y AbastecimientoBodegaDTO. Ese valor, combinado con el stock vivo de
+-- bodega_transito en coberturaBodega (PedidoMasivoModal.tsx), permite
+-- distinguir envío parcial, envío completo y el caso "se envió pero ya no
+-- está en bodega" (estado 'perdido' en getEstadoEnvio).
+--
+-- El endpoint marcarEnviadosBodega/marcarEnviadoBodegaService que escribía
+-- esta columna ya fue eliminado del backend y del frontend, y el campo
+-- DetalleSolicitud.enviadoBodegaTransito ya fue quitado de la entidad — no
+-- queda ninguna lectura ni escritura de esta columna en el código. Ver
+-- PENDIENTES_POR_MODULOS.MD para el detalle de la migración de lógica.
+
+ALTER TABLE detalle_solicitud
+    DROP COLUMN IF EXISTS enviado_bodega_transito;
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- 2026-08-06 — elimina la tabla stock_disponible
+-- ─────────────────────────────────────────────────────────────────────────────
+-- Contexto de negocio: stock_disponible guardaba a mano (INSERT al detectar sobrante +
+-- UPDATE/descuento al consumirlo) los excedentes de Inventario y de Bodega de Tránsito.
+-- Las 3 pestañas del modal "Stock Disponible" (Inventario, Bodega Tránsito, Disponible
+-- Real) ya fueron migradas a cálculos en vivo contra el stock actual y la demanda
+-- comprometida (inventario / bodega_transito / solicitud / reserva_stock_solicitud) —
+-- ver StockDisponibleRepository.findDisponibleInventarioPaginado,
+-- findSobranteBodegaTransitoPeriodoPaginado y findDisponibleRealPaginado. Con las 3
+-- pestañas migradas, la tabla ya no recibe ningún INSERT ni se lee para ninguna vista.
+--
+-- Se eliminó del backend: la entity StockDisponible, los endpoints /registrar, /restar
+-- y /por-productos de StockDisponibleController (huérfanos desde que se quitaron los
+-- diálogos de detección en el frontend), los métodos del repositorio que leían/escribían
+-- sobre stock_disponible, y los DTOs RegistrarDisponibleDTO/RestarDisponibleDTO/
+-- RestarDisponibleResult/StockDisponiblePage. El DROP se hace después (no antes) de
+-- confirmar que ningún código en el backend siga apuntando a la tabla.
+
+DROP TABLE IF EXISTS stock_disponible;
