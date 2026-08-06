@@ -59,8 +59,6 @@ import GestionCategoriasModal from '../components/modals/GestionCategoriasModal'
 import GestionUnidadesModal from '../components/modals/GestionUnidadesModal';
 import GestionAbastecimientoModal from '../components/modals/GestionAbastecimientoModal';
 import StockDisponiblesModal from '../components/modals/StockDisponiblesModal';
-import ConfirmarDisponibleBodegaModal from '../components/modals/ConfirmarDisponibleBodegaModal';
-import ConfirmarSalidaDisponibleModal, { ConfirmarSalidaDisponibleItem } from '../components/modals/ConfirmarSalidaDisponibleModal';
 import { obtenerCategoriasActivasService } from '../services/inventario/categoria-service';
 import { obtenerUnidadesActivasService } from '../services/inventario/unidad-medida-service';
 import { IUnidadMedida, ISincronizarInventarioExcelResultado, IResultadoItemInventarioExcel, ICategoriaAbastecimientoView } from '../types/inventario/inventario.types';
@@ -79,13 +77,8 @@ import {
 } from '../services/inventario/inventario-service';
 import {
   obtenerAbastecimientoBodegaService,
-  marcarEnviadoBodegaService,
-  registrarDisponiblesService,
-  consultarDisponiblesPorProductoService,
-  restarDisponiblesService,
   ISolicitudBodegaItem,
   IDetalleBodegaItem,
-  IRegistrarDisponibleDTO,
 } from '../services/solicitud/solicitud-service';
 import {
   obtenerAbastecimientoConfirmadoService,
@@ -740,6 +733,39 @@ const InventarioPage: React.FC = () => {
       }));
     }
   }, [currentPage]);
+
+  /**
+   * Refresca en memoria el stock de los productos que acaba de tocar el Control de Stock Masivo.
+   *
+   * El backend ya devuelve el stock real de cada inventario en el resultado (`stockResultante`:
+   * stock final en exitosos y advertencias, stock real actual en los errores), así que no hace
+   * falta volver a pedir la página ni recargar el navegador: se parchean `productos`,
+   * `filteredProductos` y la caché de páginas por `_idInventario`.
+   *
+   * Sin esto la vista se queda con el stock previo al envío, y el siguiente lote se arma con
+   * números viejos — que es de donde salen los "Stock insuficiente para traslado" fantasma.
+   */
+  const aplicarStocksProcesados = React.useCallback((data: IBulkProcessResult) => {
+    const stocks = new Map<number, number>();
+    for (const item of [...data.exitosos, ...data.advertencias, ...data.errores]) {
+      stocks.set(item.idInventario, item.stockResultante);
+    }
+    if (stocks.size === 0) return;
+
+    const parchear = (lista: IProducto[]): IProducto[] =>
+      lista.map(p => {
+        const nuevoStock = p._idInventario != null ? stocks.get(p._idInventario) : undefined;
+        return nuevoStock == null || nuevoStock === p.stock ? p : { ...p, stock: nuevoStock };
+      });
+
+    setProductos(parchear);
+    setFilteredProductos(parchear);
+
+    for (const pagina of Object.keys(cacheRef.current)) {
+      cacheRef.current[Number(pagina)] = parchear(cacheRef.current[Number(pagina)]);
+    }
+    setCache({ ...cacheRef.current });
+  }, []);
 
   /**
    * Renderiza el estado del stock con un chip de color según el nivel.
@@ -1514,8 +1540,12 @@ const InventarioPage: React.FC = () => {
                 initialItems={bulkRetryItems}
                 puedeAccederAbastBodega={invAbastBodega}
                 puedeAccederAbastProv={invAbastProv}
+                puedeGestionarAbastecimiento={invAbastecimiento}
                 onOpenGestionAbastecimiento={onAbastecimientoConfigOpen}
                 onProcessComplete={(data, retryItems) => {
+                  // Parchea el stock en memoria con lo que devolvió el backend: la tabla y la
+                  // caché quedan al día sin F5, y un segundo envío parte del stock real.
+                  aplicarStocksProcesados(data);
                   setBulkResult(data);
                   setBulkRetryItems(retryItems);
                   onResultModalOpen();
@@ -1632,7 +1662,7 @@ const InventarioPage: React.FC = () => {
         <GestionAbastecimientoModal
           isOpen={isAbastecimientoConfigOpen}
           onOpenChange={onAbastecimientoConfigOpenChange}
-          onRefresh={() => cargarFiltros(true)}
+          onRefresh={() => { cargarProductosPaginados(1, true); cargarFiltros(true); }}
         />
 
         <StockDisponiblesModal

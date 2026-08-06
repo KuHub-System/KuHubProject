@@ -12,7 +12,7 @@ import { Icon } from '@iconify/react';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ISolicitud, IItemSolicitud } from '../types/solicitud/solicitud.types';
-import { actualizarEstadoBodegaService, obtenerEntregasDiariasService, prepararEntregaService, registrarDisponiblesService, IRegistrarDisponibleDTO, consultarDisponiblesPorProductoService, restarDisponiblesService, IRestarDisponibleDTO, IEntregaDiaria, ISalaEntrega, ISolicitudEntrega } from '../services/solicitud/solicitud-service';
+import { actualizarEstadoBodegaService, obtenerEntregasDiariasService, prepararEntregaService, IEntregaDiaria, ISalaEntrega, ISolicitudEntrega } from '../services/solicitud/solicitud-service';
 import { obtenerPedidoSemanaBodegaPorIdService } from '../services/pedido/pedido-semanal-bodega-service';
 import { obtenerFiltrosInventarioService } from '../services/inventario/producto-service';
 import { buscarBodegaTransitoService, buscarBodegaTransitoPorCodigoService, obtenerBodegaPaginadaService, IBodegaTransitoItem, obtenerBulkBodegaListingService, bulkUpdateBodegaStockService, IBulkBodegaListing, IBulkWarehouseUpdateRequest, IBulkWarehouseProcessResult, inicializarDesdeAbastecimientoService, obtenerBodegaByInventarioIdsService } from '../services/inventario/bodega-transito-service';
@@ -26,8 +26,6 @@ import GestionCategoriasModal from '../components/modals/GestionCategoriasModal'
 import GestionUnidadesModal from '../components/modals/GestionUnidadesModal';
 import GestionAbastecimientoModal from '../components/modals/GestionAbastecimientoModal';
 import StockDisponiblesModal from '../components/modals/StockDisponiblesModal';
-import ConfirmarDisponibleBodegaModal, { ConfirmarDisponibleBodegaItem } from '../components/modals/ConfirmarDisponibleBodegaModal';
-import ConfirmarSalidaDisponibleModal, { ConfirmarSalidaDisponibleItem } from '../components/modals/ConfirmarSalidaDisponibleModal';
 import RielNavegacion from '../components/RielNavegacion';
 import MovimientosHistorial from '../components/MovimientosHistorial';
 import { TableSkeleton, CardSkeleton, TableSkeletonColumn } from '../components/SkeletonLoader';
@@ -139,10 +137,6 @@ const BodegaTransitoPage: React.FC = () => {
   const [preparaError,        setPreparaError]        = React.useState<string | null>(null);
   const [isConfirmacionOpen,  setIsConfirmacionOpen]  = React.useState(false);
 
-  // ── Sobrantes detectados al entregar menos de lo solicitado (stock disponible BODEGA_TRANSITO) ──
-  const [isSobrantesOpen,     setIsSobrantesOpen]     = React.useState(false);
-  const [sobrantesPendientes, setSobrantesPendientes] = React.useState<IRegistrarDisponibleDTO[]>([]);
-
   const abrirPreparar = React.useCallback((sol: ISolicitudEntrega) => {
     setPreparandoSolicitud(sol);
     setProductosEdit(sol.productos.map(p => ({
@@ -180,6 +174,11 @@ const BodegaTransitoPage: React.FC = () => {
         .then(data => { entregasCache.current.set(getWeekKey(selectedDate), data); setEntregasData(data); })
         .catch(() => toast.error('Error al recargar los pedidos'))
         .finally(() => setIsLoadingEntregas(false));
+      // La entrega descuenta stock de bodega_transito, que la vista "Inventario" de esta
+      // misma página cachea aparte (cacheRef): sin este evento, ese stock queda desactualizado
+      // hasta el F5 al cambiar de pestaña. El endpoint no devuelve stock por producto, así que
+      // no hay parche directo posible — se invalida vía el evento global (ver CLAUDE.md §16).
+      window.dispatchEvent(new Event('productosActualizados'));
     } catch (err: any) {
       if (err.response?.status === 409) {
         // Operación exitosa pero con desincronización
@@ -192,6 +191,7 @@ const BodegaTransitoPage: React.FC = () => {
           .then(data => { entregasCache.current.set(getWeekKey(selectedDate), data); setEntregasData(data); })
           .catch(() => toast.error('Error al recargar los pedidos'))
           .finally(() => setIsLoadingEntregas(false));
+        window.dispatchEvent(new Event('productosActualizados'));
       } else if (err.response?.status === 422) {
         setPreparaError(err.response.data?.mensaje ?? 'Stock insuficiente para uno o más productos.');
       } else {
@@ -206,48 +206,10 @@ const BodegaTransitoPage: React.FC = () => {
     }
   }, [preparandoSolicitud, productosEdit, selectedDate, toast]);
 
-  // Detecta productos donde se entregará menos de lo solicitado: ese sobrante
-  // (cantidadSolicitada - cantidadAEntregar) puede registrarse como stock disponible
-  // de bodega de tránsito, no asociado a la solicitud entregada.
-  const detectarSobrantesEntrega = React.useCallback((): IRegistrarDisponibleDTO[] => {
-    if (!preparandoSolicitud) return [];
-    return productosEdit
-      .filter(p => p.cantidadSolicitada - p.cantidadAEntregar > 0.001)
-      .map(p => ({
-        idProducto: p.idProducto,
-        idSolicitud: preparandoSolicitud.idSolicitud,
-        cantidad: parseFloat((p.cantidadSolicitada - p.cantidadAEntregar).toFixed(3)),
-        tipoDisponible: 'BODEGA_TRANSITO',
-      }));
-  }, [preparandoSolicitud, productosEdit]);
-
-  // Botón "Confirmar Entrega": si hay sobrantes, ofrecer registrarlos como disponibles;
-  // si no, ir directo a la confirmación de entrega irreversible.
+  // Botón "Confirmar Entrega": abre la confirmación de entrega irreversible.
   const handleConfirmarEntregaClick = React.useCallback(() => {
-    const sobrantes = detectarSobrantesEntrega();
-    if (sobrantes.length > 0) {
-      setSobrantesPendientes(sobrantes);
-      setIsSobrantesOpen(true);
-    } else {
-      setIsConfirmacionOpen(true);
-    }
-  }, [detectarSobrantesEntrega]);
-
-  const handleSobrantesSi = React.useCallback(async () => {
-    setIsSobrantesOpen(false);
-    try {
-      await registrarDisponiblesService(sobrantesPendientes);
-      toast.success('Sobrantes registrados como stock disponible de bodega de tránsito');
-    } catch {
-      toast.warning('No se pudieron registrar los sobrantes, pero la entrega continuará');
-    }
-    await confirmarEntrega();
-  }, [sobrantesPendientes, confirmarEntrega, toast]);
-
-  const handleSobrantesNo = React.useCallback(async () => {
-    setIsSobrantesOpen(false);
-    await confirmarEntrega();
-  }, [confirmarEntrega]);
+    setIsConfirmacionOpen(true);
+  }, []);
 
   usePageTitle(
     currentView === 'inventario' ? 'Bodega de Tránsito' : 'Gestión de Pedidos Diarios',
@@ -511,6 +473,35 @@ const BodegaTransitoPage: React.FC = () => {
       cargarProductosPaginados(1, true);
     }, 2500);
   }, [cargarProductosPaginados]);
+
+  /**
+   * Refresca en memoria el stock de bodega que acaba de tocar el Control de Stock Masivo.
+   *
+   * El backend ya devuelve el stock real de cada registro en el resultado (`stockResultante`:
+   * stock final en exitosos y advertencias, stock real actual en los errores), así que se
+   * parchean `productos` y la caché de páginas por `idBodegaTransito` sin volver a pedir la
+   * página ni recargar el navegador. Así un segundo envío parte del stock real y no del
+   * anterior al lote, que es de donde salen los errores de stock insuficiente fantasma.
+   */
+  const aplicarStocksProcesadosBodega = React.useCallback((data: IBulkWarehouseProcessResult) => {
+    const stocks = new Map<number, number>();
+    for (const item of [...data.exitosos, ...data.advertencias, ...data.errores]) {
+      stocks.set(item.idBodegaTransito, item.stockResultante);
+    }
+    if (stocks.size === 0) return;
+
+    const parchear = (lista: IBodegaTransitoItem[]): IBodegaTransitoItem[] =>
+      lista.map(p => {
+        const nuevoStock = stocks.get(p.idBodegaTransito);
+        return nuevoStock == null || nuevoStock === p.stock ? p : { ...p, stock: nuevoStock };
+      });
+
+    setProductos(parchear);
+
+    for (const pagina of Object.keys(cacheRef.current)) {
+      cacheRef.current[Number(pagina)] = parchear(cacheRef.current[Number(pagina)]);
+    }
+  }, []);
 
   const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
     const scroller = e.currentTarget;
@@ -1514,8 +1505,12 @@ const BodegaTransitoPage: React.FC = () => {
               onClose={onClose}
               initialItems={bulkRetryItems}
               puedeAccederAbastecimiento={bodAbastecimiento}
+              puedeGestionarAbastecimiento={invAbastecimiento}
               onOpenGestionAbastecimiento={onAbastecimientoConfigOpen}
               onProcessComplete={(data, retryItems) => {
+                // Parchea el stock en memoria con lo que devolvió el backend: la tabla y la
+                // caché quedan al día sin F5, y un segundo envío parte del stock real.
+                aplicarStocksProcesadosBodega(data);
                 setBulkResult(data);
                 setBulkRetryItems(retryItems);
                 setIsResultOpen(true);
@@ -1776,77 +1771,6 @@ const BodegaTransitoPage: React.FC = () => {
       </ModalContent>
     </Modal>
 
-    {/* ── Modal Sobrantes detectados al entregar menos de lo solicitado ── */}
-    <Modal
-      isOpen={isSobrantesOpen}
-      isDismissable={false}
-      hideCloseButton
-      size="lg"
-      backdrop="blur"
-      radius="lg"
-      classNames={{ base: 'rounded-2xl' }}
-    >
-      <ModalContent>
-        <ModalHeader>
-          <div className="flex items-center gap-2">
-            <Icon icon="lucide:alert-triangle" width={20} className="text-warning" />
-            <span className="text-base font-bold">Productos sobrantes detectados</span>
-          </div>
-        </ModalHeader>
-        <ModalBody className="space-y-4 pb-2">
-          <p className="text-sm text-default-600">
-            Se identificó que los siguientes productos serán entregados en una cantidad{' '}
-            <strong>menor a la solicitada</strong>. Esto puede ocurrir por ausencias de alumnos u
-            otros motivos, generando un excedente que permanece en{' '}
-            <strong>bodega de tránsito</strong>. ¿Desea registrarlos como{' '}
-            <strong>stock disponible de bodega de tránsito</strong> no asociado a un pedido o solicitud?
-          </p>
-          <div className="rounded-lg border border-default-200 overflow-hidden">
-            <table className="w-full text-xs" style={{ tableLayout: 'fixed' }}>
-              <thead className="bg-default-100 dark:bg-default-50">
-                <tr>
-                  <th className="py-2 px-3 font-medium text-left">Producto</th>
-                  <th className="py-2 px-3 font-medium text-center w-36">Disponible estimado</th>
-                </tr>
-              </thead>
-              <tbody>
-                {sobrantesPendientes.map((d, idx) => {
-                  const prod = productosEdit.find(p => p.idProducto === d.idProducto);
-                  return (
-                    <tr key={idx} className="border-t border-default-100">
-                      <td className="py-2 px-3 text-default-700">
-                        {prod?.nombreProducto ?? `Producto #${d.idProducto}`}
-                      </td>
-                      <td className="py-2 px-3 text-center font-semibold text-default-600 tabular-nums">
-                        {fmtCantidadEntrega(d.cantidad)} {prod?.unidadAbreviada}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-          <p className="text-xs text-warning-600 dark:text-warning-400 italic">
-            En caso de No, el sistema no contará con trazabilidad de estos productos sobrantes.
-            La entrega se procesará igualmente y es irreversible.
-          </p>
-        </ModalBody>
-        <ModalFooter className="border-t border-default-100 gap-2">
-          <Button variant="ghost" onPress={handleSobrantesNo} className="font-medium" isDisabled={isConfirmando}>
-            No
-          </Button>
-          <Button
-            color="success"
-            onPress={handleSobrantesSi}
-            isLoading={isConfirmando}
-            startContent={!isConfirmando ? <Icon icon="lucide:check-circle-2" width={16} /> : undefined}
-          >
-            Sí, registrar sobrantes
-          </Button>
-        </ModalFooter>
-      </ModalContent>
-    </Modal>
-
     {/* ── Modal Stock Disponible Bodega Tránsito ── */}
     <StockDisponiblesModal
       isOpen={isStockDisponiblesOpen}
@@ -1985,7 +1909,11 @@ const BodegaTransitoPage: React.FC = () => {
     <GestionAbastecimientoModal
       isOpen={isAbastecimientoConfigOpen}
       onOpenChange={onAbastecimientoConfigOpenChange}
-      onRefresh={() => cargarFiltros(true)}
+      onRefresh={() => {
+        cacheRef.current = {};
+        cargarProductosPaginados(1, true);
+        cargarFiltros(true);
+      }}
     />
     </>
   );

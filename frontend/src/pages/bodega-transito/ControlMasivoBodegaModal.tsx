@@ -11,29 +11,26 @@ import {
   inicializarDesdeAbastecimientoService,
   IBodegaTransitoItem, IBulkBodegaListing, IBulkWarehouseUpdateRequest, IBulkWarehouseProcessResult,
 } from '../../services/inventario/bodega-transito-service';
-import {
-  registrarDisponiblesService, restarDisponiblesService, consultarDisponiblesPorProductoService,
-  IRestarDisponibleDTO,
-} from '../../services/solicitud/solicitud-service';
 import { obtenerAbastecimientoConfirmadoService, marcarEntregadosMasivoService } from '../../services/proveedor/proveedor-service';
 import { IOrdenAbastecimiento, ICategoriaEntregaAbastecimiento } from '../../types/proveedor/proveedor.types';
-import ConfirmarDisponibleBodegaModal, { ConfirmarDisponibleBodegaItem } from '../../components/modals/ConfirmarDisponibleBodegaModal';
-import ConfirmarSalidaDisponibleModal, { ConfirmarSalidaDisponibleItem } from '../../components/modals/ConfirmarSalidaDisponibleModal';
 import { ItemBodegaMasivo, MOTIVOS_BODEGA, MOTIVO_LABEL } from './constants';
 import { CardSkeleton } from '../../components/SkeletonLoader';
-import { useSistemaConfig } from '../../contexts/sistema-config-context';
+
+/** Colores del theme usados para el color-coding de los motivos de movimiento. */
+type ChipColor = 'success' | 'warning' | 'primary' | 'danger' | 'secondary';
 
 interface ControlMasivoBodegaModalProps {
   onClose: () => void;
   initialItems?: ItemBodegaMasivo[];
   onProcessComplete?: (data: IBulkWarehouseProcessResult, retryItems: ItemBodegaMasivo[]) => void;
   puedeAccederAbastecimiento?: boolean;
+  /** Permiso de escritura sobre "Inventario · Gestión Abastecimiento" (INV_ABASTECIMIENTO) — controla si se muestra el acceso a Gestión de Abastecimiento dentro del modal de Abastecimiento de Proveedores. */
+  puedeGestionarAbastecimiento?: boolean;
   onOpenGestionAbastecimiento?: () => void;
 }
 
-const ControlMasivoBodegaModal: React.FC<ControlMasivoBodegaModalProps> = ({ onClose, initialItems, onProcessComplete, puedeAccederAbastecimiento = false, onOpenGestionAbastecimiento }) => {
+const ControlMasivoBodegaModal: React.FC<ControlMasivoBodegaModalProps> = ({ onClose, initialItems, onProcessComplete, puedeAccederAbastecimiento = false, puedeGestionarAbastecimiento = false, onOpenGestionAbastecimiento }) => {
   const toast = useToast();
-  const { disponibleObligatorio } = useSistemaConfig();
 
   // Estados para modal de abastecimiento de proveedores (OPs CONFIRMADA)
   const { isOpen: isAbastecimientoOpen, onOpen: onAbastecimientoOpen, onOpenChange: onAbastecimientoOpenChange } = useDisclosure();
@@ -355,14 +352,6 @@ const ControlMasivoBodegaModal: React.FC<ControlMasivoBodegaModalProps> = ({ onC
   // ── Procesamiento ──
   const [processState, setProcessState] = React.useState<'idle' | 'procesando'>('idle');
 
-  // ── Confirmación stock disponible (excedente de ENTRADAS) ──
-  const [isDisponibleMasivoOpen, setIsDisponibleMasivoOpen] = React.useState(false);
-  const [disponiblesMasivo,      setDisponiblesMasivo]      = React.useState<ConfirmarDisponibleBodegaItem[]>([]);
-
-  // ── Confirmación descuento de disponible al SALIR (salida/merma/devolución) ──
-  const [isSalidaDisponibleMasivoOpen, setIsSalidaDisponibleMasivoOpen] = React.useState(false);
-  const [salidaDisponiblesMasivo,      setSalidaDisponiblesMasivo]      = React.useState<ConfirmarSalidaDisponibleItem[]>([]);
-
   // ── Carga de productos desde backend ──
   React.useEffect(() => {
     let mounted = true;
@@ -501,147 +490,8 @@ const ControlMasivoBodegaModal: React.FC<ControlMasivoBodegaModalProps> = ({ onC
     }));
   };
 
-  // Detecta el excedente de las ENTRADAS que puede registrarse como stock disponible:
-  // productos agregados manualmente (todo el delta) y productos cargados desde
-  // Abastecimiento cuya cantidad fue aumentada (delta - cargadoAbastecimiento).
-  const detectarDisponiblesMasivo = (): ConfirmarDisponibleBodegaItem[] => {
-    return itemsPedido
-      .filter(i => i.motivo === 'ENTRADA_BODEGA')
-      .map(i => ({ item: i, extra: i.delta - (i.cargadoAbastecimiento ?? 0) }))
-      .filter(x => x.extra > 0.001)
-      .map(x => ({
-        idProducto: x.item.producto.idProducto,
-        nombreProducto: x.item.producto.nombreProducto,
-        unidad: x.item.producto.detalles,
-        cantidad: parseFloat(x.extra.toFixed(3)),
-      }));
-  };
-
-  // Detecta las SALIDAS (salida/merma/devolución) cuyo producto tiene stock disponible
-  // registrado: consulta el disponible real y arma el descuento topeado (min(salida, disponible)).
-  const detectarSalidaDisponiblesMasivo = async (): Promise<ConfirmarSalidaDisponibleItem[]> => {
-    const MOTIVOS_SALIDA = ['SALIDA_BODEGA', 'MERMA_BODEGA', 'DEVOLUCION'];
-    // Sumar la salida total por producto.
-    const salidaPorProducto = new Map<number, { item: ItemBodegaMasivo; salida: number }>();
-    for (const i of itemsPedido) {
-      if (!MOTIVOS_SALIDA.includes(i.motivo)) continue;
-      const key = i.producto.idProducto;
-      const ex = salidaPorProducto.get(key);
-      if (ex) ex.salida += i.delta;
-      else salidaPorProducto.set(key, { item: i, salida: i.delta });
-    }
-    if (salidaPorProducto.size === 0) return [];
-
-    const ids = Array.from(salidaPorProducto.keys());
-    let disponiblesMap: Record<number, number> = {};
-    try {
-      disponiblesMap = await consultarDisponiblesPorProductoService(ids, 'BODEGA_TRANSITO');
-    } catch {
-      // Si falla la consulta, no bloqueamos la salida: simplemente no mostramos el modal.
-      return [];
-    }
-
-    const resultado: ConfirmarSalidaDisponibleItem[] = [];
-    for (const [idProducto, { item, salida }] of salidaPorProducto.entries()) {
-      const disponible = disponiblesMap[idProducto] ?? 0;
-      if (disponible <= 0.001) continue;
-      // La salida de bodega es completa; del disponible se descuenta hasta su máximo.
-      const aDescontar = Math.min(salida, disponible);
-      resultado.push({
-        idProducto,
-        nombreProducto: item.producto.nombreProducto,
-        unidad: item.producto.detalles,
-        cantidadSalida: parseFloat(salida.toFixed(3)),
-        disponible: parseFloat(disponible.toFixed(3)),
-        aDescontar: parseFloat(aDescontar.toFixed(3)),
-      });
-    }
-    return resultado;
-  };
-
   const procesarMasivo = async () => {
     if (itemsPedido.length === 0) return;
-    // Con la config "Registro de disponible obligatorio" apagada (default/opcional), no se
-    // pregunta nada: las entradas se procesan directo, sin registrar disponible.
-    if (disponibleObligatorio) {
-      const disponibles = detectarDisponiblesMasivo();
-      if (disponibles.length > 0) {
-        setDisponiblesMasivo(disponibles);
-        setIsDisponibleMasivoOpen(true);
-        return;
-      }
-    }
-    await continuarConSalidaMasivo();
-  };
-
-  // Tras resolver las ENTRADAS, revisa si alguna SALIDA tiene disponible que descontar.
-  const continuarConSalidaMasivo = async () => {
-    const salidas = await detectarSalidaDisponiblesMasivo();
-    if (salidas.length > 0) {
-      setSalidaDisponiblesMasivo(salidas);
-      setIsSalidaDisponibleMasivoOpen(true);
-      return;
-    }
-    await ejecutarMasivo();
-  };
-
-  const handleConfirmarDisponibleMasivo = async () => {
-    setProcessState('procesando');
-    try {
-      await registrarDisponiblesService(
-        disponiblesMasivo.map(d => ({
-          idProducto: d.idProducto,
-          cantidad: d.cantidad,
-          tipoDisponible: 'BODEGA_TRANSITO',
-        }))
-      );
-      toast.success('Productos registrados como stock disponible de bodega de tránsito');
-    } catch {
-      toast.warning('No se pudieron registrar los disponibles, pero la entrada continuará');
-    }
-    setProcessState('idle');
-    setIsDisponibleMasivoOpen(false);
-    await continuarConSalidaMasivo();
-  };
-
-  // Aborta todo: no procesa nada y deja los ítems tal cual en la lista para que el usuario los
-  // revise o corrija.
-  const handleCancelarDisponibleMasivo = () => {
-    setIsDisponibleMasivoOpen(false);
-  };
-
-  const handleConfirmarSalidaDisponibleMasivo = async () => {
-    setProcessState('procesando');
-    try {
-      const payload: IRestarDisponibleDTO[] = salidaDisponiblesMasivo.map(d => ({
-        idProducto: d.idProducto,
-        cantidad: d.aDescontar,
-        disponibleEnVista: d.disponible,
-        tipoDisponible: 'BODEGA_TRANSITO',
-      }));
-      const res = await restarDisponiblesService(payload);
-      const insuficientes = res.resultados.filter(r => r.estado === 'INSUFICIENTE');
-      const sincronizados = res.resultados.filter(r => r.estado === 'SINCRONIZADO');
-      if (insuficientes.length > 0) {
-        toast.warning(
-          `Un proceso en paralelo dejó el stock disponible por debajo en ${insuficientes.length} producto(s); no se descontó el sobrante. La salida se realizó igualmente.`,
-          { duration: 20000 }
-        );
-      } else if (sincronizados.length > 0) {
-        toast.warning('El stock disponible cambió por un proceso en paralelo; se sincronizó automáticamente.', { duration: 12000 });
-      } else {
-        toast.success('Stock disponible descontado correctamente');
-      }
-    } catch {
-      toast.warning('No se pudo descontar el stock disponible, pero la salida continuará');
-    }
-    setProcessState('idle');
-    setIsSalidaDisponibleMasivoOpen(false);
-    await ejecutarMasivo();
-  };
-
-  const handleCancelarSalidaDisponibleMasivo = async () => {
-    setIsSalidaDisponibleMasivoOpen(false);
     await ejecutarMasivo();
   };
 
@@ -700,33 +550,63 @@ const ControlMasivoBodegaModal: React.FC<ControlMasivoBodegaModalProps> = ({ onC
   };
 
   // ── Formulario principal ──
-  const chipColorMap: Record<string, 'success' | 'warning' | 'primary' | 'danger' | 'secondary'> = {
-    ENTRADA_BODEGA: 'success',
-    AJUSTE_BODEGA:  'primary',
-    SALIDA_BODEGA:  'danger',
-    MERMA_BODEGA:   'danger',
-    DEVOLUCION:     'secondary',
+  // Metadata visual por motivo (color, icono y descripción) — mismo esquema de color-coding
+  // que PedidoMasivoModal.tsx (Inventario): verde = entra stock, rojo = sale/merma, amarillo
+  // Duoc = ajuste, gris = devolución. Este modal no maneja TRASLADO (eso es exclusivo de
+  // Inventario → Bodega), por eso no aparece acá.
+  const MOTIVO_META: Record<string, { color: ChipColor; icon: string; texto: string }> = {
+    ENTRADA_BODEGA: { color: 'success', icon: 'lucide:arrow-down-to-line', texto: 'Entrada de insumos a la bodega de tránsito' },
+    SALIDA_BODEGA: { color: 'danger', icon: 'lucide:arrow-up-from-line', texto: 'Salida de insumos de la bodega de tránsito' },
+    AJUSTE_BODEGA: { color: 'primary', icon: 'lucide:sliders-horizontal', texto: 'Ajustar el stock actual a un nuevo valor' },
+    MERMA_BODEGA: { color: 'danger', icon: 'lucide:trending-down', texto: 'Salida por daño o pérdida en bodega de tránsito' },
+    DEVOLUCION: { color: 'secondary', icon: 'lucide:undo-2', texto: 'Registrar devolución de insumos' },
   };
+
+  // Clases estáticas por color: Tailwind no genera `bg-${color}-50` en tiempo de ejecución.
+  const MOTIVO_CLASES: Record<ChipColor, { banner: string; barra: string; icono: string }> = {
+    success: { banner: 'bg-success-50 border-success-200 dark:bg-success/10 dark:border-success/25', barra: 'bg-success', icono: 'text-success-600 dark:text-success' },
+    danger: { banner: 'bg-danger-50 border-danger-200 dark:bg-danger/10 dark:border-danger/25', barra: 'bg-danger', icono: 'text-danger-600 dark:text-danger' },
+    warning: { banner: 'bg-warning-50 border-warning-200 dark:bg-warning/10 dark:border-warning/25', barra: 'bg-warning', icono: 'text-warning-600 dark:text-warning' },
+    primary: { banner: 'bg-primary-50 border-primary-200 dark:bg-primary/10 dark:border-primary/25', barra: 'bg-primary', icono: 'text-primary-700 dark:text-primary' },
+    secondary: { banner: 'bg-default-100 border-default-200 dark:bg-default-50 dark:border-default-100', barra: 'bg-secondary', icono: 'text-secondary dark:text-foreground' },
+  };
+
+  const metaMotivoActual = motivo ? MOTIVO_META[motivo] : undefined;
+
+  // Grilla del listado: la MISMA definición para encabezado y filas (evita el descalce que
+  // ocurre cuando una columna `auto` se resuelve distinto en cada grid independiente — ver
+  // PedidoMasivoModal.tsx para el detalle del bug).
+  const GRID_LISTADO =
+    'grid grid-cols-[minmax(0,2.4fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1.2fr)_72px] gap-3 pl-5 pr-4';
 
   return (
     <>
       <div className="flex flex-col w-full overflow-hidden rounded-2xl">
       <ModalHeader className="flex flex-col gap-3 border-b border-default-100 dark:border-default-50 bg-white dark:bg-content2 px-6 py-4">
-        <div className="flex-1">
-          <h2 className="text-xl font-bold text-secondary dark:text-foreground">Control de Stock Masivo</h2>
-          <p className="text-sm font-medium text-default-500 mt-1">
-            Registre entradas, salidas, mermas y ajustes en la bodega de tránsito.
-          </p>
+        <div className="flex items-start gap-3 min-w-0 pr-8">
+          <div className="hidden sm:flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/15 text-primary-700 dark:text-primary">
+            <Icon icon="lucide:layers" width={20} />
+          </div>
+          <div className="min-w-0">
+            <h2 className="text-xl font-bold text-secondary dark:text-foreground leading-tight">Control de Stock Masivo</h2>
+            <p className="text-sm font-medium text-default-500 mt-0.5">
+              Registre entradas, salidas, mermas y ajustes en la bodega de tránsito.
+            </p>
+          </div>
         </div>
         {puedeAccederAbastecimiento && (
         <div className="flex flex-wrap items-center gap-2">
+          <span className="text-tiny font-semibold uppercase tracking-wider text-default-400">
+            Cargar desde
+          </span>
           <Tooltip content="Ver OPs confirmadas de proveedores" color="foreground" className="text-xs">
             <Button
               variant="flat"
               color="secondary"
-              size="md"
+              size="sm"
               className="font-semibold"
-              startContent={<Icon icon="lucide:truck" width={18} />}
+              startContent={<Icon icon="lucide:truck" width={16} />}
+              endContent={<Icon icon="lucide:chevron-right" width={14} className="opacity-50" />}
               onPress={() => { onAbastecimientoOpen(); cargarAbastecimiento('semana'); }}
             >
               Abastecimiento de Proveedores
@@ -739,11 +619,17 @@ const ControlMasivoBodegaModal: React.FC<ControlMasivoBodegaModalProps> = ({ onC
       <ModalBody className="px-4 py-3 space-y-3">
         {/* ── Formulario de agregar ── */}
         <div className="p-3 border border-default-200 dark:border-default-100 rounded-xl bg-default-50 dark:bg-content2">
-          {productoActual && (
-            <p className="text-xs text-default-500 px-0.5 mb-1.5">
-              Stock actual en tránsito: <span className="font-semibold text-secondary">{fmtCL(stockReal)}</span>
-            </p>
-          )}
+          <div className="flex items-center justify-between gap-2 mb-2 px-0.5">
+            <span className="flex items-center gap-1.5 text-tiny font-semibold uppercase tracking-wider text-default-400">
+              <Icon icon="lucide:package-plus" width={14} />
+              Agregar producto
+            </span>
+            {productoActual && (
+              <Chip size="sm" variant="flat" color="default" className="text-tiny">
+                Stock en tránsito: <span className="font-semibold text-secondary dark:text-foreground ml-1">{fmtCL(stockReal)}</span>
+              </Chip>
+            )}
+          </div>
           <div className="grid grid-cols-1 md:grid-cols-[2fr_1fr_1fr_auto] gap-3 items-start">
             {/* Buscador producto */}
             <div className="relative" ref={inputWrapperRef}>
@@ -824,53 +710,89 @@ const ControlMasivoBodegaModal: React.FC<ControlMasivoBodegaModalProps> = ({ onC
               isRequired
             />
 
-            {/* Botón agregar */}
-            <Button
-              isIconOnly
-              color="warning"
-              variant="solid"
-              radius="full"
-              size="lg"
-              onPress={agregarProducto}
-              isDisabled={!isFormValid}
-              className="shadow-md"
-            >
-              <Icon icon="lucide:plus" width={22} />
-            </Button>
+            {/* Botón agregar — alineado al centro de los inputs (56px de alto) */}
+            <div className="flex items-center justify-end md:h-14">
+              <Tooltip content={isFormValid ? 'Agregar al listado' : 'Complete producto, acción y cantidad'} color="foreground" className="text-xs">
+                <span>
+                  <Button
+                    isIconOnly
+                    color="warning"
+                    variant="solid"
+                    radius="full"
+                    size="lg"
+                    onPress={agregarProducto}
+                    isDisabled={!isFormValid}
+                    aria-label="Agregar al listado"
+                    className="shadow-md transition-transform data-[hover=true]:scale-105"
+                  >
+                    <Icon icon="lucide:plus" width={22} />
+                  </Button>
+                </span>
+              </Tooltip>
+            </div>
           </div>
 
           {/* Info motivo */}
           {motivo && (
-            <div className="mt-2 p-2.5 bg-secondary/5 rounded-lg border border-secondary/10 dark:bg-white/5 dark:border-white/10">
-              <p className="text-secondary dark:text-foreground text-xs font-medium flex items-center gap-2">
-                <Icon icon="lucide:info" width={14} className="shrink-0" />
-                {motivo === 'ENTRADA_BODEGA'  && 'Entrada de insumos a la bodega de tránsito'}
-                {motivo === 'SALIDA_BODEGA'   && 'Salida de insumos de la bodega de tránsito'}
-                {motivo === 'AJUSTE_BODEGA'   && 'Ajustar el stock actual a un nuevo valor'}
-                {motivo === 'MERMA_BODEGA'    && 'Salida por daño o pérdida en bodega de tránsito'}
-                {motivo === 'DEVOLUCION'      && 'Registrar devolución de insumos'}
-              </p>
+            <div
+              className={`mt-2 flex items-center gap-2.5 px-3 py-2 rounded-medium border ${
+                metaMotivoActual
+                  ? MOTIVO_CLASES[metaMotivoActual.color].banner
+                  : 'bg-default-100 border-default-200 dark:bg-default-50 dark:border-default-100'
+              }`}
+            >
+              <Icon
+                icon={metaMotivoActual?.icon ?? 'lucide:info'}
+                width={16}
+                className={`shrink-0 ${metaMotivoActual ? MOTIVO_CLASES[metaMotivoActual.color].icono : 'text-default-500'}`}
+              />
+              <span className="text-sm font-medium text-secondary dark:text-foreground">
+                {metaMotivoActual?.texto}
+              </span>
             </div>
           )}
         </div>
+
+        {/* Estado vacío — evita el hueco entre el formulario y el pie del modal */}
+        {itemsPedido.length === 0 && (
+          <div className="flex flex-col items-center justify-center gap-2 py-10 px-4 border border-dashed border-default-200 dark:border-default-100 rounded-xl text-center">
+            <div className="flex h-11 w-11 items-center justify-center rounded-full bg-default-100 dark:bg-default-50 text-default-400">
+              <Icon icon="lucide:clipboard-list" width={22} />
+            </div>
+            <p className="text-sm font-semibold text-default-600 dark:text-default-500">
+              Aún no hay productos en el listado
+            </p>
+            <p className="text-xs text-default-400 max-w-sm">
+              Busque un producto y presione <span className="font-semibold text-warning-600 dark:text-warning">+</span> para agregarlo,
+              o cárguelos desde Abastecimiento de Proveedores.
+            </p>
+          </div>
+        )}
 
         {/* ── Lista de ítems ── */}
         {itemsPedido.length > 0 && (
           <div className="space-y-3">
             <button
               type="button"
-              className="w-full flex items-center gap-2 font-bold text-secondary hover:text-secondary/80 transition-colors cursor-pointer"
+              className="w-full flex items-center gap-2 font-bold text-secondary dark:text-foreground hover:text-secondary/80 dark:hover:text-foreground/80 transition-colors cursor-pointer"
               onClick={() => setListadoExpandido(v => !v)}
+              aria-expanded={listadoExpandido}
             >
               <Icon icon="lucide:list" width={18} />
-              Listado ({itemsPedido.length} producto{itemsPedido.length !== 1 ? 's' : ''})
-              <Icon icon={listadoExpandido ? 'lucide:chevron-up' : 'lucide:chevron-down'} width={16} className="ml-auto text-default-400" />
+              Listado
+              <Chip size="sm" variant="flat" color="warning" className="font-semibold">
+                {itemsPedido.length} producto{itemsPedido.length !== 1 ? 's' : ''}
+              </Chip>
+              <span className="ml-auto flex items-center gap-1 text-xs font-medium text-default-400">
+                {listadoExpandido ? 'Contraer' : 'Expandir'}
+                <Icon icon={listadoExpandido ? 'lucide:chevron-up' : 'lucide:chevron-down'} width={16} />
+              </span>
             </button>
 
-            <div className={`transition-all duration-300 ${listadoExpandido ? 'max-h-[65vh]' : 'max-h-[420px]'} overflow-y-auto custom-scrollbar`}>
-              <div className="border border-default-200 dark:border-default-100 rounded-xl overflow-hidden bg-white dark:bg-content2">
-                <div className="grid grid-cols-[2fr_1fr_1fr_1fr_auto] gap-3 px-4 py-3 bg-default-100 dark:bg-default-50 font-semibold text-sm text-default-600 border-b border-default-200 dark:border-default-100">
-                  <div>Producto</div>
+            <div className="border border-default-200 dark:border-default-100 rounded-xl overflow-hidden bg-white dark:bg-content2 shadow-sm">
+              <div className={`transition-all duration-300 ${listadoExpandido ? 'max-h-[65vh]' : 'max-h-[420px]'} overflow-y-scroll custom-scrollbar`}>
+                <div className={`sticky top-0 z-10 ${GRID_LISTADO} py-2.5 bg-default-100 dark:bg-default-50 font-semibold text-tiny uppercase tracking-wider text-default-500 border-b border-default-200 dark:border-default-100`}>
+                  <div className="text-left">Producto</div>
                   <div className="text-center">Stock Tránsito</div>
                   <div className="text-center">Cantidad</div>
                   <div className="text-center">Resultado</div>
@@ -882,107 +804,128 @@ const ControlMasivoBodegaModal: React.FC<ControlMasivoBodegaModalProps> = ({ onC
                     const ajuste  = item.motivo === 'AJUSTE_BODEGA';
                     const sf = ajuste ? item.delta : salida ? item.producto.stock - item.delta : item.producto.stock + item.delta;
                     const simbolo = salida ? '-' : ajuste ? '=' : '+';
-                    const color   = chipColorMap[item.motivo] ?? 'default';
+                    const meta = MOTIVO_META[item.motivo];
+                    const color = meta?.color ?? 'default';
+                    const clases = meta ? MOTIVO_CLASES[meta.color] : undefined;
                     return (
-                      <div key={item.id} className="grid grid-cols-[2fr_1fr_1fr_1fr_auto] gap-3 px-4 py-3 items-center hover:bg-default-50 dark:hover:bg-default-100/50 transition-colors">
+                      <div key={item.id} className={`relative ${GRID_LISTADO} py-3 items-center hover:bg-default-50 dark:hover:bg-default-100/50 transition-colors group`}>
+                        {/* Barra lateral con el color del motivo */}
+                        <span aria-hidden className={`absolute left-0 top-0 bottom-0 w-1 ${clases?.barra ?? 'bg-default-300'}`} />
+
                         <div className="min-w-0">
-                          <p className="font-medium text-sm text-default-800 dark:text-foreground truncate">{item.producto.nombreProducto}</p>
-                          <p className="text-xs text-default-400">{item.producto.detalles}</p>
+                          <p className="font-medium text-sm text-default-800 dark:text-foreground truncate" title={item.producto.nombreProducto}>
+                            {item.producto.nombreProducto}
+                          </p>
+                          <p className="text-xs text-default-400 truncate">
+                            <Icon icon={meta?.icon ?? 'lucide:package'} width={12} className="inline-block mr-1 -mt-0.5" />
+                            {item.producto.detalles}
+                          </p>
                         </div>
+
                         <div className="text-center">
-                          <span className="font-semibold text-sm">{fmtCL(item.producto.stock)}</span>
+                          <span className="font-semibold text-sm tabular-nums text-default-600 dark:text-default-500">
+                            {fmtCL(item.producto.stock)}
+                          </span>
                         </div>
-                        <div className="flex items-center justify-center gap-1">
-                          <Button isIconOnly variant="light" size="sm" className="h-6 w-6 min-w-6"
-                            onPress={() => actualizarDelta(item.id, Math.max(0, item.delta - (item.producto.esFraccionario ? 0.5 : 1)))}>
-                            <Icon icon="lucide:minus" width={14} />
-                          </Button>
+
+                        {/* Cantidad editable — el input nativo ya trae sus flechas */}
+                        <div className="flex justify-center">
                           <Input
                             type="number"
                             value={item.delta.toString()}
                             onValueChange={val => { const n = parseFloat(val); if (!isNaN(n)) actualizarDelta(item.id, n); }}
                             step={item.producto.esFraccionario ? '0.5' : '1'}
-                            className="w-16"
+                            aria-label="Cantidad"
                             size="sm"
                             variant="bordered"
-                            classNames={{ input: 'text-center text-xs h-6' }}
+                            classNames={{
+                              base: 'w-24',
+                              inputWrapper: 'h-8 min-h-8',
+                              input: 'text-center text-sm font-semibold tabular-nums',
+                            }}
                           />
-                          <Button isIconOnly variant="light" size="sm" className="h-6 w-6 min-w-6"
-                            onPress={() => actualizarDelta(item.id, item.delta + (item.producto.esFraccionario ? 0.5 : 1))}>
-                            <Icon icon="lucide:plus" width={14} />
-                          </Button>
                         </div>
-                        <div className="text-center">
-                          <Chip size="sm" color={color} variant="flat" className="text-xs">
-                            {simbolo}{fmtCL(item.delta)} → {fmtCL(sf)}
+
+                        {/* Resultado — el valor final manda, el delta queda como línea
+                            secundaria; en rojo con alerta si el resultado queda negativo */}
+                        <div className="flex flex-col items-center leading-tight">
+                          <span
+                            className={`text-base font-bold tabular-nums ${
+                              sf < 0 ? 'text-danger' : 'text-secondary dark:text-foreground'
+                            }`}
+                          >
+                            {sf < 0 && (
+                              <Icon icon="lucide:alert-triangle" width={14} className="inline-block mr-1 -mt-0.5" />
+                            )}
+                            {fmtCL(sf)}
+                          </span>
+                          <Chip
+                            size="sm"
+                            color={color}
+                            variant="flat"
+                            classNames={{ base: 'h-5 mt-0.5', content: 'px-1.5 text-tiny font-semibold tabular-nums' }}
+                          >
+                            {ajuste ? 'ajuste' : `${simbolo}${fmtCL(item.delta)}`}
                           </Chip>
                         </div>
+
                         <div className="text-center">
-                          <Button isIconOnly variant="light" color="danger" size="sm" onPress={() => eliminarItem(item.id)}>
-                            <Icon icon="lucide:trash-2" width={16} />
-                          </Button>
+                          <Tooltip content="Quitar del listado" color="danger" className="text-xs">
+                            <Button
+                              isIconOnly
+                              variant="light"
+                              size="sm"
+                              onPress={() => eliminarItem(item.id)}
+                              aria-label={`Quitar ${item.producto.nombreProducto} del listado`}
+                              className="text-default-300 group-hover:text-default-500 hover:!text-danger transition-colors"
+                            >
+                              <Icon icon="lucide:trash-2" width={16} />
+                            </Button>
+                          </Tooltip>
                         </div>
                       </div>
                     );
                   })}
                 </div>
               </div>
-            </div>
 
-            <div className="flex justify-between items-center px-1">
-              <span className="text-sm text-default-500">Total de productos:</span>
-              <span className="font-bold text-secondary">{itemsPedido.length}</span>
+              {/* Resumen — dentro del bloque de la tabla, no flotando debajo */}
+              <div className="flex justify-between items-center px-4 py-2.5 bg-default-50 dark:bg-default-50/50 border-t border-default-200 dark:border-default-100">
+                <span className="text-xs font-medium text-default-500">Total de productos</span>
+                <span className="text-sm font-bold text-secondary dark:text-foreground tabular-nums">{itemsPedido.length}</span>
+              </div>
             </div>
           </div>
         )}
       </ModalBody>
 
-      <ModalFooter className="bg-default-50 border-t border-default-100 flex justify-between items-center gap-2">
+      <ModalFooter className="bg-default-50 dark:bg-content2 border-t border-default-100 dark:border-default-50 flex justify-between items-center gap-2 px-6 py-3">
         <Button
-          variant="flat"
+          variant="light"
           color="danger"
           size="sm"
-          startContent={<Icon icon="lucide:trash-2" width={15} />}
+          startContent={<Icon icon="lucide:eraser" width={15} />}
           onPress={() => setItemsPedido([])}
           isDisabled={itemsPedido.length === 0 || processState !== 'idle'}
           className="font-medium"
         >
           Limpiar todo
         </Button>
-        <div className="flex gap-2">
-          <Button variant="ghost" onPress={onClose} isDisabled={processState !== 'idle'}>Cancelar</Button>
+        <div className="flex items-center gap-2">
+          <Button variant="light" onPress={onClose} isDisabled={processState !== 'idle'} className="font-medium text-default-500">Cancelar</Button>
           <Button
             color="warning"
             onPress={procesarMasivo}
             isDisabled={itemsPedido.length === 0 || processState !== 'idle'}
             isLoading={processState !== 'idle'}
             startContent={processState === 'idle' ? <Icon icon="lucide:send" width={18} /> : undefined}
+            className="font-semibold shadow-md"
           >
             {processState === 'idle' ? `Ctrl. Masivo (${itemsPedido.length})` : 'Procesando...'}
           </Button>
         </div>
       </ModalFooter>
     </div>
-
-      {/* Confirmación: registrar excedente de ENTRADAS como stock disponible */}
-      <ConfirmarDisponibleBodegaModal
-        isOpen={isDisponibleMasivoOpen}
-        items={disponiblesMasivo}
-        contexto="bodega"
-        isLoading={processState !== 'idle'}
-        onCancelar={handleCancelarDisponibleMasivo}
-        onConfirmar={handleConfirmarDisponibleMasivo}
-      />
-
-      {/* Confirmación: descontar disponible al registrar SALIDAS */}
-      <ConfirmarSalidaDisponibleModal
-        isOpen={isSalidaDisponibleMasivoOpen}
-        items={salidaDisponiblesMasivo}
-        tipoMovimientoLabel="Salida"
-        isLoading={processState !== 'idle'}
-        onCancelar={handleCancelarSalidaDisponibleMasivo}
-        onConfirmar={handleConfirmarSalidaDisponibleMasivo}
-      />
 
       {/* Modal de Abastecimiento de Proveedores (OPs CONFIRMADA) */}
       <Modal
@@ -1009,7 +952,7 @@ const ControlMasivoBodegaModal: React.FC<ControlMasivoBodegaModalProps> = ({ onC
                     <Icon icon="lucide:info" width={14} className="text-warning shrink-0" />
                     <p className="text-xs text-warning-700 dark:text-warning">Se visualizan todas las categorías asignadas al abastecimiento.</p>
                   </div>
-                  {onOpenGestionAbastecimiento && (
+                  {onOpenGestionAbastecimiento && puedeGestionarAbastecimiento && (
                     <Button
                       size="sm"
                       variant="light"
