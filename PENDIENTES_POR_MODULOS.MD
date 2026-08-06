@@ -163,6 +163,49 @@ insertar.
 
 ## 📦 Módulo: Gestión de Inventario (`gestion_inventario`)
 
+### Backend
+
+#### ⚠️ Control de Stock Masivo puede fallar con "Stock insuficiente" por caché de stock desactualizado en el front — falta endpoint de revalidación pre-envío
+
+**Estado:** Detectado 2026-08-06 · **Dificultad estimada:** Media
+
+**Archivos:** `backend/src/main/java/KuHub/modules/gestion_inventario/repository/InventarioRepository.java:22` (`findAllByIdsWithProductsActive`, ya existe, solo falta exponerlo), `backend/src/main/java/KuHub/modules/gestion_inventario/services/InventarioServiceImpl.java:442-516` (`processBulkInventoryUpdate`), `backend/src/main/java/KuHub/modules/gestion_inventario/services/MovimientoServiceImpl.java:217-231` (caso `TRASLADO` en `buildMovementForBulkUpdate`, rechaza stock negativo), `frontend/src/pages/inventario/PedidoMasivoModal.tsx:693-722` (armado del payload `agregado` antes de `bulkUpdateInventoryStockService`), `frontend/src/pages/bodega-transito/ControlMasivoBodegaModal.tsx` (mismo patrón, equivalente en Bodega Tránsito)
+
+Reportado por el usuario con capturas reales: al enviar Control de Stock Masivo (Inventario), varios
+productos fallan con `"Stock insuficiente para traslado"` en el primer intento — el modal de resultado
+muestra "N con error" — y solo funcionan al presionar "Corregir errores" (que recarga el modal con
+`retryItems`, ver `PedidoMasivoModal.tsx:742-754`) y reenviar una segunda vez.
+
+**Causa raíz confirmada:** el `stock` que ve el usuario en el modal es una foto tomada cuando se
+cargó/filtró la página de Inventario (o Bodega Tránsito) — nada la refresca sola. El backend sí
+valida correctamente contra el stock real en BD y rechaza cuando resultaría negativo (por eso el
+error), y ya devuelve el `stockResultante` real en cada `ItemResult` — el flujo de "Corregir errores"
+usa ese valor real para el segundo intento, que por eso siempre funciona. El primer intento falla
+porque **nada revalida el stock antes de construir y enviar el payload**.
+
+**Ya resuelto en esta sesión (2026-08-05/06), no reabrir:** se agregó `aplicarStocksProcesados()` en
+`frontend/src/pages/inventario.tsx` (~línea 723) y `aplicarStocksProcesadosBodega()` en
+`frontend/src/pages/bodega-transito.tsx` (~línea 502), que parchan `productos`/`filteredProductos`/
+`cacheRef` en memoria con el `stockResultante` real apenas termina un Control de Stock Masivo — sin
+F5. Esto cubre la desincronización causada por **la propia sesión enviando el mismo modal dos veces
+seguidas**. NO cubre que el stock cambie por cualquier otra vía mientras la página sigue abierta:
+otro usuario/pestaña, "Preparar Entrega" en Bodega Tránsito, sincronización de Excel, o simplemente
+que pase tiempo sin recargar.
+
+**Fix propuesto, discutido pero NO implementado — decisión pendiente del usuario, no proceder sin
+confirmación explícita:** exponer `GET /api/v1/inventario/find-by-ids` (el repositorio ya existe,
+solo falta el controller) y, justo antes de armar el payload en `PedidoMasivoModal.tsx` y en
+`ControlMasivoBodegaModal.tsx`, pedir el stock real de los `idInventario` involucrados. Se acordó
+explícitamente con el usuario que **NO debe autoajustar el delta en silencio** — si el stock real
+difiere de lo que ve el usuario, se le avisa (qué producto, cuál es el stock real) y él decide si
+ajusta o cancela. Un autoajuste silencioso agravaría el bug de `marcarEnviadoBodegaService` descrito
+abajo (Frontend), porque introduciría otra vía de enviar menos de lo necesario sin dejar rastro de
+que el envío quedó parcial. Se preguntó al usuario vía `AskUserQuestion` si proceder con esta
+implementación (separada o junto al pendiente de abajo) y **quedó sin responder** — la conversación
+se cortó para compactar contexto antes de la confirmación.
+
+**Persona asignada:** Matheus.
+
 ### Frontend
 
 #### ⚠️ Listado final de Control de Stock Masivo no agrupa por día ni por solicitud de origen
@@ -182,10 +225,11 @@ mezclando todo. Esto es justo lo contrario de lo que se necesita, porque el fluj
 para poder enviar por ciertas solicitudes o por día específico (por ejemplo, para separar en
 distintos envíos lo que ya se entregó de lo que todavía falta entregar).
 
-Además, hoy los detalles ya marcados `enviadoBodegaTransito` se descartan directamente al armar
-la selección (`cargarSolicitudesSeleccionadas`, línea 479: `if (det.enviadoBodegaTransito)
-continue;`) en vez de mostrarse pero marcados como "ya entregado" — así que tampoco hay manera de
-ver de un vistazo, para un día o solicitud dado, qué quedó pendiente vs. qué ya se despachó antes.
+Además, hoy los detalles sin faltante (`getFaltante(det) <= 0` — ya sea porque `cantidadEnviadaBodega`
+cubre todo lo solicitado, o porque el pool de `stockBodegaTransito` lo cubre) se descartan
+directamente al armar la selección (`cargarSolicitudesSeleccionadas`, `if (faltante <= 0) continue;`)
+en vez de mostrarse pero marcados como "ya entregado" — así que tampoco hay manera de ver de un
+vistazo, para un día o solicitud dado, qué quedó pendiente vs. qué ya se despachó antes.
 
 Para retomar: `ItemPedidoMasivo` ya trae `idSolicitud`, pero no `fecha`/`día` — habría que
 propagar `sol.fechaSolicitada` al armar cada ítem (igual que ya se hace con `idSolicitud`), y
