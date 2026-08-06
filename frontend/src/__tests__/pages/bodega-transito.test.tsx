@@ -12,7 +12,7 @@ const {
   mockObtenerBodegaPaginada, mockBuscarBodega, mockBuscarBodegaCodigo,
   mockObtenerBulkBodega, mockBulkUpdateBodega, mockInicializarAbast, mockObtenerBodegaByIds,
   mockObtenerEntregasDiarias, mockObtenerFiltros, mockObtenerUnidades,
-  mockPrepararEntrega, mockRegistrarDisponibles,
+  mockPrepararEntrega,
   mockToastSuccess, mockToastError, mockToastWarning,
 } = vi.hoisted(() => ({
   mockObtenerBodegaPaginada: vi.fn(),
@@ -26,7 +26,6 @@ const {
   mockObtenerFiltros: vi.fn(),
   mockObtenerUnidades: vi.fn(),
   mockPrepararEntrega: vi.fn(),
-  mockRegistrarDisponibles: vi.fn(),
   mockToastSuccess: vi.fn(),
   mockToastError: vi.fn(),
   mockToastWarning: vi.fn(),
@@ -68,8 +67,6 @@ vi.mock('../../components/modals/GestionCategoriasModal', () => ({ default: () =
 vi.mock('../../components/modals/GestionUnidadesModal', () => ({ default: () => null }));
 vi.mock('../../components/modals/GestionAbastecimientoModal', () => ({ default: () => null }));
 vi.mock('../../components/modals/StockDisponiblesModal', () => ({ default: () => null }));
-vi.mock('../../components/modals/ConfirmarDisponibleBodegaModal', () => ({ default: () => null }));
-vi.mock('../../components/modals/ConfirmarSalidaDisponibleModal', () => ({ default: () => null }));
 
 // Servicios
 vi.mock('../../services/inventario/bodega-transito-service', () => ({
@@ -86,9 +83,6 @@ vi.mock('../../services/solicitud/solicitud-service', () => ({
   actualizarEstadoBodegaService: vi.fn(),
   obtenerEntregasDiariasService: mockObtenerEntregasDiarias,
   prepararEntregaService: mockPrepararEntrega,
-  registrarDisponiblesService: mockRegistrarDisponibles,
-  consultarDisponiblesPorProductoService: vi.fn().mockResolvedValue({}),
-  restarDisponiblesService: vi.fn(),
 }));
 
 vi.mock('../../services/pedido/pedido-semanal-bodega-service', () => ({
@@ -231,7 +225,6 @@ describe('BodegaTransitoPage', () => {
     mockObtenerFiltros.mockResolvedValue({ categorias: [{ id: 1, nombre: 'Abarrotes' }], unidades: [{ id: 1, nombre: 'kilo' }] });
     mockObtenerUnidades.mockResolvedValue([{ id: 1, nombre: 'kilo', abreviatura: 'kg' }]);
     mockPrepararEntrega.mockResolvedValue({});
-    mockRegistrarDisponibles.mockResolvedValue({});
   });
 
   afterEach(() => cleanup());

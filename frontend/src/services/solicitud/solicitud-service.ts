@@ -1036,7 +1036,18 @@ export interface IDetalleBodegaItem {
   cantidadSolicitada: number;
   idInventario: number;
   stock: number;
-  enviadoBodegaTransito: boolean;
+  /**
+   * Stock físico actual del producto en bodega de tránsito. Viene repetido en todos los detalles
+   * del mismo producto: el modal lo reparte entre las solicitudes por orden cronológico para
+   * determinar cuáles ya están cubiertas y no necesitan traslado.
+   */
+  stockBodegaTransito: number;
+  /**
+   * Suma real de movimientos TRASLADO (inventario → bodega de tránsito) ya ejecutados para esta
+   * solicitud y producto puntual. Reemplaza al viejo boolean enviadoBodegaTransito: permite
+   * distinguir envío parcial (> 0 pero < cantidadSolicitada) de envío completo.
+   */
+  cantidadEnviadaBodega: number;
 }
 
 export interface ISolicitudBodegaItem {
@@ -1065,88 +1076,23 @@ export const obtenerAbastecimientoBodegaService = async (
   return response.data;
 };
 
-export const marcarEnviadoBodegaService = async (ids: number[]): Promise<number> => {
-  const response = await api.patch<number>('/solicitud/detalles/marcar-enviado-bodega', ids);
-  return response.data ?? 0;
-};
+// ── Stock Disponible (disponibilidad calculada en vivo — ver 3 pestañas más abajo) ──
 
-// ── Stock Disponible (sobrantes en bodega de tránsito) ──
-export interface IRegistrarDisponibleDTO {
-  idProducto: number;
-  idSolicitud?: number;
-  idPedido?: number;
-  cantidad: number;
-  // Opcional: 'INVENTARIO' (default backend si se omite) o 'BODEGA_TRANSITO'.
-  tipoDisponible?: string;
-}
-
-export const registrarDisponiblesService = async (
-  items: IRegistrarDisponibleDTO[]
-): Promise<void> => {
-  await api.post('/stock-disponible/registrar', items);
-};
-
-/**
- * Consulta el disponible activo por producto (solo los que tienen > 0) para un tipo.
- * Retorna un mapa { idProducto: cantidadDisponible }. Usado por bodega de tránsito
- * para decidir si mostrar el modal de salida con disponibles.
- */
-export const consultarDisponiblesPorProductoService = async (
-  idsProducto: number[],
-  tipo: string = 'BODEGA_TRANSITO'
-): Promise<Record<number, number>> => {
-  if (idsProducto.length === 0) return {};
-  const response = await api.get<Record<number, number>>('/stock-disponible/por-productos', {
-    params: { ids: idsProducto.join(','), tipo },
-  });
-  return response.data ?? {};
-};
-
-export interface IRestarDisponibleDTO {
-  idProducto: number;
-  cantidad: number;
-  // Disponible que veía el usuario; si difiere del real, el backend avisa que sincronizó.
-  disponibleEnVista?: number;
-  tipoDisponible?: string;
-}
-
-export interface IRestarDisponibleItemResult {
-  idProducto: number;
-  // 'OK' | 'SINCRONIZADO' | 'INSUFICIENTE'
-  estado: string;
-  disponibleReal: number;
-  restado: number;
-}
-
-export interface IRestarDisponibleResult {
-  resultados: IRestarDisponibleItemResult[];
-}
-
-/**
- * Descuenta disponible por producto (FIFO) al registrar una salida/merma/devolución.
- * Aplica sincronización ante procesos en paralelo (estado SINCRONIZADO/INSUFICIENTE).
- */
-export const restarDisponiblesService = async (
-  items: IRestarDisponibleDTO[]
-): Promise<IRestarDisponibleResult> => {
-  const response = await api.post<IRestarDisponibleResult>('/stock-disponible/restar', items);
-  return response.data ?? { resultados: [] };
-};
-
-export interface IStockDisponibleItem {
+export interface ISobranteBodegaPeriodoItem {
   nombreProducto: string;
   nombreCategoria: string;
-  stock: number;
   nombreUnidad: string;
   abreviatura: string;
-  fechaRegistro: string;
-  tipoDisponible: string;
-  /** Usuario que registró el sobrante. Solo viene poblado en la vista sin agrupar (agrupado=false); en la agrupada es null. */
-  usuario: string | null;
+  /** Stock físico actual en bodega de tránsito. */
+  stockBodegaTransito: number;
+  /** Suma de solicitudes EN_PEDIDO pendientes cuya fecha cae dentro del período consultado. */
+  cantidadDemandada: number;
+  /** stockBodegaTransito − cantidadDemandada. Siempre > 0 (lo que no alcanza no se incluye). */
+  cantidadSobrante: number;
 }
 
-export interface IStockDisponiblePage {
-  data: IStockDisponibleItem[];
+export interface ISobranteBodegaPeriodoPage {
+  data: ISobranteBodegaPeriodoItem[];
   page: number;
   pageSize: number;
   totalPaginas: number;
@@ -1154,39 +1100,21 @@ export interface IStockDisponiblePage {
 }
 
 /**
- * Lista el stock disponible de Inventario, paginado, filtrable por categoría y por nombre de
- * producto (búsqueda). agrupado=true (default): una fila por producto con la cantidad sumada de
- * todos sus registros. agrupado=false: una fila por cada evento de registro individual, con el
- * usuario que lo generó.
- * Endpoint propio (permiso SD_INVENTARIO): no se llama si el rol no tiene esa lectura.
- * GET /api/v1/stock-disponible/inventario
+ * Sobrante en Bodega de Tránsito calculado para un período: stock físico de bodega menos la
+ * demanda de las solicitudes EN_PEDIDO pendientes cuya fecha cae dentro del rango indicado.
+ * Cálculo en vivo contra el stock actual de bodega de tránsito (ya no hay tabla intermedia
+ * mantenida a mano).
+ * GET /api/v1/stock-disponible/bodega-transito-periodo
  */
-export const obtenerStockDisponiblesInventarioService = async (
+export const obtenerSobranteBodegaTransitoPeriodoService = async (
+  fechaInicio: string,
+  fechaFin: string,
   page: number,
   idCategoria?: number,
-  agrupado: boolean = true,
   busqueda?: string
-): Promise<IStockDisponiblePage> => {
-  const response = await api.get<IStockDisponiblePage>('/stock-disponible/inventario', {
-    params: { page, idCategoria, agrupado, busqueda: busqueda || undefined },
-  });
-  return response.data;
-};
-
-/**
- * Lista el stock disponible de Bodega de Tránsito, paginado, filtrable por categoría y búsqueda
- * (ver semántica de "agrupado" en obtenerStockDisponiblesInventarioService).
- * Endpoint propio (permiso SD_BODEGA_TRANSITO): no se llama si el rol no tiene esa lectura.
- * GET /api/v1/stock-disponible/bodega-transito
- */
-export const obtenerStockDisponiblesBodegaService = async (
-  page: number,
-  idCategoria?: number,
-  agrupado: boolean = true,
-  busqueda?: string
-): Promise<IStockDisponiblePage> => {
-  const response = await api.get<IStockDisponiblePage>('/stock-disponible/bodega-transito', {
-    params: { page, idCategoria, agrupado, busqueda: busqueda || undefined },
+): Promise<ISobranteBodegaPeriodoPage> => {
+  const response = await api.get<ISobranteBodegaPeriodoPage>('/stock-disponible/bodega-transito-periodo', {
+    params: { fechaInicio, fechaFin, page, idCategoria, busqueda: busqueda || undefined },
   });
   return response.data;
 };
@@ -1232,6 +1160,54 @@ export const obtenerDisponibleRealService = async (
   busqueda?: string
 ): Promise<IDisponibleRealPage> => {
   const response = await api.get<IDisponibleRealPage>('/stock-disponible/disponible-real', {
+    params: { page, idCategoria, busqueda: busqueda || undefined },
+  });
+  return response.data;
+};
+
+/** Ítem de la vista "Disponible en Inventario" (mapea DisponibleInventarioItem del backend). */
+export interface IDisponibleInventarioItem {
+  nombreProducto: string;
+  nombreCategoria: string;
+  abreviatura: string;
+  /** Stock físico actual en inventario. */
+  inventario: number;
+  /** Stock físico actual en bodega de tránsito. */
+  bodegaTransito: number;
+  /** Demanda de solicitudes EN_PEDIDO abastecidas + reservado. */
+  comprometido: number;
+  /** Parte del comprometido que ya está físicamente en bodega de tránsito. */
+  cubiertoBodega: number;
+  /** inventario − (comprometido − cubiertoBodega). Negativo = falta stock en inventario. */
+  disponibleInventario: number;
+  /** Stock de bodega sin compromiso; vuelve a inventario con un movimiento de DEVOLUCION. */
+  excedenteBodega: number;
+}
+
+export interface IDisponibleInventarioPage {
+  data: IDisponibleInventarioItem[];
+  page: number;
+  pageSize: number;
+  totalPaginas: number;
+  totalRegistros: number;
+}
+
+/**
+ * Disponible EN INVENTARIO por producto, calculado en vivo: del stock que hoy está físicamente en
+ * inventario, cuánto no está comprometido con solicitudes EN_PEDIDO. Descuenta primero la parte del
+ * compromiso que ya se abasteció a bodega de tránsito — el TRASLADO ya restó de inventario.stock,
+ * así que restar el compromiso entero lo contaría dos veces.
+ * Cálculo en vivo (ya no hay tabla intermedia mantenida a mano por diálogo).
+ * disponibleInventario + excedenteBodega da el mismo número que la pestaña "Disponible Real".
+ * Endpoint propio (permiso SD_INVENTARIO): no se llama si el rol no tiene esa lectura.
+ * GET /api/v1/stock-disponible/inventario-disponible
+ */
+export const obtenerDisponibleInventarioService = async (
+  page: number,
+  idCategoria?: number,
+  busqueda?: string
+): Promise<IDisponibleInventarioPage> => {
+  const response = await api.get<IDisponibleInventarioPage>('/stock-disponible/inventario-disponible', {
     params: { page, idCategoria, busqueda: busqueda || undefined },
   });
   return response.data;
