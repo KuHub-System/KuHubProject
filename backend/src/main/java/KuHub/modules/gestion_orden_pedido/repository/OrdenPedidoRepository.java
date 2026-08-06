@@ -1027,19 +1027,38 @@ FROM (
     String findCotizacionDeCanceladas(@Param("idsPedido") List<Integer> idsPedido);
 
     /**
-     * Disponible real por producto = (inventario + bodega de tránsito) − demanda comprometida.
-     * La demanda comprometida es la suma de {@code cant_producto_solicitud} de las solicitudes
-     * EN_PEDIDO ya abastecidas (con línea de OP {@code entregado = true}), identificadas por la
-     * puente {@code detalle_orden_pedido_solicitud}. Se resta la demanda REAL (lo que se consumirá),
-     * no lo atribuido/pedido.
+     * Disponible real por producto = (inventario + bodega de tránsito) − demanda comprometida
+     * − reservado. La demanda comprometida es la suma de {@code cant_producto_solicitud} de las
+     * solicitudes EN_PEDIDO ya abastecidas (con línea de OP {@code entregado = true}), identificadas
+     * por la puente {@code detalle_orden_pedido_solicitud}. Se resta la demanda REAL (lo que se
+     * consumirá), no lo atribuido/pedido.
+     *
+     * A cada solicitud se le descuenta de su demanda lo que ELLA MISMA ya tenía reservado (CTE
+     * reservas_sol): si una solicitud se cubrió en parte con stock propio y en parte con el
+     * proveedor, al llegar esa OP la porción reservada aparece dos veces — una dentro de
+     * cant_producto_solicitud y otra como reserva — y se descontaría de más. Ejemplo: solicitud de
+     * 10, se reservan 4 del stock existente y se piden 6 al proveedor; cuando llegan los 6, sin el
+     * GREATEST se restaría 10 + 4 = 14 en vez de 10. Como esta consulta es la que decide cuánto se
+     * reserva en {@code reservarDisponiblePedido}, el error no solo se mostraba: hacía reservar de
+     * menos. Mismo criterio en StockDisponibleRepository.findDisponibleRealPaginado y
+     * findDisponibleInventarioPaginado.
      *
      * [0] id_producto
      * [1] stock_fisico         (inventario + bodega de tránsito)
-     * [2] demanda_comprometida (Σ demanda de solicitudes EN_PEDIDO abastecidas)
+     * [2] demanda_comprometida (Σ demanda de solicitudes EN_PEDIDO abastecidas + reservado)
      * [3] disponible           (stock_fisico − demanda_comprometida; puede ser negativo = faltante)
      */
     @Query(value = """
-        WITH abastecidas AS (
+        WITH reservas_sol AS (
+            -- Reserva por (solicitud, producto): base tanto del total reservado como del
+            -- descuento que se le hace a la demanda de esa misma solicitud.
+            SELECT r.id_solicitud, r.id_producto, r.cantidad
+            FROM reserva_stock_solicitud r
+            JOIN solicitud s ON s.id_solicitud = r.id_solicitud
+            WHERE r.activo = TRUE
+              AND s.estado_solicitud = 'EN_PEDIDO'::estado_solicitud_type
+        ),
+        abastecidas AS (
             -- (solicitud, producto) EN_PEDIDO que ya llegaron (entregado = true), vía la puente
             SELECT DISTINCT dops.id_solicitud, dop.id_producto
             FROM detalle_orden_pedido_solicitud dops
@@ -1051,21 +1070,21 @@ FROM (
               AND s.estado_solicitud = 'EN_PEDIDO'::estado_solicitud_type
         ),
         demanda AS (
-            SELECT ds.id_producto, SUM(ds.cant_producto_solicitud) AS demanda
+            SELECT ds.id_producto,
+                   SUM(GREATEST(ds.cant_producto_solicitud - COALESCE(rs.cantidad, 0), 0)) AS demanda
             FROM abastecidas a
             JOIN detalle_solicitud ds
               ON ds.id_solicitud = a.id_solicitud AND ds.id_producto = a.id_producto
+            LEFT JOIN reservas_sol rs
+              ON rs.id_solicitud = ds.id_solicitud AND rs.id_producto = ds.id_producto
             GROUP BY ds.id_producto
         ),
         reservas AS (
             -- Stock ya reservado a solicitudes EN_PEDIDO (cubierto con disponible). Al pasar la
             -- solicitud a PROCESADA/RECHAZADA deja de contar por este mismo filtro de estado.
-            SELECT r.id_producto, SUM(r.cantidad) AS reservado
-            FROM reserva_stock_solicitud r
-            JOIN solicitud s ON s.id_solicitud = r.id_solicitud
-            WHERE r.activo = TRUE
-              AND s.estado_solicitud = 'EN_PEDIDO'::estado_solicitud_type
-            GROUP BY r.id_producto
+            SELECT id_producto, SUM(cantidad) AS reservado
+            FROM reservas_sol
+            GROUP BY id_producto
         )
         SELECT
             i.id_producto,                                                                          -- [0]

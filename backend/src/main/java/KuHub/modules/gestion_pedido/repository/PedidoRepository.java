@@ -441,10 +441,22 @@ public interface PedidoRepository extends JpaRepository<Pedido, Integer> {
                                     ), 0),
                                     -- Disponible real = inventario + bodega de tránsito − demanda comprometida − reservas
                                     -- (solicitudes EN_PEDIDO). Puede ser negativo (faltante); el frontend lo limita a 0.
+                                    -- A cada solicitud se le descuenta de su demanda lo que ELLA MISMA ya tenía reservado:
+                                    -- si se cubrió en parte con stock propio y en parte con el proveedor, al llegar la OP
+                                    -- esa porción aparece dos veces (dentro de cant_producto_solicitud y como reserva) y se
+                                    -- restaría de más. Mismo criterio que OrdenPedidoRepository.findDisponibleRealByProductos
+                                    -- y StockDisponibleRepository.findDisponibleRealPaginado.
                                     'disponibleReal', COALESCE((
                                         SELECT COALESCE(inv2.stock, 0) + COALESCE(bt2.stock, 0)
                                              - COALESCE((
-                                                 SELECT SUM(ds2.cant_producto_solicitud)
+                                                 SELECT SUM(GREATEST(
+                                                     ds2.cant_producto_solicitud - COALESCE((
+                                                         SELECT rs3.cantidad
+                                                         FROM reserva_stock_solicitud rs3
+                                                         WHERE rs3.activo = TRUE
+                                                           AND rs3.id_solicitud = ds2.id_solicitud
+                                                           AND rs3.id_producto  = ds2.id_producto
+                                                     ), 0), 0))
                                                  FROM detalle_solicitud ds2
                                                  WHERE ds2.id_producto = dp.id_producto
                                                    AND ds2.id_solicitud IN (
