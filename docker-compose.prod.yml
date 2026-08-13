@@ -16,6 +16,11 @@ services:
       - LOGGING_LEVEL_ROOT=WARN
       - LOGGING_LEVEL_COM_KUHUB=INFO
       - LOGGING_LEVEL_ORG_HIBERNATE_SQL=WARN
+      # Limite de peticiones por IP por minuto (ver RateLimitFilter). Queda
+      # en 100 salvo que se exporte RATE_LIMIT_MAX_REQUESTS antes del deploy
+      # -- util para subirlo temporalmente durante una prueba de carga.
+      # Volver siempre a 100 (o no exportar la variable) al terminar.
+      - RATE_LIMIT_MAX_REQUESTS=${RATE_LIMIT_MAX_REQUESTS:-100}
     entrypoint: ["java", "-Xmx2048m", "-Xms1536m", "-jar", "app.jar"]
     deploy:
       resources:
