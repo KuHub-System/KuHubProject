@@ -16,16 +16,11 @@ services:
       - LOGGING_LEVEL_ROOT=WARN
       - LOGGING_LEVEL_COM_KUHUB=INFO
       - LOGGING_LEVEL_ORG_HIBERNATE_SQL=WARN
-      # ###################################################################
-      # ### TEMPORAL - PRUEBA DE CARGA - REVERTIR A 100 AL TERMINAR ###
-      # Limite de peticiones por IP por minuto (ver RateLimitFilter).
-      # Elevado a 5000 solo para poder medir la capacidad real del servidor
-      # sin que el limitador corte la prueba antes de tiempo.
-      # MIENTRAS ESTE EN 5000, PRODUCCION NO TIENE PROTECCION EFECTIVA
-      # CONTRA ABUSO. Volver a ${RATE_LIMIT_MAX_REQUESTS:-100} y desplegar
-      # de nuevo apenas termine la medicion.
-      # ###################################################################
-      - RATE_LIMIT_MAX_REQUESTS=5000
+      # Limite de peticiones por IP por minuto (ver RateLimitFilter). Queda
+      # en 100 salvo que se exporte RATE_LIMIT_MAX_REQUESTS antes del deploy
+      # -- util para subirlo temporalmente durante una prueba de carga.
+      # Volver siempre a 100 (o no exportar la variable) al terminar.
+      - RATE_LIMIT_MAX_REQUESTS=${RATE_LIMIT_MAX_REQUESTS:-100}
     entrypoint: ["java", "-Xmx2048m", "-Xms1536m", "-jar", "app.jar"]
     deploy:
       resources:
