@@ -13,8 +13,10 @@ import KuHub.modules.gestion_proveedor.dtos.response.DiaEntregaResponseDTO;
 import KuHub.modules.gestion_proveedor.dtos.response.ProductoConPrecioDTO;
 import KuHub.modules.gestion_proveedor.dtos.response.ProductoDisponibleDTO;
 import KuHub.modules.gestion_proveedor.dtos.response.ProductoBuscadoDTO;
+import KuHub.modules.gestion_proveedor.dtos.response.ProveedorCategoriaResumenDTO;
 import KuHub.modules.gestion_proveedor.dtos.response.ProveedorDetalleDTO;
 import KuHub.modules.gestion_proveedor.dtos.response.ProveedorListDTO;
+import KuHub.modules.gestion_proveedor.dtos.response.ProveedorProductosPageDTO;
 import KuHub.modules.gestion_proveedor.dtos.response.ProveedorSelectorView;
 import KuHub.modules.gestion_proveedor.dtos.response.ProveedoresPageResponse;
 import KuHub.modules.gestion_proveedor.dtos.response.SyncExcelResultDTO;
@@ -171,6 +173,36 @@ public class ProveedorServiceImpl implements ProveedorService {
         log.info("obtenerDetalleEnFecha: Proveedor ID={} | fecha={} | filas={}",
                 idProveedor, fechaConsulta, rows.size());
         return construirDetalle(proveedor, rows);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<ProveedorCategoriaResumenDTO> obtenerResumenCategorias(Integer idProveedor) {
+        findById(idProveedor);
+        return proveedorRepository.findResumenCategoriasPorProveedor(idProveedor).stream()
+                .map(ProveedorCategoriaResumenDTO::fromRow)
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public ProveedorProductosPageDTO obtenerProductosPorCategoriaPaginado(
+            Integer idProveedor, Short idCategoria, String busqueda, boolean soloActivos, Integer page
+    ) {
+        findById(idProveedor);
+        String busquedaNormalizada = (busqueda != null && !busqueda.isBlank()) ? busqueda.trim() : null;
+
+        long total = proveedorRepository.countProductosPorProveedorYCategoria(
+                idProveedor, idCategoria, soloActivos, busquedaNormalizada);
+        PaginationUtils.PagingResult paging = PaginationUtils.buildPaging(page, total);
+
+        List<ProductoConPrecioDTO> productos = proveedorRepository.findProductosPorProveedorYCategoriaPaginado(
+                        idProveedor, idCategoria, soloActivos, busquedaNormalizada, paging.limit(), paging.offset())
+                .stream()
+                .map(ProductoConPrecioDTO::fromRow)
+                .collect(Collectors.toList());
+
+        return ProveedorProductosPageDTO.of(productos, idCategoria, paging, total);
     }
 
     /**

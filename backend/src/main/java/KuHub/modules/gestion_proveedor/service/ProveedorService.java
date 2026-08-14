@@ -7,8 +7,10 @@ import KuHub.modules.gestion_proveedor.dtos.request.ProveedorUpdateDTO;
 import KuHub.modules.gestion_proveedor.dtos.response.BusquedaProductosGlobalDTO;
 import KuHub.modules.gestion_proveedor.dtos.response.CotizacionProveedorDTO;
 import KuHub.modules.gestion_proveedor.dtos.response.ProductoDisponibleDTO;
+import KuHub.modules.gestion_proveedor.dtos.response.ProveedorCategoriaResumenDTO;
 import KuHub.modules.gestion_proveedor.dtos.response.ProveedorDetalleDTO;
 import KuHub.modules.gestion_proveedor.dtos.response.ProveedorListDTO;
+import KuHub.modules.gestion_proveedor.dtos.response.ProveedorProductosPageDTO;
 import KuHub.modules.gestion_proveedor.dtos.response.ProveedorSelectorView;
 import KuHub.modules.gestion_proveedor.dtos.response.ProveedoresPageResponse;
 import KuHub.modules.gestion_proveedor.dtos.response.SyncExcelResultDTO;
@@ -160,6 +162,32 @@ public interface ProveedorService {
      * @return DTO con la estructura del catálogo del proveedor congelado en la fecha dada
      */
     ProveedorDetalleDTO obtenerDetalleEnFecha(Integer idProveedor, LocalDate fechaConsulta);
+
+    /**
+     * Obtiene el resumen por categoría del catálogo de un proveedor (totales de productos, activos
+     * y desincronizados), sin traer el detalle de los productos — estos se piden paginados por
+     * separado vía {@link #obtenerProductosPorCategoriaPaginado}. Alimenta la vista inicial de la
+     * card expandible de ProductosProveedor.tsx.
+     *
+     * @param idProveedor Identificador del proveedor
+     * @return Lista de DTOs con el resumen de cada categoría del catálogo del proveedor
+     */
+    List<ProveedorCategoriaResumenDTO> obtenerResumenCategorias(Integer idProveedor);
+
+    /**
+     * Obtiene una página de productos del catálogo de un proveedor filtrados por categoría, con
+     * búsqueda opcional por nombre y filtro de solo-activos, para el scroll infinito por categoría.
+     *
+     * @param idProveedor Identificador del proveedor
+     * @param idCategoria Identificador de la categoría a paginar
+     * @param busqueda Término de búsqueda parcial por nombre de producto (opcional)
+     * @param soloActivos Si true, excluye los productos deshabilitados de la oferta
+     * @param page Número de la página a recuperar (indexada en 1)
+     * @return DTO envoltorio con los productos de la página y metadatos de paginación
+     */
+    ProveedorProductosPageDTO obtenerProductosPorCategoriaPaginado(
+            Integer idProveedor, Short idCategoria, String busqueda, boolean soloActivos, Integer page
+    );
 
     /**
      * Lista a todos los proveedores que ofrecen actualmente un producto específico, facilitando la

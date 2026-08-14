@@ -7,6 +7,26 @@
 
 import type { DiaSemana, IProveedorProducto, TDiaSemana } from '../../types/proveedor/proveedor.types';
 
+// ── Evento de patch cross-componente para productos de proveedor ─────────────
+
+/**
+ * Nombre del CustomEvent que gestion-proveedores.tsx dispara tras editar precio/marca/
+ * contenido, togglear o quitar un producto de un proveedor. ProductosProveedor.tsx (que
+ * ahora mantiene su propio estado paginado por categoría, ya no un caché completo en el
+ * padre) lo escucha para parchear localmente el producto afectado sin refetch — mismo
+ * espíritu que el Patrón A de invalidación de caché (parche directo), pero vía evento
+ * porque los datos ya no viven en un caché compartido en el padre.
+ */
+export const EVT_PROVEEDOR_PRODUCTO_ACTUALIZADO = 'kh:proveedorProductoActualizado';
+
+export type ProveedorProductoPatchDetail = {
+  /** idProveedorProducto es PK global — no hace falta idProveedor para matchear sin ambigüedad. */
+  idProveedorProducto: number;
+  /** Opcional: algunos call-sites (ej. edición inline de precio) solo conocen idProveedorProducto. */
+  idProducto?: number;
+  cambios: Partial<Pick<IProveedorProducto, 'marcaProducto' | 'formatoContenido' | 'precioNeto' | 'precioConIva' | 'activo'>>;
+};
+
 // ── Constantes de días de semana ──────────────────────────────────────────────
 
 export const DIAS_SEMANA_OPTIONS = [

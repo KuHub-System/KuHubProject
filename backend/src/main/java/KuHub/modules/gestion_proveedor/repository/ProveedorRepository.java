@@ -195,6 +195,139 @@ public interface ProveedorRepository extends JpaRepository<Proveedor, Integer> {
     List<Object[]> findProductosPorProveedor(@Param("idProveedor") Integer idProveedor);
 
     /**
+     * Resumen por categoría del catálogo de un proveedor: total de productos, activos
+     * y desincronizados (precio con IVA que no coincide con neto × 1.19 ± 0,01), usando
+     * la misma versión más reciente por producto que findProductosPorProveedor.
+     * Alimenta la vista inicial (colapsada) de ProductosProveedor.tsx antes de paginar
+     * los productos de cada categoría por separado.
+     * Columnas retornadas (Object[]):
+     * [0] id_categoria
+     * [1] nombre_categoria
+     * [2] total_productos
+     * [3] total_activos
+     * [4] total_desincronizados
+     */
+    @Query(value = """
+            WITH ultima_version AS (
+                SELECT DISTINCT ON (pp.id_producto)
+                    prod.id_categoria    AS id_categoria,
+                    cat.nombre_categoria AS nombre_categoria,
+                    pp.activo            AS activo,
+                    pp.precio_neto       AS precio_neto,
+                    pp.precio_con_iva    AS precio_con_iva
+                FROM proveedor_producto pp
+                INNER JOIN producto prod ON prod.id_producto = pp.id_producto
+                INNER JOIN categoria cat ON cat.id_categoria = prod.id_categoria
+                WHERE pp.id_proveedor = :idProveedor
+                  AND prod.activo = TRUE
+                ORDER BY pp.id_producto, pp.fecha_actualizacion DESC
+            )
+            SELECT
+                id_categoria,
+                nombre_categoria,
+                COUNT(*)                                                                AS total_productos,
+                COUNT(*) FILTER (WHERE activo = TRUE)                                   AS total_activos,
+                COUNT(*) FILTER (WHERE ABS(precio_con_iva - (precio_neto * 1.19)) > 0.01) AS total_desincronizados
+            FROM ultima_version
+            GROUP BY id_categoria, nombre_categoria
+            ORDER BY nombre_categoria ASC
+            """, nativeQuery = true)
+    List<Object[]> findResumenCategoriasPorProveedor(@Param("idProveedor") Integer idProveedor);
+
+    /**
+     * Página de productos de un proveedor filtrados por categoría, con búsqueda opcional
+     * por nombre y filtro de solo-activos, para el scroll infinito por categoría en
+     * ProductosProveedor.tsx. Misma versión más reciente por producto (DISTINCT ON) que
+     * findProductosPorProveedor. Columnas retornadas (mismo orden que ProductoConPrecioDTO.fromRow):
+     * [0]  id_producto
+     * [1]  id_proveedor_producto
+     * [2]  nombre_producto
+     * [3]  nombre_categoria
+     * [4]  nombre_unidad
+     * [5]  abreviatura
+     * [6]  activo
+     * [7]  fecha_actualizacion
+     * [8]  marca_producto
+     * [9]  formato_contenido
+     * [10] precio_neto
+     * [11] precio_con_iva
+     */
+    @Query(value = """
+            WITH ultima_version AS (
+                SELECT DISTINCT ON (pp.id_producto)
+                    prod.id_producto             AS id_producto,
+                    pp.id_proveedor_producto     AS id_proveedor_producto,
+                    prod.nombre_producto         AS nombre_producto,
+                    cat.nombre_categoria         AS nombre_categoria,
+                    prod.id_categoria            AS id_categoria,
+                    um.nombre_unidad             AS nombre_unidad,
+                    um.abreviatura               AS abreviatura,
+                    pp.activo                    AS activo,
+                    pp.fecha_actualizacion       AS fecha_actualizacion,
+                    pp.marca_producto            AS marca_producto,
+                    pp.formato_contenido         AS formato_contenido,
+                    pp.precio_neto               AS precio_neto,
+                    pp.precio_con_iva            AS precio_con_iva
+                FROM proveedor_producto pp
+                INNER JOIN producto prod ON prod.id_producto = pp.id_producto
+                INNER JOIN categoria cat ON cat.id_categoria = prod.id_categoria
+                INNER JOIN unidad_medida um ON um.id_unidad = prod.id_unidad
+                WHERE pp.id_proveedor = :idProveedor
+                  AND prod.activo = TRUE
+                ORDER BY pp.id_producto, pp.fecha_actualizacion DESC
+            )
+            SELECT
+                id_producto, id_proveedor_producto, nombre_producto, nombre_categoria,
+                nombre_unidad, abreviatura, activo, fecha_actualizacion,
+                marca_producto, formato_contenido, precio_neto, precio_con_iva
+            FROM ultima_version
+            WHERE id_categoria = :idCategoria
+              AND (:soloActivos = FALSE OR activo = TRUE)
+              AND (:busqueda IS NULL OR :busqueda = ''
+                   OR LOWER(nombre_producto) LIKE LOWER(CONCAT('%', :busqueda, '%')))
+            ORDER BY nombre_producto ASC
+            LIMIT :limit OFFSET :offset
+            """, nativeQuery = true)
+    List<Object[]> findProductosPorProveedorYCategoriaPaginado(
+            @Param("idProveedor") Integer idProveedor,
+            @Param("idCategoria") Short idCategoria,
+            @Param("soloActivos") boolean soloActivos,
+            @Param("busqueda") String busqueda,
+            @Param("limit") int limit,
+            @Param("offset") int offset
+    );
+
+    /**
+     * Cuenta los productos de un proveedor en una categoría, con los mismos filtros que
+     * findProductosPorProveedorYCategoriaPaginado, para calcular la paginación.
+     */
+    @Query(value = """
+            WITH ultima_version AS (
+                SELECT DISTINCT ON (pp.id_producto)
+                    prod.id_categoria    AS id_categoria,
+                    pp.activo            AS activo,
+                    prod.nombre_producto AS nombre_producto
+                FROM proveedor_producto pp
+                INNER JOIN producto prod ON prod.id_producto = pp.id_producto
+                WHERE pp.id_proveedor = :idProveedor
+                  AND prod.activo = TRUE
+                ORDER BY pp.id_producto, pp.fecha_actualizacion DESC
+            )
+            SELECT COUNT(*)
+            FROM ultima_version
+            WHERE id_categoria = :idCategoria
+              AND (:soloActivos = FALSE OR activo = TRUE)
+              AND (:busqueda IS NULL OR :busqueda = ''
+                   OR LOWER(nombre_producto) LIKE LOWER(CONCAT('%', :busqueda, '%')))
+            """, nativeQuery = true)
+    long countProductosPorProveedorYCategoria(
+            @Param("idProveedor") Integer idProveedor,
+            @Param("idCategoria") Short idCategoria,
+            @Param("soloActivos") boolean soloActivos,
+            @Param("busqueda") String busqueda
+    );
+
+    /**
      * Vista histórica: por cada producto del proveedor, retorna la versión cuya
      * fecha_actualizacion sea la más reciente pero ≤ :fechaConsulta.
      * Es decir, el precio vigente que tenía el proveedor en ese punto en el tiempo.

@@ -8,6 +8,8 @@ import api from '../../config/Axios';
 import {
   IProveedor,
   IProveedorDetalle,
+  IProveedorCategoriaResumen,
+  IProveedorProductosPage,
   IProveedorCreateDTO,
   IProveedorUpdateDTO,
   IProveedorProductoAddDTO,
@@ -162,6 +164,53 @@ export const obtenerProductosPorFechaService = async (
     throw new Error(
       error.response?.data?.message ||
       'Error al cargar los precios históricos del proveedor'
+    );
+  }
+};
+
+/**
+ * Resumen por categoría del catálogo de un proveedor (totales, sin productos).
+ * Alimenta los encabezados de categoría antes de paginar sus productos.
+ * GET /api/v1/proveedor/{id}/categorias-resumen
+ */
+export const obtenerResumenCategoriasService = async (
+  idProveedor: number
+): Promise<IProveedorCategoriaResumen[]> => {
+  try {
+    const response = await api.get<IProveedorCategoriaResumen[]>(`/proveedor/${idProveedor}/categorias-resumen`);
+    return response.data;
+  } catch (error: any) {
+    throw new Error(
+      error.response?.data?.message ||
+      'Error al cargar el resumen de categorías del proveedor'
+    );
+  }
+};
+
+/**
+ * Página de productos de un proveedor dentro de una categoría, con búsqueda y filtro
+ * de solo-activos opcionales, para el scroll infinito de la tabla de cada categoría.
+ * GET /api/v1/proveedor/{id}/categoria/{idCategoria}/productos?page=1&busqueda=&soloActivos=false
+ */
+export const obtenerProductosPorCategoriaPaginadoService = async (
+  idProveedor: number,
+  idCategoria: number,
+  opciones: { page?: number; busqueda?: string; soloActivos?: boolean } = {}
+): Promise<IProveedorProductosPage> => {
+  try {
+    const params: Record<string, any> = { page: opciones.page ?? 1 };
+    if (opciones.busqueda) params.busqueda = opciones.busqueda;
+    if (opciones.soloActivos) params.soloActivos = true;
+
+    const response = await api.get<IProveedorProductosPage>(
+      `/proveedor/${idProveedor}/categoria/${idCategoria}/productos`,
+      { params }
+    );
+    return response.data;
+  } catch (error: any) {
+    throw new Error(
+      error.response?.data?.message ||
+      'Error al cargar los productos de la categoría'
     );
   }
 };

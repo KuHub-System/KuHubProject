@@ -77,6 +77,33 @@ export interface IProveedorDetalle extends IProveedor {
 }
 
 /**
+ * Mapea ProveedorCategoriaResumenDTO del backend.
+ * Resumen (sin productos) de una categoría dentro del catálogo de un proveedor,
+ * usado para pintar el encabezado de cada categoría antes de paginar sus productos.
+ */
+export interface IProveedorCategoriaResumen {
+  idCategoria: number;
+  nombreCategoria: string;
+  totalProductos: number;
+  totalActivos: number;
+  totalDesincronizados: number;
+}
+
+/**
+ * Mapea ProveedorProductosPageDTO del backend.
+ * Página de productos de un proveedor dentro de una categoría, para el scroll
+ * infinito de ProductosProveedor.tsx.
+ */
+export interface IProveedorProductosPage {
+  data: IProveedorProducto[];
+  idCategoria: number;
+  page: number;
+  pageSize: number;
+  totalPaginas: number;
+  totalRegistros: number;
+}
+
+/**
  * DTO para crear un nuevo proveedor.
  * Mapea ProveedorCreateDTO del backend.
  */

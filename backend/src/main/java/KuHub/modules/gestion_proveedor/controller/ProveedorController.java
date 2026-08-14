@@ -7,8 +7,10 @@ import KuHub.modules.gestion_proveedor.dtos.request.ProveedorUpdateDTO;
 import KuHub.modules.gestion_proveedor.dtos.response.BusquedaProductosGlobalDTO;
 import KuHub.modules.gestion_proveedor.dtos.response.CotizacionProveedorDTO;
 import KuHub.modules.gestion_proveedor.dtos.response.ProductoDisponibleDTO;
+import KuHub.modules.gestion_proveedor.dtos.response.ProveedorCategoriaResumenDTO;
 import KuHub.modules.gestion_proveedor.dtos.response.ProveedorDetalleDTO;
 import KuHub.modules.gestion_proveedor.dtos.response.ProveedorListDTO;
+import KuHub.modules.gestion_proveedor.dtos.response.ProveedorProductosPageDTO;
 import KuHub.modules.gestion_proveedor.dtos.response.ProveedorSelectorView;
 import KuHub.modules.gestion_proveedor.dtos.response.ProveedoresPageResponse;
 import KuHub.modules.gestion_proveedor.dtos.response.SyncExcelResultDTO;
@@ -129,6 +131,52 @@ public class ProveedorController {
         return ResponseEntity
                 .status(200)
                 .body(proveedorService.obtenerDetalleEnFecha(id, fecha));
+    }
+
+    /**
+     * Obtiene el resumen por categoría del catálogo de un proveedor (totales de productos, activos
+     * y desincronizados), sin traer el detalle de los productos.
+     *
+     * [✅] INTEGRACIÓN CON EL FRONTEND:
+     * - **Implementado:** Sí.
+     * - **Servicio frontend:** {@code frontend/src/services/proveedor/proveedor-service.ts} -> {@code obtenerResumenCategoriasService()}
+     * - **Pantalla UI:** {@code frontend/src/pages/gestion-proveedores/ProductosProveedor.tsx} (Puebla los encabezados de categoría al expandir la card del proveedor, antes de paginar sus productos).
+     *
+     * @param id ID del proveedor
+     */
+    @GetMapping("/{id}/categorias-resumen")
+    public ResponseEntity<List<ProveedorCategoriaResumenDTO>> obtenerResumenCategorias(@PathVariable Integer id) {
+        return ResponseEntity
+                .status(200)
+                .body(proveedorService.obtenerResumenCategorias(id));
+    }
+
+    /**
+     * Obtiene una página de productos del catálogo de un proveedor filtrados por categoría, con
+     * búsqueda opcional por nombre y filtro de solo-activos, para el scroll infinito por categoría.
+     *
+     * [✅] INTEGRACIÓN CON EL FRONTEND:
+     * - **Implementado:** Sí.
+     * - **Servicio frontend:** {@code frontend/src/services/proveedor/proveedor-service.ts} -> {@code obtenerProductosPorCategoriaPaginadoService()}
+     * - **Pantalla UI:** {@code frontend/src/pages/gestion-proveedores/ProductosProveedor.tsx} (Carga cada tanda de productos de la tabla de una categoría a medida que se scrollea).
+     *
+     * @param id          ID del proveedor
+     * @param idCategoria ID de la categoría a paginar
+     * @param busqueda    Término de búsqueda parcial por nombre de producto (opcional)
+     * @param soloActivos Si true, excluye los productos deshabilitados de la oferta (por defecto false)
+     * @param page        Número de la página a consultar (por defecto 1)
+     */
+    @GetMapping("/{id}/categoria/{idCategoria}/productos")
+    public ResponseEntity<ProveedorProductosPageDTO> obtenerProductosPorCategoriaPaginado(
+            @PathVariable Integer id,
+            @PathVariable Short idCategoria,
+            @RequestParam(required = false) String busqueda,
+            @RequestParam(defaultValue = "false") boolean soloActivos,
+            @RequestParam(defaultValue = "1") Integer page
+    ) {
+        return ResponseEntity
+                .status(200)
+                .body(proveedorService.obtenerProductosPorCategoriaPaginado(id, idCategoria, busqueda, soloActivos, page));
     }
 
     /**

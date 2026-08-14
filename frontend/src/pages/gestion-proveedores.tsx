@@ -43,6 +43,7 @@ import {
   obtenerProveedoresService,
   obtenerProveedoresPaginadoService,
   obtenerProveedorDetalleService,
+  obtenerResumenCategoriasService,
   obtenerProductosPorFechaService,
   crearProveedorService,
   actualizarProveedorService,
@@ -76,6 +77,7 @@ import {
 import type {
   IProveedor,
   IProveedorDetalle,
+  IProveedorCategoriaResumen,
   IProveedorProducto,
   IProveedorProductoAddDTO,
   IProveedorCreateDTO,
@@ -110,9 +112,9 @@ import {
   styleTitle, styleHeader, styleCat, styleNum, styleText, styleTotal,
   styleSinProveedor, styleProvHeader, styleTotalPositivo,
   DIA_ORDEN, DIAS_TODOS, netoSolicitud, addDaysISO, getMondayISO, DIAS_ABREV_OC,
-  getEntregaKey, buildColsOC,
+  getEntregaKey, buildColsOC, EVT_PROVEEDOR_PRODUCTO_ACTUALIZADO,
 } from './gestion-proveedores/constants';
-import type { ColSpecOC } from './gestion-proveedores/constants';
+import type { ColSpecOC, ProveedorProductoPatchDetail } from './gestion-proveedores/constants';
 import { renderEstado, renderDisponibilidad } from './gestion-proveedores/ui-helpers';
 import EntregaInput from './gestion-proveedores/EntregaInput';
 import OrdenDetalleTabla from './gestion-proveedores/OrdenDetalleTabla';
@@ -191,8 +193,11 @@ const GestionProveedoresPage: React.FC = () => {
   const [filtroEstado, setFiltroEstado] = React.useState('');
 
   // ── Filas expandidas ──
+  // resumenCache guarda solo los totales por categoría (no los productos completos): el
+  // catálogo paginado por categoría lo pide y mantiene cada ProductosProveedor por su cuenta,
+  // para no traer de una vez todos los productos del proveedor al expandir la fila.
   const [expandedRows, setExpandedRows] = React.useState<Set<number>>(new Set());
-  const [detalleCache, setDetalleCache] = React.useState<Record<number, IProveedorDetalle>>({});
+  const [resumenCache, setResumenCache] = React.useState<Record<number, IProveedorCategoriaResumen[]>>({});
   const [loadingDetalle, setLoadingDetalle] = React.useState<Set<number>>(new Set());
 
   // ── Modal proveedor ──
@@ -234,7 +239,7 @@ const GestionProveedoresPage: React.FC = () => {
 
   // ── Modal confirmar quitar producto ──
   const { isOpen: isQuitarModal, onOpen: openQuitarModal, onOpenChange: onQuitarModalChange } = useDisclosure();
-  const [quitarTarget, setQuitarTarget] = React.useState<{ idProveedor: number; idProducto: number; nombre: string } | null>(null);
+  const [quitarTarget, setQuitarTarget] = React.useState<{ idProveedor: number; idProducto: number; idProveedorProducto: number; nombre: string } | null>(null);
 
   // ── Precio inline ──
   const [editingPrecio, setEditingPrecio] = React.useState<{ idProveedorProducto: number; campo: 'neto' | 'iva' | 'marca' | 'contenido' } | null>(null);
@@ -466,11 +471,11 @@ const GestionProveedoresPage: React.FC = () => {
       // o sea: el PRIMER page-flip empieza recién a los 800ms tras el mount.
       // Con un mínimo de 2 segundos se ven 1–2 flips completos → la animación se nota.
       // Si el fetch es más lento, el mínimo no agrega delay extra (Promise.all espera al más lento).
-      const [detalle] = await Promise.all([
-        obtenerProveedorDetalleService(idProveedor),
+      const [resumen] = await Promise.all([
+        obtenerResumenCategoriasService(idProveedor),
         new Promise<void>(resolve => setTimeout(resolve, 2000)),
       ]);
-      setDetalleCache(prev => ({ ...prev, [idProveedor]: detalle }));
+      setResumenCache(prev => ({ ...prev, [idProveedor]: resumen }));
     } catch (err: any) {
       showToast(err.message || 'Error al cargar productos del proveedor', 'error');
       // Si falla, colapsar para que el usuario pueda reintentar
@@ -490,7 +495,7 @@ const GestionProveedoresPage: React.FC = () => {
   };
 
   const invalidarCacheProveedor = (idProveedor: number) => {
-    setDetalleCache(prev => {
+    setResumenCache(prev => {
       const next = { ...prev };
       delete next[idProveedor];
       return next;
@@ -737,10 +742,11 @@ const GestionProveedoresPage: React.FC = () => {
       if (exitoso) {
         showToast('Producto asignado correctamente');
         invalidarCacheProveedor(proveedorParaProducto);
-        // Recargar detalle si la fila está expandida
+        // Recargar resumen de categorías si la fila está expandida (ProductosProveedor
+        // recarga la página 1 de cada categoría automáticamente al cambiar este prop)
         if (expandedRows.has(proveedorParaProducto)) {
-          const detalle = await obtenerProveedorDetalleService(proveedorParaProducto);
-          setDetalleCache(prev => ({ ...prev, [proveedorParaProducto]: detalle }));
+          const resumen = await obtenerResumenCategoriasService(proveedorParaProducto);
+          setResumenCache(prev => ({ ...prev, [proveedorParaProducto]: resumen }));
         }
       }
       return exitoso;
@@ -819,24 +825,12 @@ const GestionProveedoresPage: React.FC = () => {
             : { precioConIva: precioNum, precioNeto: Math.round((precioNum / IVA) * 100) / 100 };
         }
 
-        setDetalleCache(prev => {
-          const updated = { ...prev };
-          Object.keys(updated).forEach(idProvStr => {
-            const idProv = parseInt(idProvStr);
-            const detalle = updated[idProv];
-            if (!detalle) return;
-            const newCats: Record<string, IProveedorProducto[]> = {};
-            let changed = false;
-            Object.keys(detalle.productosPorCategoria).forEach(cat => {
-              newCats[cat] = detalle.productosPorCategoria[cat].map((p: IProveedorProducto) => {
-                if (p.idProveedorProducto === idPP) { changed = true; return { ...p, ...cambios }; }
-                return p;
-              });
-            });
-            if (changed) updated[idProv] = { ...detalle, productosPorCategoria: newCats };
-          });
-          return updated;
-        });
+        // ProductosProveedor ya no tiene un caché completo en este padre para parchear
+        // directamente (mantiene su propio estado paginado por categoría): se notifica vía
+        // evento y cada card parchea el producto localmente si lo tiene cargado.
+        window.dispatchEvent(new CustomEvent<ProveedorProductoPatchDetail>(EVT_PROVEEDOR_PRODUCTO_ACTUALIZADO, {
+          detail: { idProveedorProducto: idPP, cambios },
+        }));
 
         if (resultadosBusqueda.length > 0) {
           setResultadosBusqueda(prev => prev.map(resultado => ({
@@ -875,22 +869,10 @@ const GestionProveedoresPage: React.FC = () => {
             : `Producto "${prod.nombreProducto}" deshabilitado`,
           nuevoEstado ? 'success' : 'warning'
         );
-        // ✅ Actualizar en memoria sin hacer segunda petición
-        setDetalleCache(prev => {
-          const updated = { ...prev };
-          const detalle = updated[idProveedor];
-          if (detalle) {
-            Object.keys(detalle.productosPorCategoria).forEach(categoria => {
-              detalle.productosPorCategoria[categoria] = detalle.productosPorCategoria[categoria].map(p => {
-                if (p.idProducto === prod.idProducto) {
-                  return { ...p, activo: nuevoEstado };
-                }
-                return p;
-              });
-            });
-          }
-          return updated;
-        });
+        // ✅ Actualizar en memoria sin hacer segunda petición (vía evento, ver handleGuardarPrecio)
+        window.dispatchEvent(new CustomEvent<ProveedorProductoPatchDetail>(EVT_PROVEEDOR_PRODUCTO_ACTUALIZADO, {
+          detail: { idProveedorProducto: prod.idProveedorProducto, idProducto: prod.idProducto, cambios: { activo: nuevoEstado } },
+        }));
 
         // ✅ Actualizar también en resultados de búsqueda global
         setResultadosBusqueda(prev =>
@@ -938,22 +920,13 @@ const GestionProveedoresPage: React.FC = () => {
         ? round3(Number(prod.precioNeto) * IVA_RATIO)
         : round3(Number(prod.precioConIva) / IVA_RATIO);
 
-      setDetalleCache(prev => {
-        const updated = { ...prev };
-        const detalle = updated[idProveedor];
-        if (detalle) {
-          Object.keys(detalle.productosPorCategoria).forEach(cat => {
-            detalle.productosPorCategoria[cat] = detalle.productosPorCategoria[cat].map(p =>
-              p.idProveedorProducto === prod.idProveedorProducto
-                ? direccion === 'desde-neto'
-                  ? { ...p, precioConIva: nuevoValor }
-                  : { ...p, precioNeto: nuevoValor }
-                : p
-            );
-          });
-        }
-        return updated;
-      });
+      window.dispatchEvent(new CustomEvent<ProveedorProductoPatchDetail>(EVT_PROVEEDOR_PRODUCTO_ACTUALIZADO, {
+        detail: {
+          idProveedorProducto: prod.idProveedorProducto,
+          idProducto: prod.idProducto,
+          cambios: direccion === 'desde-neto' ? { precioConIva: nuevoValor } : { precioNeto: nuevoValor },
+        },
+      }));
 
       showToast(
         direccion === 'desde-neto'
@@ -969,7 +942,7 @@ const GestionProveedoresPage: React.FC = () => {
   // ── Quitar producto ───────────────────────────────────────────────────────
 
   const handleConfirmarQuitarProducto = (idProveedor: number, prod: IProveedorProducto) => {
-    setQuitarTarget({ idProveedor, idProducto: prod.idProducto, nombre: prod.nombreProducto });
+    setQuitarTarget({ idProveedor, idProducto: prod.idProducto, idProveedorProducto: prod.idProveedorProducto, nombre: prod.nombreProducto });
     openQuitarModal();
   };
 
@@ -980,22 +953,10 @@ const GestionProveedoresPage: React.FC = () => {
 
       if (resultado) {
         showToast(`Producto "${quitarTarget.nombre}" deshabilitado`);
-        // ✅ Actualizar en memoria SIN hacer segunda petición
-        setDetalleCache(prev => {
-          const updated = { ...prev };
-          const detalle = updated[quitarTarget.idProveedor];
-          if (detalle) {
-            Object.keys(detalle.productosPorCategoria).forEach(categoria => {
-              detalle.productosPorCategoria[categoria] = detalle.productosPorCategoria[categoria].map(p => {
-                if (p.idProducto === quitarTarget.idProducto) {
-                  return { ...p, activo: false };
-                }
-                return p;
-              });
-            });
-          }
-          return updated;
-        });
+        // ✅ Actualizar en memoria SIN hacer segunda petición (vía evento, ver handleGuardarPrecio)
+        window.dispatchEvent(new CustomEvent<ProveedorProductoPatchDetail>(EVT_PROVEEDOR_PRODUCTO_ACTUALIZADO, {
+          detail: { idProveedorProducto: quitarTarget.idProveedorProducto, idProducto: quitarTarget.idProducto, cambios: { activo: false } },
+        }));
 
         // ✅ Actualizar también en resultados de búsqueda global
         setResultadosBusqueda(prev =>
@@ -1077,8 +1038,9 @@ const GestionProveedoresPage: React.FC = () => {
 
   const handleCerrarSyncExcel = async () => {
     // Si el cierre ocurre DESPUÉS de una sincronización (haya o no productos sincronizados),
-    // refrescamos el detalle cacheado del proveedor sincronizado para que la tabla muestre
-    // los precios nuevos -- mismo patrón que handleGuardarProducto (invalidar + refetch si
+    // refrescamos el resumen de categorías cacheado del proveedor sincronizado para que la
+    // tabla (paginada por categoría) recargue los precios nuevos -- mismo patrón que
+    // handleGuardarProducto (invalidar + refetch si
     // la fila está expandida). Antes se hacía un window.location.reload(): un F5 completo
     // reinicia el AuthContext/PermissionContext desde cero, y si la matriz de permisos tarda
     // en resolver antes que ProtectedRoute reevalúe la ruta, el usuario cae momentáneamente
@@ -1092,8 +1054,8 @@ const GestionProveedoresPage: React.FC = () => {
     if (excelInputRef.current) excelInputRef.current.value = '';
     if (huboSincronizacion && proveedorSincronizado != null && expandedRows.has(proveedorSincronizado)) {
       try {
-        const detalle = await obtenerProveedorDetalleService(proveedorSincronizado);
-        setDetalleCache(prev => ({ ...prev, [proveedorSincronizado]: detalle }));
+        const resumen = await obtenerResumenCategoriasService(proveedorSincronizado);
+        setResumenCache(prev => ({ ...prev, [proveedorSincronizado]: resumen }));
       } catch {
         // Si falla el refetch, el usuario puede colapsar/expandir la fila para reintentar.
       }
@@ -2457,9 +2419,10 @@ const GestionProveedoresPage: React.FC = () => {
                                     subMessage="Obteniendo productos del proveedor..."
                                   />
                                 </div>
-                              ) : detalleCache[proveedor.idProveedor] ? (
+                              ) : resumenCache[proveedor.idProveedor] ? (
                                 <ProductosProveedor
-                                  detalle={detalleCache[proveedor.idProveedor]}
+                                  proveedor={proveedor}
+                                  resumenCategorias={resumenCache[proveedor.idProveedor]}
                                   canEdit={prov_EditarProv}
                                   canExportDatos={prov_ExportDatos}
                                   editingPrecio={editingPrecio}
