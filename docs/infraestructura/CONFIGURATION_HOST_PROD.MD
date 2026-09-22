@@ -1,5 +1,7 @@
 # CONFIGURATION_HOST_PROD.MD — Infraestructura y Configuración de KuHub Producción
 
+> ⚠️ **DECOMISIONADO (2026-09-22):** Esta instancia fue dada de baja por falta de uso — ver [`DECOMISION_INSTANCIA_PROD.md`](./DECOMISION_INSTANCIA_PROD.md) para el motivo, el checklist de baja y cómo reactivar en el futuro. El contenido de este archivo queda como referencia histórica de cómo estaba configurado el servidor mientras existió.
+
 **Fecha:** 2026-06-28
 **Entorno:** Producción — AWS Lightsail (Virginia, Zona A)
 **Dominio:** `web-kuhub.questweb.cl` (SSL pendiente de activación)
